@@ -1,3 +1,33 @@
-# Development agent rules
+# AGENTS.md — Frontend
 
-Refer to https://github.com/nurgeldiserikbay/services for product vision, domain invariants and API contracts. Do not silently redefine ownership, profile uniqueness, review attribution or affiliation rules. Prefer isolated feature branches and PRs; coordinate API changes across repos. Ensure lint, types, tests and security checks pass before proposing merge. Never commit secrets or real customer information. Do not claim app/device testing unless executed.
+## Source of truth
+The canonical human + AI specifications are in https://github.com/nurgeldiserikbay/services, also readable at https://nurgeldiserikbay.github.io/services/ . Read the following before implementation:
+- docs/ru/13-functional-catalog.md (requirement IDs)
+- docs/ru/15-permissions-matrix.md (ACL)
+- docs/ru/16-state-machines.md (valid transitions and concurrency)
+- docs/ru/17-database-design.md (domain data)
+- docs/ru/18-api-design.md (API conventions)
+- docs/ru/19-frontend-design-system.md (your architecture)
+- docs/ru/22-delivery-roadmap.md (phase and dependencies)
+- docs/ru/23-quality-tests-release.md (test cases)
+- docs/ru/25-ai-development.md (agent workflow)
+- docs/ru/26-acceptance-checklist.md (release criteria)
+- contracts/openapi.yaml (partial draft; not complete production SDK contract)
+
+## Shared invariants
+- One professional profile per canonical profession per person, including archived/hidden/draft states.
+- Professional reviews stay with the professional; organization/location reviews stay with their own immutable targets.
+- Affiliation with company and assignment to each particular company service are separate and consensual.
+- Separate public and private identity data and maintain per-resource authorization.
+- Preserve history for bookings, reviews, affiliations and audits through lifecycle changes.
+
+## Frontend specific
+- Use pnpm workspace: Next.js web SSR/PWA, React/Vite/Capacitor mobile; shared ui, features, api-client, i18n and auth adapters.
+- Capacitor uses statically bundled assets and calls HTTPS backend; never try to execute Next.js SSR in WebView.
+- Public professional/company/service pages must be indexable when visible; private profiles and drafts must not be indexed.
+- Workspace switch for client, multiple professions and organizations; never make separate accounts for each profession.
+- Server-state cache dedupe, cancel obsolete requests, guard double clicks, Idempotency-Key to backend, handle 409/error/empty/loading/offline states.
+- Fully localize kk/ru; implement responsive mobile-first accessible UI; do not fake reviews, company affiliations or verification badges.
+
+## Collaboration & quality
+Use feature branches / PRs in parallel work unless the owner explicitly requests main. Check existing code and shared components before creating duplicates. Small cohesive changes, proper tests, lint, types, CI. Sync API/domain changes with services docs first. Never commit secrets or customer PII. Never claim a feature works on Android/iOS or staging unless actually tested. Do not merge a PR without owner instruction.
