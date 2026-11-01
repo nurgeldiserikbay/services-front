@@ -31,3 +31,6 @@ The canonical human + AI specifications are in https://github.com/nurgeldiserikb
 
 ## Collaboration & quality
 Use feature branches / PRs in parallel work unless the owner explicitly requests main. Check existing code and shared components before creating duplicates. Small cohesive changes, proper tests, lint, types, CI. Sync API/domain changes with services docs first. Never commit secrets or customer PII. Never claim a feature works on Android/iOS or staging unless actually tested. Do not merge a PR without owner instruction.
+
+## Global local-first discovery
+See https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0002-global-local-discovery.md and GEO-01..10 in chapter 13. For every public frontend route implement global country/area/city switcher, local-first results for guest visitors, remembered manual choice, explicit global/online search. Never force login or browser GPS for discovery; exact geolocation only after user action and consent. kk/ru are initial locales, not fixed geographic restrictions. Reuse geo IDs from API and keep SEO, region and language independent.
