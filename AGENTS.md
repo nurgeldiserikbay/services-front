@@ -40,3 +40,10 @@ Before implementing a feature, inspect the visual overview diagrams and their ed
 
 ## Owner-approved booking simplification (2026-11-01)
 IMPORTANT PRODUCT OVERRIDE: https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0003-simple-booking-company-view.md. Do not build Quote, price negotiation, mandatory calendar or forced price. Independent profile CTA -> request to professional; professional's embedded card under company -> request to company. One profile, two page contexts, specialist allowlist AND company selected fields. Separate personal and company work allocations, avoid leaking other context busy details. Signed-in consumers may save profiles/organizations/offers and see history; anonymous clients can browse and submit guest requests. Distinguish statistics from real requests; WhatsApp clicks are not orders.
+
+## Product baseline v0.6 — read before feature work
+1. Canonical product blueprint: https://github.com/nurgeldiserikbay/services/blob/main/docs/ru/01-product.md
+2. ACCEPTED vs OPEN decisions: https://github.com/nurgeldiserikbay/services/blob/main/docs/ru/12-roadmap-decisions.md (OPEN-01..14, TECH-01..08)
+3. Implementation gates: https://github.com/nurgeldiserikbay/services/blob/main/docs/ru/22-delivery-roadmap.md
+4. Owner-approved simple requests/company views: https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0003-simple-booking-company-view.md
+Never implement proposed/open details as certain requirements. Do not claim implementation-ready before contract/UX/security gates. 
