@@ -1,5 +1,4 @@
 import type {Locale} from '@/lib/i18n';
-import {RequestTimeline} from './RequestTimeline';
 import type {RequestReceipt} from '@/lib/request-receipt';
 import styles from './GuestRequestReceipt.module.css';
 
@@ -24,7 +23,7 @@ export function GuestRequestReceipt({locale,receipt}:{
   return <section className={styles.receipt} aria-label={t.heading}>
     <h2>{t.heading}</h2>
     <p>{t.id}: <strong>{receipt.id}</strong></p>
-    <RequestTimeline locale={locale} state={receipt.state}/>
+    <p role="status">{receipt.state}</p>
     <p>{t.note}</p><small>{t.privacy}</small>
   </section>;
 }
