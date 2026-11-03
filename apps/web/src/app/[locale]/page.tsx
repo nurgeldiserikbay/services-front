@@ -74,6 +74,8 @@ export default async function Marketplace({ params, searchParams }: Props) {
                 <Link className="resultLink" href={`/${locale}/professionals/${encodeURIComponent(item.slug)}`}>{item.title}</Link> :
                 item.kind === 'organization' ?
                 <Link className="resultLink" href={`/${locale}/organizations/${encodeURIComponent(item.id)}`}>{item.title}</Link> :
+                item.kind === 'offer' ?
+                <Link className="resultLink" href={`/${locale}/services/${encodeURIComponent(item.id)}`}>{item.title}</Link> :
                 <strong>{item.title}</strong>}
               <small>{t.resultKinds[item.kind]}</small>
               {item.is_sponsored && <span className="sponsored">{t.sponsored}</span>}

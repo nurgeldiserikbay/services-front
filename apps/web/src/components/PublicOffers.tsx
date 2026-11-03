@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { PublicOffer } from '@/lib/api';
 import type { Locale } from '@/lib/i18n';
 
@@ -13,7 +14,7 @@ export function PublicOffers({offers,locale}:{offers:PublicOffer[];locale:Locale
     {offers.length===0?<p className="message">{t.empty}</p>:
       <ul className="resultList">{offers.map(offer=>
         <li key={offer.id} className="resultItem">
-          <strong>{offer.title}</strong>
+          <Link className="resultLink" href={`/${locale}/services/${encodeURIComponent(offer.id)}`}>{offer.title}</Link>
           <small>{t.modes[offer.delivery_mode]}</small>
           {offer.price_label&&<span>{t.price}: {offer.price_label}</span>}
         </li>)}</ul>}
