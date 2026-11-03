@@ -76,7 +76,7 @@ export function GuestInquiryDraft({
         aria-invalid={Boolean(errors.contact)}
         aria-describedby={errors.contact?'contact-error':undefined}
         placeholder={channel==='sms'?t.phoneHint:t.emailHint}/>
-      {errors.contact && <p id="contact-error" role="alert" className={styles.error}>{t[errors.contact]}</p>}
+      {errors.contact && <p id="contact-error" role="alert" className={styles.error}>{t.invalid_contact}</p>}
       <label className={styles.label} htmlFor="guest-note">{t.note}</label>
       <textarea id="guest-note" rows={4} value={note} maxLength={1001}
         onChange={e=>setNote(e.target.value)} placeholder={t.notePlaceholder}
