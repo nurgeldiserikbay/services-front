@@ -15,7 +15,7 @@ const copy={
   },
 } as const;
 
-/** Never renders a guest capability, raw phone or OTP. Not publicly mounted. */
+/** Private, server-authorized receipt presentation; not publicly mounted. */
 export function GuestRequestReceipt({locale,receipt}:{
   locale:Locale;receipt:RequestReceipt;
 }){
