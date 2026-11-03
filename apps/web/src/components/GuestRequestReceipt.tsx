@@ -23,7 +23,7 @@ export function GuestRequestReceipt({locale,receipt}:{
   return <section className={styles.receipt} aria-label={t.heading}>
     <h2>{t.heading}</h2>
     <p>{t.id}: <strong>{receipt.id}</strong></p>
-    <p role="status">{receipt.state}</p>
+    <p role="status">{receipt.state==='pending'?(locale==='kk'?'Орындаушы жауабын күтуде':'Ожидает ответа исполнителя'):(locale==='kk'?'Өтінім күйі: ':'Статус заявки: ')+receipt.state}</p>
     <p>{t.note}</p><small>{t.privacy}</small>
   </section>;
 }
