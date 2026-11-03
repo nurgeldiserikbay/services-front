@@ -9,3 +9,9 @@
 .geoControls select:disabled{opacity:.6;cursor:progress}
 .geoError{color:#aa3e30;font-size:.84rem;margin-top:12px}
 @media(max-width:650px){.geoControls{grid-template-columns:1fr}}
+
+.publicDetailHero{padding:60px 0 32px}
+.publicDetail h1{overflow-wrap:anywhere}
+.publicOffers{border-top:1px solid var(--line);padding:30px 0 80px}
+.resultLink{font-weight:750;color:var(--text);text-decoration:underline;text-decoration-color:#b6d7d1;text-underline-offset:4px}
+.resultLink:hover{color:var(--accent)}
