@@ -2,6 +2,7 @@ export type SearchKind = 'professional' | 'organization' | 'offer';
 export interface SearchItem {
   kind: SearchKind;
   id: string;
+  slug?: string | null;
   title: string;
   is_sponsored: boolean;
 }
@@ -39,5 +40,6 @@ function validItem(value: unknown): value is SearchItem {
   if (!value || typeof value !== 'object') return false;
   const x = value as Record<string, unknown>;
   return (x.kind === 'professional' || x.kind === 'organization' || x.kind === 'offer')
-    && typeof x.id === 'string' && typeof x.title === 'string' && typeof x.is_sponsored === 'boolean';
+    && typeof x.id === 'string' && typeof x.title === 'string' && typeof x.is_sponsored === 'boolean'
+    && (x.slug === undefined || x.slug === null || typeof x.slug === 'string');
 }
