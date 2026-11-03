@@ -1,0 +1,6 @@
+.wrap{border:1px solid #dfe9eb;border-radius:16px;background:white;padding:22px}
+.status{font-weight:700;color:#19354b;margin:0 0 16px}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.steps li{display:flex;gap:12px;align-items:center}
+.done{color:#167b72}.waiting{color:#637b88}
+.steps li>span:first-child{font-size:1.1rem;width:20px;flex:none}
