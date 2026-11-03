@@ -12,7 +12,7 @@ test('receipt accepts only committed UUID/status/version shape',()=>{
 });
 test('receipt never exposes guest bearer, OTP or contact data',()=>{
  const source=read('components/GuestRequestReceipt.tsx');
- assert.match(source,/RequestTimeline/);
+ assert.match(source,/receipt.state/);
  assert.doesNotMatch(source,/guestCapability|requestCapability|phone|contact|code|token|fetch\(/);
  assert.doesNotMatch(read('app/[locale]/services/[id]/page.tsx'),/<GuestRequestReceipt/);
 });
