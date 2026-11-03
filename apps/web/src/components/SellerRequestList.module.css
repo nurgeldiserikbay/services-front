@@ -1,0 +1,8 @@
+.wrap{background:white;border:1px solid #dfe9eb;border-radius:18px;padding:clamp(20px,4vw,38px)}
+.wrap h2{margin:0 0 10px}.wrap p{color:#607585;line-height:1.6}
+.list{padding:0;list-style:none;display:grid;gap:12px}
+.item{border:1px solid #dfe9eb;border-radius:14px;padding:18px;display:grid;gap:12px}
+.item small{display:block;color:#607585;margin-top:5px}.item span{font-size:.85rem;color:#607585}
+.actions{display:flex;gap:10px;flex-wrap:wrap}.actions button{border:1px solid #167b72;background:#167b72;color:white;border-radius:10px;min-height:44px;padding:10px 18px;font:inherit;font-weight:700;cursor:pointer}
+.actions button+button{background:white;color:#167b72}.actions button:disabled{opacity:.5;cursor:wait}
+.actions button:focus-visible{outline:3px solid #92d8cf;outline-offset:2px}
