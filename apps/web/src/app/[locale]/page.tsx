@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { dictionary, isLocale } from '@/lib/i18n';
-import { searchPublicMarketplace, type SearchScope, type SearchItem } from '@/lib/api';
+import { searchPublicMarketplace, type SearchItem } from '@/lib/api';
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -12,9 +12,11 @@ export default async function Marketplace({ params, searchParams }: Props) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const t = dictionary[locale];
-  const { q: rawQ, scope: rawScope } = await searchParams;
+  const { q: rawQ } = await searchParams;
   const q = typeof rawQ === 'string' ? rawQ.slice(0, 180).trim() : '';
-  const scope: SearchScope = rawScope === 'country' || rawScope === 'global' ? rawScope : 'city';
+  // Geographic selection requires canonical country/city IDs. Until the directory
+  // exists, use explicitly global search instead of issuing an invalid city request.
+  const scope = 'global' as const;
   let items: SearchItem[] = [];
   let error = false;
   if (q) {
@@ -28,7 +30,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
   const localeLink = (next: 'kk' | 'ru') => {
     const query = new URLSearchParams();
     if (q) query.set('q', q);
-    if (scope !== 'city') query.set('scope', scope);
+    query.set('scope', scope);
     const suffix = query.size ? '?' + query.toString() : '';
     return '/' + next + suffix;
   };
@@ -53,9 +55,8 @@ export default async function Marketplace({ params, searchParams }: Props) {
           </div>
           <fieldset className="scopes">
             <legend>{t.location}</legend>
-            {([['city', t.scopeCity], ['country', t.scopeCountry], ['global', t.scopeGlobal]] as const).map(([id, label]) => (
-              <label key={id}><input type="radio" name="scope" value={id} defaultChecked={scope === id} /> {label}</label>
-            ))}
+            <label><input type="radio" name="scope" value="global" defaultChecked /> {t.scopeGlobal}</label>
+            <span className="scopesUpcoming">{t.geoComingSoon}</span>
           </fieldset>
         </form>
       </section>
@@ -67,7 +68,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
         {q && !error && items.length > 0 &&
           <ul className="resultList">{items.map(item => (
             <li key={item.kind + ':' + item.id} className="resultItem">
-              <strong>{item.title}</strong><small>{item.kind}</small>
+              <strong>{item.title}</strong><small>{t.resultKinds[item.kind]}</small>
               {item.is_sponsored && <span className="sponsored">{t.sponsored}</span>}
             </li>
           ))}</ul>}
