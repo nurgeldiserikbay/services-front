@@ -26,7 +26,9 @@ export function buildRequestTimeline(
   locale:'kk'|'ru',
 ):{steps:RequestTimelineStep[];status:string}{
   const t=labels[locale];
-  // Cancellation alone is not evidence that the seller accepted: pending\n  // requests can also be cancelled without an agreed schedule.\n  const accepted=['accepted','completed'].includes(state);
+  // Cancellation alone is not evidence that the seller accepted: pending
+  // requests can also be cancelled without an agreed schedule.
+  const accepted=['accepted','completed'].includes(state);
   const resolved=['declined','completed','expired','cancelled_by_customer','cancelled_by_provider','cancelled_mutual'].includes(state);
   const status=state==='pending'?t.pending:
     state==='accepted'?t.accepted:
