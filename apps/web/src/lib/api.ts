@@ -12,6 +12,7 @@ export type SearchScope = 'city' | 'country' | 'global';
 export async function searchPublicMarketplace(
   query: string,
   scope: SearchScope,
+  location: {countryId?: string; cityId?: string} = {},
   signal?: AbortSignal,
 ): Promise<SearchResponse> {
   const rawBase = process.env.SERVICES_API_BASE_URL;
@@ -21,6 +22,8 @@ export async function searchPublicMarketplace(
   if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') throw new Error('Production API must use HTTPS');
   if (query) url.searchParams.set('q', query.slice(0, 180));
   url.searchParams.set('scope', scope);
+  if (scope === 'country' && location.countryId) url.searchParams.set('country_id',location.countryId);
+  if (scope === 'city' && location.cityId) url.searchParams.set('city_id',location.cityId);
   url.searchParams.set('kind', 'all');
   const response = await fetch(url, {
     cache: 'no-store',
