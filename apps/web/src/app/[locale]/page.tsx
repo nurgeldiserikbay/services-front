@@ -68,7 +68,12 @@ export default async function Marketplace({ params, searchParams }: Props) {
         {q && !error && items.length > 0 &&
           <ul className="resultList">{items.map(item => (
             <li key={item.kind + ':' + item.id} className="resultItem">
-              <strong>{item.title}</strong><small>{t.resultKinds[item.kind]}</small>
+              {item.kind === 'professional' && item.slug
+                ? <Link className="profileResultLink" href={`/${locale}/professionals/${item.slug}`}>{item.title}</Link>
+                : item.kind === 'organization'
+                  ? <Link className="profileResultLink" href={`/${locale}/organizations/${item.id}`}>{item.title}</Link>
+                  : <strong>{item.title}</strong>}
+              <small>{t.resultKinds[item.kind]}</small>
               {item.is_sponsored && <span className="sponsored">{t.sponsored}</span>}
             </li>
           ))}</ul>}
