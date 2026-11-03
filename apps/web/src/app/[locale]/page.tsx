@@ -1,27 +1,30 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { dictionary, isLocale } from '@/lib/i18n';
-import { searchPublicMarketplace, type SearchItem } from '@/lib/api';
+import { searchPublicMarketplace, type SearchItem, type SearchScope } from '@/lib/api';
+import { GeographyPicker } from '@/components/GeographyPicker';
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; scope?: string }>;
+  searchParams: Promise<{ q?: string; scope?: string; country_id?: string; city_id?: string }>;
 };
 
 export default async function Marketplace({ params, searchParams }: Props) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const t = dictionary[locale];
-  const { q: rawQ } = await searchParams;
+  const { q: rawQ, scope: rawScope, country_id: rawCountryId, city_id: rawCityId } = await searchParams;
   const q = typeof rawQ === 'string' ? rawQ.slice(0, 180).trim() : '';
-  // Geographic selection requires canonical country/city IDs. Until the directory
-  // exists, use explicitly global search instead of issuing an invalid city request.
-  const scope = 'global' as const;
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const countryId = typeof rawCountryId === 'string' && uuid.test(rawCountryId) ? rawCountryId : '';
+  const cityId = countryId && typeof rawCityId === 'string' && uuid.test(rawCityId) ? rawCityId : '';
+  const scope: SearchScope = rawScope === 'city' && cityId ? 'city' :
+    rawScope === 'country' && countryId ? 'country' : 'global';
   let items: SearchItem[] = [];
   let error = false;
   if (q) {
     try {
-      const result = await searchPublicMarketplace(q, scope);
+      const result = await searchPublicMarketplace(q, scope, {countryId, cityId});
       items = result.items;
     } catch {
       error = true;
@@ -31,6 +34,8 @@ export default async function Marketplace({ params, searchParams }: Props) {
     const query = new URLSearchParams();
     if (q) query.set('q', q);
     query.set('scope', scope);
+    if (countryId) query.set('country_id', countryId);
+    if (cityId) query.set('city_id', cityId);
     const suffix = query.size ? '?' + query.toString() : '';
     return '/' + next + suffix;
   };
@@ -53,11 +58,8 @@ export default async function Marketplace({ params, searchParams }: Props) {
             <input autoComplete="off" id="query" name="q" placeholder={t.searchPlaceholder} maxLength={180} defaultValue={q} />
             <button type="submit">{t.search}</button>
           </div>
-          <fieldset className="scopes">
-            <legend>{t.location}</legend>
-            <label><input type="radio" name="scope" value="global" defaultChecked /> {t.scopeGlobal}</label>
-            <span className="scopesUpcoming">{t.geoComingSoon}</span>
-          </fieldset>
+          <GeographyPicker locale={locale} initialCountryId={countryId}
+            initialCityId={cityId} initialScope={scope} />
         </form>
       </section>
       <section className="results" aria-labelledby="results-title">
@@ -68,11 +70,11 @@ export default async function Marketplace({ params, searchParams }: Props) {
         {q && !error && items.length > 0 &&
           <ul className="resultList">{items.map(item => (
             <li key={item.kind + ':' + item.id} className="resultItem">
-              {item.kind === 'professional' && item.slug
-                ? <Link className="profileResultLink" href={`/${locale}/professionals/${item.slug}`}>{item.title}</Link>
-                : item.kind === 'organization'
-                  ? <Link className="profileResultLink" href={`/${locale}/organizations/${item.id}`}>{item.title}</Link>
-                  : <strong>{item.title}</strong>}
+              {item.kind === 'professional' && item.slug ?
+                <Link className="resultLink" href={`/${locale}/professionals/${encodeURIComponent(item.slug)}`}>{item.title}</Link> :
+                item.kind === 'organization' ?
+                <Link className="resultLink" href={`/${locale}/organizations/${encodeURIComponent(item.id)}`}>{item.title}</Link> :
+                <strong>{item.title}</strong>}
               <small>{t.resultKinds[item.kind]}</small>
               {item.is_sponsored && <span className="sponsored">{t.sponsored}</span>}
             </li>
