@@ -1,0 +1,15 @@
+{
+  "name": "@services/frontend-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @services/web dev",
+    "build": "pnpm --filter @services/web build",
+    "typecheck": "pnpm --filter @services/web typecheck",
+    "test": "pnpm --filter @services/web test"
+  }
+}
