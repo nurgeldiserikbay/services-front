@@ -1,0 +1,7 @@
+.panel{padding:clamp(20px,4vw,36px);max-width:620px;background:white;border:1px solid #dfe9eb;border-radius:18px}
+.panel h2{margin:0 0 12px}.panel p,.panel small{color:#607585;line-height:1.65}
+.panel form{display:grid;gap:12px;margin:22px 0}.panel label{font-weight:700}
+.panel input{border:1px solid #c5d5d5;background:white;color:#19354b;border-radius:12px;padding:12px;font:inherit;font-size:1.25rem;letter-spacing:.2em;width:min(100%,240px)}
+.panel button{border:0;border-radius:12px;background:#167b72;color:white;padding:14px;font:inherit;font-weight:700;cursor:pointer;min-height:46px}
+.panel button:disabled{opacity:.55;cursor:not-allowed}.panel button:focus-visible,.panel input:focus-visible{outline:3px solid #92d8cf;outline-offset:2px}
+.panel .error{color:#aa3934;margin:0}
