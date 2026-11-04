@@ -57,7 +57,7 @@ test('receipt status check is manual-only, localized and default-off',()=>{
     "credentials:'same-origin'",
     "cache:'no-store'",
     "redirect:'error'",
-    'controller.current?.abort()',
+    'active.current?.abort()',
     'role="status"',
     'aria-live="polite"',
     'Өтінімнің қазіргі күйі',
