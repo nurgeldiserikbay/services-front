@@ -10,3 +10,4 @@ export type GuestCreateRouteInput=Readonly<{
 }>;
 export function validateGuestCreateRouteBody(raw:unknown):GuestCreateRouteInput;
 export function parseGuestCreateRequestBytes(bytes:ArrayBuffer):GuestCreateRouteInput;
+export function readBoundedGuestCreateBody(stream:ReadableStream<Uint8Array>|null):Promise<ArrayBuffer>;
