@@ -79,7 +79,10 @@ test('route cannot expose bearer secrets and remains disabled until rollout',()=
   assert.doesNotMatch(source,/created\.setCookie\.value[^,]*\}/);
   const offer=readFileSync(new URL(
     '../src/app/[locale]/services/[id]/page.tsx',import.meta.url),'utf8');
-  assert.doesNotMatch(offer,/GuestRequestWizard|submitVerifiedGuestRequest/);
+  assert.match(offer,/SERVICES_WEB_ENABLE_GUEST_WIZARD/);
+  assert.match(offer,/SERVICES_WEB_ENABLE_GUEST_CREATE_HTTP/);
+  assert.match(offer,/contact_methods\.includes\('guest_request'\)/);
+  assert.doesNotMatch(offer,/submitVerifiedGuestRequest/);
 });
 
 test('streaming request reader enforces length without buffering unbounded body',async()=>{

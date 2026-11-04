@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { dictionary,isLocale } from '@/lib/i18n';
 import { getPublishedServiceOffer,OfferNotFound } from '@/lib/public-offer';
+import {ConnectedGuestRequestWizard} from '@/components/ConnectedGuestRequestWizard';
 
 type Props={params:Promise<{locale:string;id:string}>};
 
@@ -30,6 +31,14 @@ export default async function ServiceOfferPage({params}:Props) {
     </main>;
   }
   const methods=offer.contact_methods.map(method=>t.contactMethods[method]);
+  // UI and transport flags are independent: never show an actionable form
+  // merely because a frontend route has been mounted.
+  const guestEnabled=offer.contact_methods.includes('guest_request')&&
+    process.env.SERVICES_WEB_ENABLE_GUEST_WIZARD==='enabled'&&
+    process.env.SERVICES_WEB_ENABLE_GUEST_OTP_START_HTTP==='enabled'&&
+    process.env.SERVICES_WEB_ENABLE_GUEST_OTP_VERIFY_HTTP==='enabled'&&
+    process.env.SERVICES_WEB_ENABLE_GUEST_OTP_BFF==='enabled'&&
+    process.env.SERVICES_WEB_ENABLE_GUEST_CREATE_HTTP==='enabled';
   return <main className="shell offerPage">
     <nav><Link href={'/'+locale}>{t.brand}</Link></nav>
     <article className="offerDetail">
@@ -44,6 +53,7 @@ export default async function ServiceOfferPage({params}:Props) {
         <p className="offerNote">{t.offerContactPending}</p>
       </section>
       <p className="offerNote">{t.offerTimeNotice}</p>
+      {guestEnabled&&<ConnectedGuestRequestWizard serviceOfferId={offer.id} locale={locale}/> }
     </article>
     <Link href={'/'+locale} className="offerBack">{t.backToSearch}</Link>
   </main>;

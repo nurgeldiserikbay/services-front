@@ -35,7 +35,34 @@ test('request receipt only renders committed backend result and does not fabrica
   assert.doesNotMatch(wizard,/version:1/);
 });
 
-test('wizard remains unmounted on public routes while OTP and BFF gates are open',()=>{
+test('public offer only mounts connected wizard with all rollout gates and opt-in',()=>{
   const page=read('app/[locale]/services/[id]/page.tsx');
-  assert.doesNotMatch(page,/<GuestRequestWizard|<GuestInquiryDraft|<GuestOtpStep/);
+  for(const gate of [
+    'SERVICES_WEB_ENABLE_GUEST_WIZARD',
+    'SERVICES_WEB_ENABLE_GUEST_OTP_START_HTTP',
+    'SERVICES_WEB_ENABLE_GUEST_OTP_VERIFY_HTTP',
+    'SERVICES_WEB_ENABLE_GUEST_OTP_BFF',
+    'SERVICES_WEB_ENABLE_GUEST_CREATE_HTTP',
+    "contact_methods.includes('guest_request')",
+  ])assert.ok(page.includes(gate),gate);
+  assert.match(page,/<ConnectedGuestRequestWizard serviceOfferId={offer.id} locale={locale}/);
+  assert.doesNotMatch(page,/<GuestInquiryDraft|<GuestOtpStep/);
+});
+
+test('BFF composition reuses existing wizard, no duplicate UI or persistent secrets',()=>{
+  const adapter=read('components/ConnectedGuestRequestWizard.tsx');
+  assert.match(adapter,/onStartChallenge={start}/);
+  assert.match(adapter,/onVerifyChallenge={verify}/);
+  assert.match(adapter,/onCreateRequest={create}/);
+  for(const url of [
+    '/api/guest-requests/challenges/start',
+    '/api/guest-requests/challenges/verify',
+    '/api/guest-requests',
+  ])assert.ok(adapter.includes(url),url);
+  assert.match(adapter,/parseCommittedCreateReceipt/);
+  assert.match(adapter,/createCsrf.current=response.csrf_token/);
+  assert.match(adapter,/redirect:'error'/);
+  assert.match(adapter,/credentials:'same-origin'/);
+  assert.match(adapter,/cache:'no-store'/);
+  assert.doesNotMatch(adapter,/localStorage|sessionStorage|window.location|document.cookie|Guest-Capability|guest_capability|request_capability/);
 });
