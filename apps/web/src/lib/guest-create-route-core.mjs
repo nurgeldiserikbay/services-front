@@ -36,3 +36,30 @@ export function parseGuestCreateRequestBytes(bytes){
   const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
   return validateGuestCreateRouteBody(JSON.parse(text));
 }
+
+/** Read request streaming chunks with a hard bound BEFORE allocation. */
+export async function readBoundedGuestCreateBody(stream){
+  if(!stream||typeof stream.getReader!=='function')
+    throw new Error('invalid_create_payload');
+  const reader=stream.getReader();
+  const chunks=[];
+  let length=0,complete=false;
+  try{
+    while(true){
+      const {done,value}=await reader.read();
+      if(done){complete=true;break;}
+      if(!(value instanceof Uint8Array)||
+        length+value.byteLength>GUEST_CREATE_MAX_BODY_BYTES)
+        throw new Error('invalid_create_payload');
+      length+=value.byteLength;
+      chunks.push(value);
+    }
+  }finally{
+    if(!complete)await reader.cancel().catch(()=>{});
+    reader.releaseLock();
+  }
+  const bytes=new Uint8Array(length);
+  let offset=0;
+  for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+  return bytes.buffer;
+}
