@@ -61,6 +61,7 @@ export function ConnectedGuestRequestWizard({locale,serviceOfferId}:{
     const response=await safeJson(issued);
     if(typeof response.challenge_id!=='string'||!UUID.test(response.challenge_id)||
        typeof response.csrf_token!=='string'||!CSRF.test(response.csrf_token)||
+       typeof response.expires_in!=='number'||
        !Number.isSafeInteger(response.expires_in)||response.expires_in<1||
        response.expires_in>600)
       throw new Error('guest_flow_unavailable');
