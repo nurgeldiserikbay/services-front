@@ -1,6 +1,7 @@
 import type {Locale} from '@/lib/i18n';
 import type {RequestReceipt} from '@/lib/request-receipt';
 import styles from './GuestRequestReceipt.module.css';
+import {GuestRequestStatusCheck} from './GuestRequestStatusCheck';
 
 const copy={
   kk:{
@@ -16,8 +17,9 @@ const copy={
 } as const;
 
 /** Private, server-authorized receipt presentation; not publicly mounted. */
-export function GuestRequestReceipt({locale,receipt}:{
+export function GuestRequestReceipt({locale,receipt,serviceOfferId,statusEnabled=false}:{
   locale:Locale;receipt:Pick<RequestReceipt,'id'|'state'>;
+  serviceOfferId?:string;statusEnabled?:boolean;
 }){
   const t=copy[locale];
   return <section className={styles.receipt} aria-label={t.heading}>
@@ -25,5 +27,7 @@ export function GuestRequestReceipt({locale,receipt}:{
     <p>{t.id}: <strong>{receipt.id}</strong></p>
     <p role="status">{receipt.state==='pending'?(locale==='kk'?'Орындаушы жауабын күтуде':'Ожидает ответа исполнителя'):(locale==='kk'?'Өтінім күйі: ':'Статус заявки: ')+receipt.state}</p>
     <p>{t.note}</p><small>{t.privacy}</small>
+    {statusEnabled&&serviceOfferId&&<GuestRequestStatusCheck locale={locale}
+      requestId={receipt.id} serviceOfferId={serviceOfferId}/>}
   </section>;
 }
