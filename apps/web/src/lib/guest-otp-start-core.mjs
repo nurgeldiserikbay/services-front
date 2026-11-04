@@ -10,11 +10,11 @@ export function validateOtpStartInput(raw){
     typeof raw.csrf_token!=='string'||!TOKEN.test(raw.csrf_token))
     throw new Error('otp_start_invalid');
   if(raw.channel==='sms'){
-    if(!/^\\+[1-9][0-9]{7,14}$/.test(raw.contact))
+    if(!/^\+[1-9][0-9]{7,14}$/.test(raw.contact))
       throw new Error('otp_start_invalid');
   }else{
-    if(raw.contact.length<3||/[\\s\\x00-\\x1f\\x7f]/.test(raw.contact)||
-       !/^[^@]+@[^@]+\\.[^@]+$/.test(raw.contact))
+    if(raw.contact.length<3||/[\s\x00-\x1f\x7f]/.test(raw.contact)||
+       !/^[^@]+@[^@]+\.[^@]+$/.test(raw.contact))
       throw new Error('otp_start_invalid');
   }
   return {channel:raw.channel,contact:raw.contact,locale:raw.locale,
