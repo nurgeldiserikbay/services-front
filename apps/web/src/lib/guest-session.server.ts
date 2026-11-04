@@ -40,7 +40,9 @@ export function authenticateGuestMutation(input:{
   fetchSite:string|null;
 }):{createCapability:string}|null{
   const canonical=process.env.SERVICES_WEB_ORIGIN;
-  if(!canonical||!verifyMutationOrigin(input.origin,canonical,input.fetchSite))
+  if(!canonical || (process.env.NODE_ENV==='production' &&
+      !canonical.startsWith('https://')) ||
+      !verifyMutationOrigin(input.origin,canonical,input.fetchSite))
     return null;
   const session=openGuestSession(sessionKey(),input.cookieValue);
   if(!session||!verifyGuestCsrf(session,input.csrfToken))return null;
