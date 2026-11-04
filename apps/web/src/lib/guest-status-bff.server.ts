@@ -30,7 +30,8 @@ export async function getPrivateGuestStatus(input:{
   let session;
   try{session=openGuestRequestAccess(requestSessionKey(),input.cookieValue);}
   catch{throw new GuestStatusUnavailable();}
-  if(!session||session.requestId!==input.requestId.toLowerCase())
+  if(!session||typeof input.requestId!=='string'||
+    session.requestId!==input.requestId.toLowerCase())
     throw new GuestStatusUnavailable();
   return readGuestRequestStatus({
     baseUrl:process.env.SERVICES_API_BASE_URL,
