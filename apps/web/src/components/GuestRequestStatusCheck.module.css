@@ -1,0 +1,7 @@
+.panel{margin-top:18px;padding:16px 18px;border:1px solid #dfe9eb;border-radius:13px;background:#f7fbfa}
+.panel h3{font-size:1rem;margin:0 0 8px}
+.panel p{line-height:1.55;margin:8px 0}
+.panel small{display:block;color:#607585;margin-bottom:10px}
+.panel button{min-height:44px;padding:10px 17px;margin-top:8px}
+.panel button:disabled{opacity:.55;cursor:wait}
+.error{color:#9d342d}
