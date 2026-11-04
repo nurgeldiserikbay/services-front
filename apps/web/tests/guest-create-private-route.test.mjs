@@ -4,6 +4,7 @@ import {randomBytes,randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {
   parseGuestCreateRequestBytes,validateGuestCreateRouteBody,
+  readBoundedGuestCreateBody,
   GUEST_CREATE_MAX_BODY_BYTES,
 } from '../src/lib/guest-create-route-core.mjs';
 import {sealGuestSession,openGuestSession,verifyGuestCsrf}
@@ -79,4 +80,28 @@ test('route cannot expose bearer secrets and remains disabled until rollout',()=
   const offer=readFileSync(new URL(
     '../src/app/[locale]/services/[id]/page.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(offer,/GuestRequestWizard|submitVerifiedGuestRequest/);
+});
+
+test('streaming request reader enforces length without buffering unbounded body',async()=>{
+  const json=encode(payload);
+  const source=new Uint8Array(json);
+  const stream=new ReadableStream({
+    start(controller){
+      controller.enqueue(source.subarray(0,10));
+      controller.enqueue(source.subarray(10));
+      controller.close();
+    },
+  });
+  assert.deepEqual(parseGuestCreateRequestBytes(
+    await readBoundedGuestCreateBody(stream)).body.service_offer_id,id);
+  let cancelled=false;
+  const flood=new ReadableStream({
+    pull(controller){
+      controller.enqueue(new Uint8Array(GUEST_CREATE_MAX_BODY_BYTES+1));
+    },
+    cancel(){cancelled=true;},
+  });
+  await assert.rejects(readBoundedGuestCreateBody(flood));
+  assert.equal(cancelled,true);
+  await assert.rejects(readBoundedGuestCreateBody(null));
 });
