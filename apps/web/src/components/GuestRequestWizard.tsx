@@ -42,10 +42,11 @@ const copy={
  * Confirmation appears ONLY after a validated backend-committed receipt.
  */
 export function GuestRequestWizard({
-  locale,serviceOfferId,onStartChallenge,onVerifyChallenge,onCreateRequest,
+  locale,serviceOfferId,onStartChallenge,onVerifyChallenge,onCreateRequest,statusEnabled=false,
 }:{
   locale:Locale;
   serviceOfferId:string;
+  statusEnabled?:boolean;
   onStartChallenge:(draft:GuestInquiryDraft)=>Promise<Challenge>;
   onVerifyChallenge:(challengeId:string,code:string)=>Promise<OtpVerificationResult>;
   onCreateRequest:(draft:GuestInquiryDraft,idempotencyKey:string)=>Promise<Created>;
@@ -114,7 +115,8 @@ export function GuestRequestWizard({
   }
 
   if(step==='receipt'&&receipt){
-    return <GuestRequestReceipt locale={locale} receipt={receipt}/>;
+    return <GuestRequestReceipt locale={locale} receipt={receipt}
+      serviceOfferId={serviceOfferId} statusEnabled={statusEnabled}/>;
   }
   return <div className={styles.wizard}>
     {step==='draft'&&<>
