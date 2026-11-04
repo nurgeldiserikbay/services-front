@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { dictionary,isLocale } from '@/lib/i18n';
 import { getPublishedServiceOffer,OfferNotFound } from '@/lib/public-offer';
-import {GuestRequestWizard} from '@/components/guest-request-wizard';
+import {ConnectedGuestRequestWizard} from '@/components/ConnectedGuestRequestWizard';
 
 type Props={params:Promise<{locale:string;id:string}>};
 
@@ -53,7 +53,7 @@ export default async function ServiceOfferPage({params}:Props) {
         <p className="offerNote">{t.offerContactPending}</p>
       </section>
       <p className="offerNote">{t.offerTimeNotice}</p>
-      {guestEnabled&&<GuestRequestWizard offerId={offer.id} locale={locale}/> }
+      {guestEnabled&&<ConnectedGuestRequestWizard serviceOfferId={offer.id} locale={locale}/> }
     </article>
     <Link href={'/'+locale} className="offerBack">{t.backToSearch}</Link>
   </main>;
