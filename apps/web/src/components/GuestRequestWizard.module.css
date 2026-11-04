@@ -1,0 +1,9 @@
+.wizard{max-width:700px;display:grid;gap:16px}
+.info{color:#607585;font-size:.92rem}
+.error{color:#a83c35;line-height:1.6}
+.secondary{justify-self:start;background:transparent;color:#167b72;border:1px solid #bed4d1;border-radius:12px;min-height:44px;padding:10px 18px;font:inherit;font-weight:700}
+.secondary:hover{background:#f1f8f6}
+.confirm{border:1px solid #dfe9eb;border-radius:18px;background:white;padding:clamp(20px,4vw,36px)}
+.confirm p{line-height:1.65}.confirm button{min-height:46px;padding:12px 22px}
+.confirm button:disabled{opacity:.55;cursor:not-allowed}
+.confirm small{color:#607585;line-height:1.6}
