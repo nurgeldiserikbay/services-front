@@ -31,6 +31,8 @@ export function isPublicOffer(value: unknown): value is PublicServiceOffer {
     && (o.price_label===null || typeof o.price_label==='string')
     && (o.availability_visibility==='hidden'||o.availability_visibility==='busy_only'||o.availability_visibility==='free_slots')
     && Array.isArray(o.contact_methods)
+    && o.contact_methods.length <= contactMethods.length
+    && new Set(o.contact_methods).size === o.contact_methods.length
     && o.contact_methods.every((v:unknown)=>typeof v==='string' && (contactMethods as readonly string[]).includes(v));
 }
 
@@ -44,10 +46,28 @@ export async function getPublishedServiceOffer(id: string):Promise<PublicService
     throw new Error('Backend API requires a secure origin');
   }
   // Public read: intentionally no browser cookies, auth tokens or guest capabilities.
-  const response = await fetch(url,{cache:'no-store',headers:{Accept:'application/json'}});
+  const response = await fetch(url,{
+    cache:'no-store',
+    headers:{Accept:'application/json'},
+    signal:AbortSignal.timeout(5000),
+  });
   if (response.status===404) throw new OfferNotFound();
   if (!response.ok) throw new Error('Public offer temporarily unavailable');
   const data:unknown=await response.json();
-  if(!isPublicOffer(data)) throw new Error('Unexpected public offer response');
-  return data;
+  if(!isPublicOffer(data) || data.id.toLowerCase()!==id.toLowerCase())
+    throw new Error('Unexpected public offer response');
+  // Explicit public allowlist: never forward additional backend fields to UI.
+  return {
+    id:data.id,
+    definition_id:data.definition_id,
+    title:data.title,
+    seller_kind:data.seller_kind,
+    seller_id:data.seller_id,
+    status:'published',
+    contact_methods:[...data.contact_methods],
+    city_id:data.city_id,
+    price_label:data.price_label,
+    availability_visibility:data.availability_visibility,
+  };
+
 }
