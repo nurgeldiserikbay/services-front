@@ -46,6 +46,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
   const [error,setError]=useState(false);
   const active=useRef<AbortController|null>(null);
   const busy=useRef(false);
+  const currentVersion=useRef<number|null>(null);
   useEffect(()=>()=>active.current?.abort(),[]);
 
   async function refresh(){
@@ -63,11 +64,11 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
       );
       if(controller.signal.aborted)return;
       // Never regress the displayed status when out-of-order responses arrive.
-      setVersion(previous=>{
-        if(previous!==null&&result.version<previous)return previous;
+      if(currentVersion.current===null||result.version>=currentVersion.current){
+        currentVersion.current=result.version;
         setState(result.state);
-        return result.version;
-      });
+        setVersion(result.version);
+      }
     }catch{
       if(!controller.signal.aborted)setError(true);
     }finally{
