@@ -28,7 +28,9 @@ test('initial OTP CSRF is sealed, time-bound and cannot become a challenge sessi
   assert.equal(openGuestChallenge(key,init.cookie,now),null);
   const challenge=sealGuestChallenge(key,randomUUID(),300,now);
   assert.equal(openOtpInitiation(key,challenge.cookie,now),null);
-  const broken=init.cookie.slice(0,-1)+(init.cookie.endsWith('A')?'B':'A');
+  const fields=init.cookie.split('.');
+  fields[2]=(fields[2][0]==='A'?'B':'A')+fields[2].slice(1);
+  const broken=fields.join('.');
   assert.equal(openOtpInitiation(key,broken,now),null);
 });
 test('OTP start parser rejects injection, invalid destination and huge chunked input',async()=>{
