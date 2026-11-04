@@ -17,7 +17,7 @@ const copy={
 
 /** Private, server-authorized receipt presentation; not publicly mounted. */
 export function GuestRequestReceipt({locale,receipt}:{
-  locale:Locale;receipt:RequestReceipt;
+  locale:Locale;receipt:Pick<RequestReceipt,'id'|'state'>;
 }){
   const t=copy[locale];
   return <section className={styles.receipt} aria-label={t.heading}>
