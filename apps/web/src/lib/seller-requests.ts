@@ -32,3 +32,34 @@ export function sortSellerRequests(items:readonly SellerRequestSummary[]):Seller
     return b.createdAt.localeCompare(a.createdAt);
   });
 }
+
+/** Inbox filters are presentation-only; server ACL and pagination remain authoritative. */
+export type SellerInboxFilter='all'|'pending'|'accepted'|'closed';
+
+export function filterSellerRequests(
+  items:readonly SellerRequestSummary[],
+  sellerContext:'professional'|'organization',
+  filter:SellerInboxFilter,
+):SellerRequestSummary[]{
+  return sortSellerRequests(items.filter(request=>{
+    if(request.sellerKind!==sellerContext)return false;
+    if(filter==='all')return true;
+    if(filter==='closed')return request.state!=='pending'&&request.state!=='accepted';
+    return request.state===filter;
+  }));
+}
+
+export function countSellerInbox(
+  items:readonly SellerRequestSummary[],
+  sellerContext:'professional'|'organization',
+):Readonly<Record<SellerInboxFilter,number>>{
+  const counts={all:0,pending:0,accepted:0,closed:0};
+  for(const request of items){
+    if(request.sellerKind!==sellerContext)continue;
+    counts.all++;
+    if(request.state==='pending')counts.pending++;
+    else if(request.state==='accepted')counts.accepted++;
+    else counts.closed++;
+  }
+  return counts;
+}
