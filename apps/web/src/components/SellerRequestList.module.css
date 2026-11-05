@@ -14,3 +14,7 @@
 .filters button:focus-visible{outline:3px solid #92d8cf;outline-offset:2px}
 .filters span{font-variant-numeric:tabular-nums;margin-left:5px}
 @media(max-width:480px){.filters button{flex:1 1 auto}}
+
+.refresh{border:1px solid #167b72;border-radius:10px;color:#167b72;background:#fff;font:inherit;font-weight:650;min-height:44px;padding:9px 14px;cursor:pointer}
+.refresh:disabled{opacity:.5;cursor:wait}
+.refresh:focus-visible{outline:3px solid #92d8cf;outline-offset:2px}

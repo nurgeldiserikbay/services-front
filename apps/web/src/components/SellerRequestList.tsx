@@ -22,6 +22,7 @@ const copy={
     notice:'Қабылдау уақытты автоматты түрде растамайды.',
     filters:{all:'Барлығы',pending:'Жаңа',accepted:'Қабылданған',closed:'Жабылған'},
     noFilter:'Бұл сүзгіде өтінім жоқ',working:'Әрекет орындалып жатыр…',
+    refresh:'Жаңарту',refreshing:'Тізім жаңартылып жатыр…',
   },
   ru:{
     heading:'Заявки',empty:'Заявок пока нет',accept:'Принять',
@@ -32,6 +33,7 @@ const copy={
     notice:'Принятие не означает подтверждения времени.',
     filters:{all:'Все',pending:'Новые',accepted:'Принятые',closed:'Закрытые'},
     noFilter:'В этом разделе заявок нет',working:'Выполняется действие…',
+    refresh:'Обновить',refreshing:'Обновляем список заявок…',
   },
 } as const;
 
@@ -41,21 +43,32 @@ const copy={
  * This component is deliberately not mounted on public pages.
  */
 export function SellerRequestList({
-  locale,requests,sellerContext,onDecision,
+  locale,requests,sellerContext,onDecision,onRefresh,
 }:{
   locale:Locale;
   requests:readonly SellerRequestSummary[];
   sellerContext:'professional'|'organization';
   onDecision:(id:string,version:number,decision:Decision)=>Promise<Result>;
+  /** Caller re-fetches only its authenticated seller scope, never a public API. */
+  onRefresh?:()=>Promise<void>;
 }){
   const t=copy[locale];
   const [busy,setBusy]=useState<string|null>(null);
+  const [refreshing,setRefreshing]=useState(false);
+  const refreshLock=useRef(false);
   const [filter,setFilter]=useState<SellerInboxFilter>('all');
   const [settled,setSettled]=useState<Record<string,number>>({});
   const [errors,setErrors]=useState<Record<string,string>>({});
   const inFlight=useRef(new Set<string>());
+  async function refresh(){
+    if(!onRefresh||refreshLock.current)return;
+    refreshLock.current=true;setRefreshing(true);
+    try{await onRefresh();}
+    catch{setErrors(prev=>({...prev,__refresh:t.error}));}
+    finally{refreshLock.current=false;setRefreshing(false);}
+  }
   async function decide(req:SellerRequestSummary,decision:Decision){
-    if(inFlight.current.has(req.id)||settled[req.id]===req.version||
+    if(refreshLock.current||inFlight.current.has(req.id)||settled[req.id]===req.version||
        !mayOfferSellerDecision(req,sellerContext))return;
     inFlight.current.add(req.id);setBusy(req.id);
     setErrors(prev=>({...prev,[req.id]:''}));
@@ -63,7 +76,11 @@ export function SellerRequestList({
       const result=await onDecision(req.id,req.version,decision);
       // The caller MUST refresh the actual server state after success.
       // Guard stale props from allowing another decision before that refresh.
-      if(result==='ok'||result==='conflict')setSettled(prev=>({...prev,[req.id]:req.version}));
+      if(result==='ok'||result==='conflict'){
+        setSettled(prev=>({...prev,[req.id]:req.version}));
+        // Fetch the server version, never optimistically alter local request state.
+        await refresh();
+      }
       if(result!=='ok')setErrors(prev=>({
         ...prev,[req.id]:result==='conflict'?t.conflict:t.error,
       }));
@@ -76,6 +93,11 @@ export function SellerRequestList({
   return <section className={styles.wrap} aria-label={t.heading}>
     <h2>{t.heading}</h2>
     <p>{t.notice}</p>
+    {onRefresh&&<button type="button" className={styles.refresh}
+      onClick={()=>void refresh()} disabled={refreshing||busy!==null}>
+      {refreshing?t.refreshing:t.refresh}
+    </button>}
+    {errors.__refresh&&<p role="alert">{errors.__refresh}</p>}
     <div className={styles.filters} role="group" aria-label={t.heading}>
       {filters.map(value=><button key={value} type="button"
         aria-pressed={filter===value} onClick={()=>setFilter(value)}>
@@ -89,7 +111,7 @@ export function SellerRequestList({
           req.state==='declined'?t.declined:t.other}</span>
         {mayOfferSellerDecision(req,sellerContext)&&<div className={styles.actions}>
           <button type="button" onClick={()=>void decide(req,'accept')}
-            disabled={busy===req.id||settled[req.id]===req.version}>{t.accept}</button>
+            disabled={refreshing||busy===req.id||settled[req.id]===req.version}>{t.accept}</button>
           <button type="button" onClick={()=>void decide(req,'decline')}
             disabled={busy===req.id||settled[req.id]===req.version}>{t.decline}</button>
         </div>}
