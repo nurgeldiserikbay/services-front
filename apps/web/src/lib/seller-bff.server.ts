@@ -17,7 +17,7 @@ export async function getOwnSellerInbox(
  const session=readAccountWebSession(cookieValue);
  if(!session)throw new Error('unauthorized');
  const raw=await fetchSellerInbox({
-   baseUrl:process.env.SERVICES_API_BASE_URL,
+   baseUrl:process.env.SERVICES_API_BASE_URL??'',
    production:process.env.NODE_ENV==='production',
    accountBearer:session.token,...query,
  });
