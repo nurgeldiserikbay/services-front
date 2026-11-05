@@ -66,3 +66,37 @@ export function parseSellerDecisionReply(raw:unknown):SellerDecisionReply|null{
      typeof r.replayed!=='boolean')return null;
   return {id:r.id,state:r.state,version:r.version,replayed:r.replayed};
 }
+
+/**
+ * Merge cursor pages in arrival order without returning stale versions.
+ * This is only a presentational cache helper: it never authorizes access,
+ * and the caller must reset the cache when switching sellers or sessions.
+ */
+export function mergeSellerInboxPages(
+  previous:readonly SellerRequestSummary[],
+  incoming:readonly SellerRequestSummary[],
+  sellerKind:'professional'|'organization',
+):SellerRequestSummary[]{
+  const byId=new Map<string,SellerRequestSummary>();
+  for(const item of [...previous,...incoming]){
+    if(item.sellerKind!==sellerKind)continue;
+    const prior=byId.get(item.id);
+    if(!prior||item.version>prior.version){
+      byId.set(item.id,item);
+    }else if(item.version===prior.version&&item.createdAt===prior.createdAt){
+      // Keep the original snapshot: equal versions are not new mutations.
+    }
+  }
+  return [...byId.values()].sort((a,b)=>
+    b.createdAt.localeCompare(a.createdAt)||a.id.localeCompare(b.id));
+}
+
+/** Never append a page unless its cursor actually advances. */
+export function canAdvanceSellerCursor(
+  requestedCursor:string|null,
+  nextCursor:string|null,
+  seenCursors:ReadonlySet<string>,
+):boolean{
+  return nextCursor===null||
+    (nextCursor!==requestedCursor&&!seenCursors.has(nextCursor));
+}
