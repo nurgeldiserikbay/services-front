@@ -51,11 +51,11 @@ export function SellerRequestList({
   const t=copy[locale];
   const [busy,setBusy]=useState<string|null>(null);
   const [filter,setFilter]=useState<SellerInboxFilter>('all');
-  const [settled,setSettled]=useState<Set<string>>(()=>new Set());
+  const [settled,setSettled]=useState<Record<string,number>>({});
   const [errors,setErrors]=useState<Record<string,string>>({});
   const inFlight=useRef(new Set<string>());
   async function decide(req:SellerRequestSummary,decision:Decision){
-    if(inFlight.current.has(req.id)||settled.has(req.id)||
+    if(inFlight.current.has(req.id)||settled[req.id]===req.version||
        !mayOfferSellerDecision(req,sellerContext))return;
     inFlight.current.add(req.id);setBusy(req.id);
     setErrors(prev=>({...prev,[req.id]:''}));
@@ -63,7 +63,7 @@ export function SellerRequestList({
       const result=await onDecision(req.id,req.version,decision);
       // The caller MUST refresh the actual server state after success.
       // Guard stale props from allowing another decision before that refresh.
-      if(result==='ok'||result==='conflict')setSettled(prev=>new Set(prev).add(req.id));
+      if(result==='ok'||result==='conflict')setSettled(prev=>({...prev,[req.id]:req.version}));
       if(result!=='ok')setErrors(prev=>({
         ...prev,[req.id]:result==='conflict'?t.conflict:t.error,
       }));
@@ -89,9 +89,9 @@ export function SellerRequestList({
           req.state==='declined'?t.declined:t.other}</span>
         {mayOfferSellerDecision(req,sellerContext)&&<div className={styles.actions}>
           <button type="button" onClick={()=>void decide(req,'accept')}
-            disabled={busy===req.id||settled.has(req.id)}>{t.accept}</button>
+            disabled={busy===req.id||settled[req.id]===req.version}>{t.accept}</button>
           <button type="button" onClick={()=>void decide(req,'decline')}
-            disabled={busy===req.id||settled.has(req.id)}>{t.decline}</button>
+            disabled={busy===req.id||settled[req.id]===req.version}>{t.decline}</button>
         </div>}
         {busy===req.id&&<p role="status">{t.working}</p>}
         {errors[req.id]&&<p role="alert">{errors[req.id]}</p>}
