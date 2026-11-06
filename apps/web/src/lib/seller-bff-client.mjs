@@ -10,11 +10,15 @@ export class SellerClientUnavailable extends Error{
 }
 function validItem(item){
   return item&&typeof item==='object'&&!Array.isArray(item)&&
+    Object.keys(item).sort().join(',')===
+      'createdAt,desiredStartAt,id,sellerKind,serviceOfferId,state,title,version'&&
     UUID.test(item.id)&&UUID.test(item.serviceOfferId)&&
     typeof item.title==='string'&&item.title.length<=180&&
     STATES.has(item.state)&&Number.isSafeInteger(item.version)&&item.version>=1&&
     (item.sellerKind==='professional'||item.sellerKind==='organization')&&
-    typeof item.createdAt==='string'&&Number.isFinite(Date.parse(item.createdAt))&&
+    typeof item.createdAt==='string'&&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(item.createdAt)&&
+    Number.isFinite(Date.parse(item.createdAt))&&
     item.desiredStartAt===null;
 }
 async function limitedJson(response,expectedStatus){
