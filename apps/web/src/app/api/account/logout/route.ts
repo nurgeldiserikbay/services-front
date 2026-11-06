@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {ACCOUNT_WEB_COOKIE,clearAccountWebSession}
+import {ACCOUNT_WEB_COOKIE,clearAccountWebSession,authenticateAccountWebMutation}
  from '@/lib/account-web-session.server';
 import {revokeAccountWebSession} from '@/lib/account-session-bff.server';
 import {sellerBffSameOrigin} from '@/lib/seller-bff-route-core.mjs';
@@ -23,26 +23,29 @@ export async function POST(request:NextRequest):Promise<NextResponse>{
     !sellerBffSameOrigin(request.headers.get('sec-fetch-site')))
   return NextResponse.json({code:'UNAVAILABLE'},{status:404,headers:HEADERS});
  if(new URL(request.url).search||
-    request.headers.get('content-length')!=='0'&&
-      request.headers.has('content-length')||
+    (request.headers.has('content-length')&&request.headers.get('content-length')!=='0')||
     request.headers.has('transfer-encoding'))
   return NextResponse.json({code:'INVALID_REQUEST'},{status:400,headers:HEADERS});
- let succeeded=false;
+ const input={
+  cookieValue:request.cookies.get(ACCOUNT_WEB_COOKIE)?.value,
+  csrfToken:request.headers.get('x-services-csrf')??undefined,
+  origin:request.headers.get('origin'),
+  fetchSite:request.headers.get('sec-fetch-site'),
+ };
+ // Authenticate before changing the cookie: an unauthenticated cross-site
+ // request must never be allowed to log out an existing account.
+ if(!authenticateAccountWebMutation(input))
+  return NextResponse.json({code:'UNAVAILABLE'},{status:404,headers:HEADERS});
+ let backendOk=false;
  try{
-  await revokeAccountWebSession({
-   cookieValue:request.cookies.get(ACCOUNT_WEB_COOKIE)?.value,
-   csrfToken:request.headers.get('x-services-csrf')??undefined,
-   origin:request.headers.get('origin'),
-   fetchSite:request.headers.get('sec-fetch-site'),
-  });
-  succeeded=true;
+  await revokeAccountWebSession(input);
+  backendOk=true;
  }catch{
-  // Do not clear on a failed Origin/CSRF check. See below.
+  // Backend revocation is unconfirmed; clear local cookie anyway.
  }
- if(succeeded){
-  const response=new NextResponse(null,{status:204,headers:HEADERS});
-  response.cookies.set(clearAccountWebSession());
-  return response;
- }
- return NextResponse.json({code:'UNAVAILABLE'},{status:503,headers:HEADERS});
+ const response=backendOk
+  ?new NextResponse(null,{status:204,headers:HEADERS})
+  :NextResponse.json({code:'UNAVAILABLE'},{status:503,headers:HEADERS});
+ response.cookies.set(clearAccountWebSession());
+ return response;
 }
