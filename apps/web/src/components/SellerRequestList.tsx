@@ -113,9 +113,9 @@ export function SellerRequestList({
           req.state==='declined'?t.declined:t.other}</span>
         {mayOfferSellerDecision(req,sellerContext)&&<div className={styles.actions}>
           <button type="button" onClick={()=>void decide(req,'accept')}
-            disabled={refreshing||busy===req.id||settled[req.id]===req.version}>{t.accept}</button>
+            disabled={refreshing||busy!==null||settled[req.id]===req.version}>{t.accept}</button>
           <button type="button" onClick={()=>void decide(req,'decline')}
-            disabled={busy===req.id||settled[req.id]===req.version}>{t.decline}</button>
+            disabled={refreshing||busy!==null||settled[req.id]===req.version}>{t.decline}</button>
         </div>}
         {busy===req.id&&<p role="status">{t.working}</p>}
         {errors[req.id]&&<p role="alert">{errors[req.id]}</p>}
