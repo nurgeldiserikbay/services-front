@@ -36,14 +36,22 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  const epoch=useRef(0);
  const current=useRef<Page|null>(null);
  const retry=useRef(new Map<string,string>());
+ const seenCursors=useRef(new Set<string>());
  const load=useCallback(async(next=false)=>{
    if(run.current)return false;
+   const selected=next?current.current?.nextCursor:null;
+   if(next&&(!selected||seenCursors.current.has(selected)))return false;
    run.current=true;setBusy(true);setMessage('');
    const seq=++epoch.current;
    const previous=current.current;
    try{
-     const response=await loadSellerInbox({cursor:next?previous?.nextCursor??null:null});
+     const response=await loadSellerInbox({cursor:selected});
      if(seq!==epoch.current)return false;
+     if(!next)seenCursors.current.clear();
+     if(selected)seenCursors.current.add(selected);
+     if(response.nextCursor===selected||
+       (response.nextCursor!==null&&seenCursors.current.has(response.nextCursor)))
+       response.nextCursor=null;
      const merged=next&&previous?[...previous.items,...response.items]:response.items;
      const newer=new Map<string,SellerRequestSummary>();
      for(const item of merged){
@@ -61,7 +69,7 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  useEffect(()=>{
    // An account/session boundary must unmount this component on logout.
    void load();
-   return ()=>{epoch.current++;current.current=null;retry.current.clear();};
+   return ()=>{epoch.current++;current.current=null;retry.current.clear();seenCursors.current.clear();};
  },[load]);
 
  async function decide(item:SellerRequestSummary,decision:'accept'|'decline'){
