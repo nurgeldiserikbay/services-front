@@ -2,7 +2,7 @@
 
 import {useRef} from 'react';
 import type {Locale} from '@/lib/i18n';
-import type {GuestInquiryDraft} from '@/lib/guest-inquiry';
+import {validateInquiryDraft,type GuestInquiryDraft} from '@/lib/guest-inquiry';
 import {GuestRequestWizard} from './GuestRequestWizard';
 import type {OtpVerificationResult} from './GuestOtpStep';
 import {parseCommittedCreateReceipt} from '@/lib/guest-create-ui';
@@ -43,6 +43,10 @@ export function ConnectedGuestRequestWizard({locale,serviceOfferId,statusEnabled
   const createCsrf=useRef<string|null>(null);
 
   async function start(draft:GuestInquiryDraft){
+    const checked=validateInquiryDraft(draft);
+    if(!checked.draft||checked.draft.serviceOfferId!==serviceOfferId||
+       checked.draft.contact!==draft.contact||checked.draft.note!==draft.note)
+      throw new Error('guest_flow_unavailable');
     challengeCsrf.current=null;
     createCsrf.current=null;
     // The GET only prepares same-origin CSRF state; it must not send OTP.
@@ -91,8 +95,10 @@ export function ConnectedGuestRequestWizard({locale,serviceOfferId,statusEnabled
   }
 
   async function create(draft:GuestInquiryDraft,idempotencyKey:string){
-    if(!createCsrf.current||draft.serviceOfferId!==serviceOfferId||
-       draft.consentToContact!==true||draft.note.length>1000)
+    const checked=validateInquiryDraft(draft);
+    if(!createCsrf.current||!checked.draft||
+       checked.draft.serviceOfferId!==serviceOfferId||
+       checked.draft.contact!==draft.contact||checked.draft.note!==draft.note)
       throw new Error('guest_flow_unavailable');
     // A retry must retain this exact key, as guaranteed by the existing UI.
     if (!/^guest_[0-9a-f]{32}$/.test(idempotencyKey)) throw new Error('guest_flow_unavailable');
