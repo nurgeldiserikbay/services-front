@@ -112,7 +112,9 @@ export async function decideSellerRequest({
     if(response.status===404)return {outcome:'not_found'};
     const reply=await jsonResponse(response);
     if(!reply||typeof reply!=='object'||Array.isArray(reply)||
-       !UUID.test(reply.id)||reply.id.toLowerCase()!==requestId.toLowerCase()||
+       Object.keys(reply).length!==4||
+       Object.keys(reply).some(key=>!['id','state','version','replayed'].includes(key))||
+       typeof reply.id!=='string'||!UUID.test(reply.id)||reply.id.toLowerCase()!==requestId.toLowerCase()||
        reply.state!==(decision==='accept'?'accepted':'declined')||
        !Number.isSafeInteger(reply.version)||reply.version!==version+1||
        typeof reply.replayed!=='boolean')
