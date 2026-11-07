@@ -43,6 +43,8 @@ export function ConnectedGuestRequestWizard({locale,serviceOfferId,statusEnabled
   const createCsrf=useRef<string|null>(null);
 
   async function start(draft:GuestInquiryDraft){
+    challengeCsrf.current=null;
+    createCsrf.current=null;
     // The GET only prepares same-origin CSRF state; it must not send OTP.
     const init=await fetch('/api/guest-requests/challenges/start',{
       method:'GET',cache:'no-store',credentials:'same-origin',
