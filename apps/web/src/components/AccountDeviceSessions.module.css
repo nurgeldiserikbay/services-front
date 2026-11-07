@@ -1,0 +1,12 @@
+.panel{background:#fff;border:1px solid #dbe7e8;border-radius:20px;padding:clamp(16px,4vw,28px);color:#173743}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.top h2{margin:0;font-size:clamp(1.15rem,3vw,1.5rem)}
+.list{list-style:none;display:grid;gap:12px;padding:0;margin:20px 0 0}
+.device{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border:1px solid #dce9e9;border-radius:14px;padding:16px;background:#f9fcfc}
+.device strong{font-size:1rem}.device p{font-size:.85rem;color:#58717b;margin:7px 0 0}
+.current{display:inline-block;background:#e3f6ef;color:#13674b;border-radius:999px;padding:3px 9px;font-size:.72rem;font-weight:700;margin-left:9px}
+.panel button{border:1px solid #197e75;background:white;color:#176f67;padding:10px 16px;border-radius:11px;min-height:44px;font:inherit;font-weight:650;cursor:pointer}
+.device button{background:#177f75;color:white}
+.panel button:disabled{opacity:.5;cursor:wait}
+.panel button:focus-visible{outline:3px solid #8bd8cf;outline-offset:3px}
+@media(max-width:460px){.device{align-items:stretch}.device button{width:100%}}
