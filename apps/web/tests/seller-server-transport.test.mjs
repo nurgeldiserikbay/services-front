@@ -7,9 +7,8 @@ const token='x'.repeat(43);
 const id='a59e3b8b-72ae-4ed8-91f9-51484d5f8cf0';
 const key='d31bfdea-5c21-45be-82b0-ec3b89cac042';
 const base='https://api.example.test/v1';
-const ok=(data,status=200)=>({
-  status,headers:new Headers({'Content-Type':'application/json'}),
-  text:async()=>JSON.stringify(data),
+const ok=(data,status=200)=>new Response(JSON.stringify(data),{
+  status,headers:{'Content-Type':'application/json'},
 });
 test('seller inbox sends bearer server-to-server without browser credentials',async()=>{
  let observed;
@@ -70,4 +69,22 @@ test('seller decisions fail closed for bad replies, redirects or unknown states'
  assert.deepEqual(await decideSellerRequest({...args,
    transport:async()=>ok({},403),
  }),{outcome:'forbidden'});
+});
+
+test('seller transport rejects oversized streaming responses without content length',async()=>{
+  const huge='x'.repeat(65537);
+  await assert.rejects(fetchSellerInbox({baseUrl:base,accountBearer:token,
+    transport:async()=>new Response(huge,{
+      status:200,headers:{'Content-Type':'application/json'},
+    }),
+  }),SellerTransportUnavailable);
+});
+test('seller decision rejects incorrect version increments',async()=>{
+  const args={baseUrl:base,accountBearer:token,requestId:id,
+    version:3,decision:'accept',idempotencyKey:key};
+  for(const version of [3,5]){
+    await assert.rejects(decideSellerRequest({...args,
+      transport:async()=>ok({id,state:'accepted',version,replayed:false}),
+    }),SellerTransportUnavailable);
+  }
 });
