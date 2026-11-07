@@ -33,3 +33,13 @@ export function parseSellerInboxPage(value){
     throw new Error('seller_inbox_unavailable');
   return {items,next_cursor:value.next_cursor};
 }
+
+/** Merge cursor pages without rolling back a newer local decision. */
+export function mergeSellerInboxPages(previous,incoming){
+  const byId=new Map(previous.map(item=>[item.id,item]));
+  for(const item of incoming){
+    const existing=byId.get(item.id);
+    if(!existing||item.version>existing.version)byId.set(item.id,item);
+  }
+  return [...byId.values()];
+}
