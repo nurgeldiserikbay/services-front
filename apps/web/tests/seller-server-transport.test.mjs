@@ -88,3 +88,17 @@ test('seller decision rejects incorrect version increments',async()=>{
     }),SellerTransportUnavailable);
   }
 });
+
+test('seller decision rejects missing identifier and unexpected response fields',async()=>{
+  const args={baseUrl:base,accountBearer:token,requestId:id,
+    version:3,decision:'accept',idempotencyKey:key};
+  for(const receipt of [
+    {state:'accepted',version:4,replayed:false},
+    {id,state:'accepted',version:4,replayed:false,customer_phone:'private'},
+    {id:42,state:'accepted',version:4,replayed:false},
+  ]){
+    await assert.rejects(decideSellerRequest({...args,
+      transport:async()=>ok(receipt),
+    }),SellerTransportUnavailable);
+  }
+});
