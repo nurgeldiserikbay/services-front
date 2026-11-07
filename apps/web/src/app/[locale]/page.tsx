@@ -48,7 +48,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
     query.set('q', q);
     query.set('scope', scope);
     if (scope === 'country' && countryId) query.set('country_id', countryId);
-    if (scope === 'city' && cityId) { query.set('city_id', cityId); if (countryId) query.set('country_id', countryId); }
+    if (scope === 'city' && cityId) query.set('city_id', cityId);
     if (next) query.set('cursor', next);
     return '/' + locale + '?' + query.toString();
   };
