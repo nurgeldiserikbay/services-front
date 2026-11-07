@@ -12,3 +12,16 @@ export function buildSellerDecisionRequest(requestId,action,version,key){
     headers:{'If-Match':'"'+version+'"','Idempotency-Key':key.toLowerCase()},
   };
 }
+
+/** Validate the exact backend decision receipt before updating UI state. */
+export function parseSellerDecisionReceipt(value,requestId,action,expectedVersion){
+  if(!value||typeof value!=='object'||Array.isArray(value)||
+     Object.keys(value).length!==4||
+     Object.keys(value).some(k=>!['id','state','version','replayed'].includes(k))||
+     value.id!==requestId||
+     value.state!==(action==='accept'?'accepted':'declined')||
+     !Number.isSafeInteger(value.version)||value.version!==expectedVersion+1||
+     typeof value.replayed!=='boolean')
+    throw new Error('invalid_seller_decision_receipt');
+  return {id:value.id,state:value.state,version:value.version,replayed:value.replayed};
+}
