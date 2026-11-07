@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {parseSellerInboxPage} from '../src/lib/seller-inbox-ui-core.mjs';
+import {parseSellerInboxPage,mergeSellerInboxPages} from '../src/lib/seller-inbox-ui-core.mjs';
 
 const id='11111111-1111-4111-8111-111111111111';
 const offer='22222222-2222-4222-8222-222222222222';
@@ -27,4 +27,13 @@ test('seller inbox parser fails closed on sensitive or malformed rows',()=>{
 
 test('seller inbox parser rejects duplicate request IDs in a page',()=>{
   assert.throws(()=>parseSellerInboxPage({items:[row,{...row,title:'duplicate'}],next_cursor:null}));
+});
+
+test('seller inbox merge preserves newer decision and accepts newer server version',()=>{
+  const accepted={...row,state:'accepted',version:2};
+  assert.deepEqual(mergeSellerInboxPages([accepted],[row]),[accepted]);
+  assert.deepEqual(mergeSellerInboxPages([row],[accepted]),[accepted]);
+  assert.deepEqual(mergeSellerInboxPages([accepted],[{...row,version:3}]),
+    [{...row,version:3}]);
+  assert.equal(mergeSellerInboxPages([row],[row]).length,1);
 });
