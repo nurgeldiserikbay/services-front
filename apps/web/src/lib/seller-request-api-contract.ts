@@ -68,7 +68,9 @@ export type SellerDecisionReply=Readonly<{
 export function parseSellerDecisionReply(raw:unknown):SellerDecisionReply|null{
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
   const r=raw as Record<string,unknown>;
-  if(!opaque(r.id)||(r.state!=='accepted'&&r.state!=='declined')||
+  if(Object.keys(r).length!==4||
+     Object.keys(r).some(k=>!['id','state','version','replayed'].includes(k))||
+     !opaque(r.id)||(r.state!=='accepted'&&r.state!=='declined')||
      typeof r.version!=='number'||!Number.isSafeInteger(r.version)||r.version<1||
      typeof r.replayed!=='boolean')return null;
   return {id:r.id,state:r.state,version:r.version,replayed:r.replayed};
