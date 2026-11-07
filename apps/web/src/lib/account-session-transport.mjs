@@ -67,3 +67,23 @@ export async function revokeBackendAccountSession({
   return true;
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+/**
+ * Server-only authenticated remote logout. Never send a browser-supplied
+ * bearer or user ID. Accept only 204, reject all redirects and response bodies.
+ */
+export async function revokeBackendAccountSessionById({
+ baseUrl,production=true,accountBearer,sessionId,transport=fetch,
+}){
+ if(typeof sessionId!=='string'||!UUID.test(sessionId))
+  throw new AccountSessionTransportUnavailable();
+ try{
+  const response=await transport(endpoint(baseUrl,production,
+   '/auth/sessions/'+sessionId.toLowerCase()),{
+   method:'DELETE',headers:headers(accountBearer),cache:'no-store',
+   credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  if(response.status!==204)throw new AccountSessionTransportUnavailable();
+  return true;
+ }catch{throw new AccountSessionTransportUnavailable();}
+}
