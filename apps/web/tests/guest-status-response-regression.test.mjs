@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {
   parsePrivateGuestStatus,privateGuestStatusUrl,readPrivateGuestStatusResponse,
+  shouldReplaceGuestStatus,
 } from '../src/lib/guest-status-ui-core.mjs';
 
 const id='11111111-1111-4111-8111-111111111111';
@@ -31,4 +32,13 @@ test('private guest status rejects non-JSON, oversized and failed responses',asy
       'content-type':'application/json','content-length':'99999',
     }}),
   ])await assert.rejects(readPrivateGuestStatusResponse(response,id,offer));
+});
+
+test('guest status never regresses or overwrites equal-version result',()=>{
+  assert.equal(shouldReplaceGuestStatus(null,1),true);
+  assert.equal(shouldReplaceGuestStatus(1,2),true);
+  assert.equal(shouldReplaceGuestStatus(2,2),false);
+  assert.equal(shouldReplaceGuestStatus(2,1),false);
+  assert.equal(shouldReplaceGuestStatus(2,0),false);
+  assert.equal(shouldReplaceGuestStatus(2,1.5),false);
 });
