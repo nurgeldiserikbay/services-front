@@ -8,6 +8,9 @@ const RESPONSE_LIMIT=65536;
 export class SellerTransportUnavailable extends Error{
   constructor(){super('Seller transport unavailable');}
 }
+export class SellerTransportUnauthorized extends Error{
+  constructor(){super('Account session expired');}
+}
 function endpoint(baseUrl,production,path){
   if(typeof baseUrl!=='string'||baseUrl.length>500)throw new SellerTransportUnavailable();
   try{
@@ -53,11 +56,16 @@ export async function fetchSellerInbox({
   if(state!==null)url.searchParams.set('state',state);
   if(cursor!==null)url.searchParams.set('cursor',cursor);
   try{
-    return await jsonResponse(await transport(url.toString(),{
+    const response=await transport(url.toString(),{
       method:'GET',redirect:'manual',credentials:'omit',cache:'no-store',
       headers:credentials(accountBearer),signal:AbortSignal.timeout(5000),
-    }));
-  }catch{throw new SellerTransportUnavailable();}
+    });
+    if(response.status===401)throw new SellerTransportUnauthorized();
+    return await jsonResponse(response);
+  }catch(error){
+    if(error instanceof SellerTransportUnauthorized)throw error;
+    throw new SellerTransportUnavailable();
+  }
 }
 
 /**
@@ -83,6 +91,7 @@ export async function decideSellerRequest({
         'Idempotency-Key':idempotencyKey},
       signal:AbortSignal.timeout(5000),
     });
+    if(response.status===401)return {outcome:'unauthorized'};
     if(response.status===409)return {outcome:'conflict'};
     if(response.status===403)return {outcome:'forbidden'};
     if(response.status===404)return {outcome:'not_found'};

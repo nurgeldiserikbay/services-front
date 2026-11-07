@@ -12,9 +12,9 @@ const HEADERS={
  'X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer',
  'Vary':'Cookie, Origin, Sec-Fetch-Site',
 } as const;
-function error(status:400|404|409|403|503){
+function error(status:400|401|404|409|403|503){
  return NextResponse.json({code:status===409?'CONFLICT':
-   status===403?'FORBIDDEN':status===400?'INVALID_REQUEST':'UNAVAILABLE'},
+   status===403?'FORBIDDEN':status===401?'AUTH_REQUIRED':status===400?'INVALID_REQUEST':'UNAVAILABLE'},
    {status,headers:HEADERS});
 }
 /** Default-off. Backend remains authoritative for account and seller ACL. */
@@ -39,6 +39,7 @@ export async function POST(
      fetchSite:request.headers.get('sec-fetch-site'),
      requestId:id,action:decision,payload,
    });
+   if(result==='unauthorized')return error(401);
    if(result==='conflict')return error(409);
    if(result==='forbidden')return error(403);
    if(result!=='ok')return error(503);

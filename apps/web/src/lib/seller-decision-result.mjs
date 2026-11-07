@@ -15,6 +15,7 @@ export function mapSellerDecisionOutcome(reply){
       return 'ok';
     case 'conflict':return 'conflict';
     case 'forbidden':return 'forbidden';
+    case 'unauthorized':return 'unauthorized';
     case 'not_found':return 'unavailable';
     default:throw new Error('Unrecognized seller decision');
   }
