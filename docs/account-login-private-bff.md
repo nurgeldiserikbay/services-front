@@ -13,3 +13,7 @@ This PR **does not add a browser-accessible login route**. A public route must n
 ## Stage 3 — tests and remaining release conditions
 
 Unit tests cover URL and service-key handoff, exact response validation, 401 denial, redirect denial, invalid input, encrypted browser cookie, and server-only feature gating. Merge backend PR #81 and confirm main green before enabling the web bridge. No real SMS/email provider, sign-up or interactive login page is activated by this change.
+
+## Defensive transport hardening (2026-11-08)
+
+Private OTP transport rejects noncanonical BFF service key material, URL credentials, query/fragment strings, percent-encoded or ambiguous path segments, and all non-HTTPS production URLs before any network request. Keep the backend URL controlled by server configuration only. Regression tests cover pre-network rejection, streamed responses exceeding 2 KiB without a declared length, cancellation, malformed JSON, invalid MIME and non-success statuses. These are defense-in-depth checks, not SSRF protection against a compromised configuration or a replacement for trusted ingress and deployment network egress policies.
