@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../src/'+path,import.meta.url),'utf8');
 
 test('seller decision BFF is opt-in, authenticated and rejects cross-site writes',()=>{
- const source=read('app/api/seller/requests/[id]/[action]/route.ts');
+ const source=read('app/api/seller/requests/[id]/[decision]/route.ts');
  assert.match(source,/SERVICES_WEB_ENABLE_SELLER_BFF/);
  assert.match(source,/sellerBffSameOrigin/);
  assert.match(source,/parseSellerDecisionBytes/);
@@ -44,7 +44,7 @@ test('seller workspace validates canonical dates and serializes pagination',()=>
  assert.match(source,/new Date\(value\)\.toISOString\(\)===value/);
  assert.match(source,/!validDate\(r\.createdAt\)/);
  assert.match(source,/pageLock\.current=true/);
- assert.match(source,/if\(!cursor\|\|pageLock\.current\)return/);
+ assert.match(source,/if\(!cursor\|\|pageLock\.current\|\|refreshLock\.current\)return/);
  assert.match(source,/pageLock\.current=false/);
 });
 

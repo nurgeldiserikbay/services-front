@@ -10,7 +10,7 @@ test('guest private status displays existing timeline only after a validated sta
  assert.match(component,/version!==null&&state!==null&&<>/);
  assert.match(component,/<RequestTimeline state=\{state\} locale=\{locale\}\/>/);
  assert.match(component,/readPrivateGuestStatusResponse/);
- assert.match(component,/result\.version>=currentVersion\.current/);
+ assert.match(component,/shouldReplaceGuestStatus\(currentVersion\.current,result\.version\)/);
  assert.match(component,/active\.current\?\.abort\(\)/);
  assert.doesNotMatch(component,/setInterval|setTimeout|localStorage|sessionStorage|document\.cookie|Guest-Capability/);
 });

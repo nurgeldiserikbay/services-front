@@ -1,12 +1,13 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
 import {decideOwnSellerRequest} from '@/lib/seller-bff.server';
-import {parseSellerDecisionBytes,readSellerDecisionBytes,
+import {parseSellerDecisionBytes,readSellerDecisionBytes,sellerBffSameOrigin,
  MAX_SELLER_DECISION_BYTES} from '@/lib/seller-bff-route-core.mjs';
 
 export const dynamic='force-dynamic';
 export const revalidate=0;
 export const runtime='nodejs';
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HEADERS={
  'Cache-Control':'private, no-store, max-age=0','Pragma':'no-cache',
  'X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer',
@@ -23,9 +24,11 @@ export async function POST(
  context:{params:Promise<{id:string;decision:string}>},
 ):Promise<NextResponse>{
  if(process.env.SERVICES_WEB_ENABLE_SELLER_BFF!=='enabled')return error(404);
+ if(!sellerBffSameOrigin(request.headers.get('sec-fetch-site')))return error(403);
  try{
    const {id,decision}=await context.params;
-   if(decision!=='accept'&&decision!=='decline')return error(404);
+   if(!UUID.test(id)||(decision!=='accept'&&decision!=='decline')||
+      new URL(request.url).search!=='')return error(400);
    if(!/^application\/json(?:\s*;|\s*$)/i.test(request.headers.get('content-type')??''))
      return error(400);
    const length=request.headers.get('content-length');
