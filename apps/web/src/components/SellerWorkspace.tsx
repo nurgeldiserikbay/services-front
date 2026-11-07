@@ -54,7 +54,10 @@ export function SellerWorkspace({locale}:{locale:Locale}){
  const pendingKeys=useRef(new Map<string,string>());
  const seenCursors=useRef(new Set<string>());
  const pageLock=useRef(false);
+ const refreshLock=useRef(false);
  const load=useCallback(async()=>{
+   if(refreshLock.current)return;
+   refreshLock.current=true;
    const current=++generation.current;
    pageLock.current=false;
    setMoreBusy(false);
@@ -64,7 +67,8 @@ export function SellerWorkspace({locale}:{locale:Locale}){
        credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},
      });
      if(response.status===401){if(current===generation.current){
-       setItems([]);setCursor(null);setCsrf('');setStatus('unauthorized');}return;}
+       setItems([]);setCursor(null);setCsrf('');setStatus('unauthorized');}
+       throw Error('unauthorized');}
      if(!response.ok)throw Error('unavailable');
      const page=parsePage(await response.json());
      if(current!==generation.current)return;
@@ -72,12 +76,17 @@ export function SellerWorkspace({locale}:{locale:Locale}){
      if(page.next_cursor)seenCursors.current.add(page.next_cursor);
      setItems(page.items);setCursor(page.next_cursor);
      setCsrf(page.csrf_token);setStatus('ready');
-   }catch{if(current===generation.current){
-     setItems([]);setCursor(null);setCsrf('');setStatus('error');}}
+   }catch(error){if(current===generation.current){
+     if(!(error instanceof Error&&error.message==='unauthorized')){
+       setItems([]);setCursor(null);setCsrf('');setStatus('error');
+     }
+   }
+   throw error;
+   }finally{refreshLock.current=false;}
  },[]);
- useEffect(()=>{void load();return ()=>{generation.current++;};},[load]);
+ useEffect(()=>{void load().catch(()=>{});return ()=>{generation.current++;};},[load]);
  const loadMore=useCallback(async()=>{
-   if(!cursor||pageLock.current)return;
+   if(!cursor||pageLock.current||refreshLock.current)return;
    pageLock.current=true;
    const current=generation.current;
    setMoreBusy(true);setMoreError(false);
@@ -135,7 +144,7 @@ export function SellerWorkspace({locale}:{locale:Locale}){
    {status==='loading'&&<p role="status">{message.loading}</p>}
    {(status==='unauthorized'||status==='error')&&<>
      <p role="alert">{message[status]}</p>
-     <button type="button" onClick={()=>void load()}>{message.retry}</button>
+     <button type="button" onClick={()=>void load().catch(()=>{})}>{message.retry}</button>
    </>}
    {status==='ready'&&<>
      <SellerRequestList locale={locale} requests={items} sellerContext="professional"
