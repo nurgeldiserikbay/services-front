@@ -51,7 +51,7 @@ export default async function ServiceOfferPage({params}:Props) {
         <h2>{t.offerContact}</h2>
         {methods.length ? <ul>{methods.map((label,idx)=><li key={offer.contact_methods[idx]}>{label}</li>)}</ul>
           : <p>{t.offerNoContact}</p>}
-        <p className="offerNote">{t.offerContactPending}</p>
+        {!guestEnabled && <p className="offerNote">{t.offerContactPending}</p>}
       </section>
       <p className="offerNote">{t.offerTimeNotice}</p>
       {guestEnabled&&<ConnectedGuestRequestWizard serviceOfferId={offer.id} locale={locale}
