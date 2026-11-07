@@ -35,9 +35,24 @@ async function jsonResponse(response){
   const length=response.headers.get('content-length');
   if(length!==null&&(!/^\d+$/.test(length)||Number(length)>RESPONSE_LIMIT))
     throw new SellerTransportUnavailable();
-  const body=await response.text();
-  if(Buffer.byteLength(body,'utf8')>RESPONSE_LIMIT)throw new SellerTransportUnavailable();
-  return JSON.parse(body);
+  if(!response.body)throw new SellerTransportUnavailable();
+  const reader=response.body.getReader();
+  const chunks=[];let size=0;
+  try{
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      size+=value.byteLength;
+      if(size>RESPONSE_LIMIT){
+        await reader.cancel();
+        throw new SellerTransportUnavailable();
+      }
+      chunks.push(value);
+    }
+  }finally{reader.releaseLock();}
+  const bytes=new Uint8Array(size);let offset=0;
+  for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+  return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
 }
 /**
  * Server-only transport. The bearer is issued by verified account auth and
@@ -99,7 +114,7 @@ export async function decideSellerRequest({
     if(!reply||typeof reply!=='object'||Array.isArray(reply)||
        !UUID.test(reply.id)||reply.id.toLowerCase()!==requestId.toLowerCase()||
        reply.state!==(decision==='accept'?'accepted':'declined')||
-       !Number.isSafeInteger(reply.version)||reply.version<version||
+       !Number.isSafeInteger(reply.version)||reply.version!==version+1||
        typeof reply.replayed!=='boolean')
       throw new SellerTransportUnavailable();
     return {outcome:'ok',id:reply.id,state:reply.state,
