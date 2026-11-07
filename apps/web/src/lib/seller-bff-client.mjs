@@ -80,6 +80,7 @@ export async function sendSellerDecision({
       body:JSON.stringify({version,csrf_token:csrf,idempotency_key:idempotencyKey}),
       signal:AbortSignal.timeout(8000),
     });
+    if(response.status===401)return 'unauthorized';
     if(response.status===409)return 'conflict';
     if(response.status===403)return 'forbidden';
     if(response.status!==200)return 'unavailable';
