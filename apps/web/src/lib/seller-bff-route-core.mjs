@@ -38,7 +38,10 @@ export async function readSellerDecisionBytes(stream){
      const {done,value}=await reader.read();
      if(done)break;
      size+=value.byteLength;
-     if(size>MAX_SELLER_DECISION_BYTES)throw new Error('too_large');
+     if(size>MAX_SELLER_DECISION_BYTES){
+       await reader.cancel();
+       throw new Error('too_large');
+     }
      chunks.push(value);
    }
  }finally{reader.releaseLock();}
