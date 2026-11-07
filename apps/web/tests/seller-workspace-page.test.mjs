@@ -32,7 +32,8 @@ test('seller workspace is default-off and backend validates live seller bearer b
 test('seller inbox clears stale private state when session ends',()=>{
  const ui=src('components/SellerAccountInbox.tsx');
  assert.match(ui,/SellerClientAuthenticationRequired/);
- assert.match(ui,/current\.current=null;setPage\(null\);retry\.current\.clear\(\)/);
+ assert.match(ui,/current\.current=null;setPage\(null\);seenCursors\.current\.clear\(\)/);
+ assert.match(ui,/if\(error instanceof SellerClientAuthenticationRequired\)\{\s*retry\.current\.clear\(\)/);
  assert.match(ui,/outcome==='unauthorized'/);
  assert.match(ui,/Сессия аяқталды/);
  assert.match(ui,/Сессия завершена/);
