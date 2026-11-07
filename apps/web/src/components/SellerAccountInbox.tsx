@@ -66,10 +66,17 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
      return true;
    }catch(error){
      if(seq===epoch.current){
+       // A failed live authorization refresh is NOT permission to keep
+       // displaying private rows from the previous account/session.
+       current.current=null;setPage(null);seenCursors.current.clear();
        if(error instanceof SellerClientAuthenticationRequired){
-         current.current=null;setPage(null);retry.current.clear();
+         retry.current.clear();
          setMessage(t.unauthorized);
-       }else setMessage(t.failed);
+       }else{
+         // Preserve existing idempotency keys after an uncertain write so
+         // the next authenticated attempt does not create a second request.
+         setMessage(t.failed);
+       }
      }
      return false;
    }finally{run.current=false;setBusy(false);}
@@ -99,8 +106,16 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
        if(outcome==='conflict')setMessage(t.conflict);
        retry.current.delete(key);
        await load();
-     }else setMessage(t.failed); // Same key retained for retry after ambiguous failure.
-   }catch{setMessage(t.failed);}
+     }else{
+       // Ambiguous completion: do not keep showing stale private rows.
+       // Stable idempotency key remains available for a later retry.
+       current.current=null;setPage(null);seenCursors.current.clear();
+       setMessage(t.failed);
+     }
+   }catch{
+     current.current=null;setPage(null);seenCursors.current.clear();
+     setMessage(t.failed);
+   }
    finally{setPendingId(null);}
  }
  return <section className={styles.wrap} aria-label={t.heading}>
