@@ -13,6 +13,7 @@ const translations={
   kk:{
     heading:'Өтінімнің қазіргі күйі',refresh:'Күйін жаңарту',
     loading:'Күй тексерілуде…',error:'Күйді қазір тексеру мүмкін болмады. Қайта көріңіз.',
+    idle:'Өтінімнің күйін көру үшін «Күйін жаңарту» батырмасын басыңыз.',
     version:'Жаңарту нұсқасы',statuses:{
       pending:'Орындаушы жауабын күтуде',
       accepted:'Орындаушы қабылдады',declined:'Орындаушы қабылдамады',
@@ -25,6 +26,7 @@ const translations={
   ru:{
     heading:'Текущий статус заявки',refresh:'Обновить статус',
     loading:'Проверяем статус…',error:'Не удалось проверить статус. Повторите позже.',
+    idle:'Нажмите «Обновить статус», чтобы проверить заявку.',
     version:'Версия обновления',statuses:{
       pending:'Ожидает ответа исполнителя',
       accepted:'Исполнитель принял заявку',declined:'Исполнитель отклонил заявку',
@@ -41,7 +43,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
   locale:Locale;requestId:string;serviceOfferId:string;
 }){
   const t=translations[locale];
-  const [state,setState]=useState<PrivateGuestStatusState>('pending');
+  const [state,setState]=useState<PrivateGuestStatusState|null>(null);
   const [version,setVersion]=useState<number|null>(null);
   const [pending,setPending]=useState(false);
   const [error,setError]=useState(false);
@@ -71,7 +73,12 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
         setVersion(result.version);
       }
     }catch{
-      if(!controller.signal.aborted)setError(true);
+      if(!controller.signal.aborted){
+        // An expired request capability or failed backend revalidation must
+        // never leave a stale status looking like a fresh verified answer.
+        currentVersion.current=null;
+        setVersion(null);setState(null);setError(true);
+      }
     }finally{
       if(active.current===controller)active.current=null;
       busy.current=false;
@@ -81,8 +88,8 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
 
   return <section aria-label={t.heading} className={styles.panel}>
     <h3>{t.heading}</h3>
-    <p role="status" aria-live="polite">{pending?t.loading:t.statuses[state]}</p>
-    {version!==null&&<>
+    <p role="status" aria-live="polite">{pending?t.loading:version!==null&&state!==null?t.statuses[state]:t.idle}</p>
+    {version!==null&&state!==null&&<>
       <small>{t.version}: {version}</small>
       <RequestTimeline state={state} locale={locale}/>
     </>}
