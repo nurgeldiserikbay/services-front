@@ -37,13 +37,14 @@ function parsePage(raw:unknown):Page{
  }
  if(new Set(data.items.map((r:SellerRequestSummary)=>r.id)).size!==data.items.length)
    throw Error('invalid');
- return data as Page;
+ return data as unknown as Page;
 }
 export function SellerWorkspace({locale}:{locale:Locale}){
  const [items,setItems]=useState<SellerRequestSummary[]>([]);
  const [csrf,setCsrf]=useState('');
  const [status,setStatus]=useState<'loading'|'ready'|'unauthorized'|'error'>('loading');
  const generation=useRef(0);
+ const pendingKeys=useRef(new Map<string,string>());
  const load=useCallback(async()=>{
    const current=++generation.current;
    try{
@@ -62,18 +63,22 @@ export function SellerWorkspace({locale}:{locale:Locale}){
  useEffect(()=>{void load();return ()=>{generation.current++;};},[load]);
  const decide=useCallback(async(id:string,version:number,decision:Decision)=>{
    if(!csrf)return 'unauthorized' as const;
+   const key=id+':'+version+':'+decision;
+   let idempotencyKey=pendingKeys.current.get(key);
+   if(!idempotencyKey){idempotencyKey=crypto.randomUUID();pendingKeys.current.set(key,idempotencyKey);}
    try{
      const response=await fetch('/api/seller/requests/'+encodeURIComponent(id)+'/'+decision,{
        method:'POST',credentials:'same-origin',cache:'no-store',
        headers:{'Content-Type':'application/json'},
-       body:JSON.stringify({version,csrf_token:csrf,idempotency_key:crypto.randomUUID()}),
+       body:JSON.stringify({version,csrf_token:csrf,idempotency_key:idempotencyKey}),
      });
      if(response.status===401)return 'unauthorized' as const;
      if(response.status===403)return 'forbidden' as const;
      if(response.status===409)return 'conflict' as const;
      if(!response.ok)return 'unavailable' as const;
      const result=await response.json();
-     return result?.outcome==='ok'?'ok' as const:'unavailable' as const;
+     if(result?.outcome==='ok'){pendingKeys.current.delete(key);return 'ok' as const;}
+     return 'unavailable' as const;
    }catch{return 'unavailable' as const;}
  },[csrf]);
  const message=locale==='kk'?
