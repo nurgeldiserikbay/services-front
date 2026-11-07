@@ -3,7 +3,7 @@
 import {useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import {SellerInboxList,type SellerInboxEntry} from './SellerInboxList';
-import {parseSellerInboxPage} from '@/lib/seller-inbox-ui-core.mjs';
+import {parseSellerInboxPage,mergeSellerInboxPages} from '@/lib/seller-inbox-ui-core.mjs';
 
 type Page={items:SellerInboxEntry[];next_cursor:string|null};
 type Receipt={id:string;state:'accepted'|'declined';version:number;replayed:boolean};
@@ -42,9 +42,10 @@ export function SellerInboxPanel({locale,loadPage,decide}:{
     try{
       const page=parseSellerInboxPage(await loadPage(next)) as Page;
       if(!mounted.current||current!==generation.current)return;
-      setItems(previous=>next===null?page.items:[
-        ...previous,...page.items.filter(item=>!previous.some(old=>old.id===item.id)),
-      ]);
+      setItems(previous=>next===null?
+        mergeSellerInboxPages(page.items,previous.filter(item=>
+          page.items.some(fresh=>fresh.id===item.id))):
+        mergeSellerInboxPages(previous,page.items));
       setCursor(page.next_cursor);setLoaded(true);
     }catch{if(mounted.current&&current===generation.current)setError(true);}
     finally{
