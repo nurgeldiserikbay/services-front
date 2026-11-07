@@ -1,6 +1,6 @@
 'use client';
 
-import {useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import {SellerInboxList,type SellerInboxEntry} from './SellerInboxList';
 import {parseSellerInboxPage} from '@/lib/seller-inbox-ui-core.mjs';
@@ -24,6 +24,12 @@ export function SellerInboxPanel({locale,loadPage,decide}:{
 }){
   const t=copy[locale];
   const locked=useRef(false);
+  const generation=useRef(0);
+  const mounted=useRef(true);
+  useEffect(()=>{
+    mounted.current=true;
+    return ()=>{mounted.current=false;generation.current+=1;};
+  },[]);
   const [items,setItems]=useState<SellerInboxEntry[]>([]);
   const [cursor,setCursor]=useState<string|null>(null);
   const [loaded,setLoaded]=useState(false);
@@ -31,15 +37,20 @@ export function SellerInboxPanel({locale,loadPage,decide}:{
   const [error,setError]=useState(false);
   async function load(next:string|null){
     if(locked.current)return;
-    locked.current=true;setBusy(true);setError(false);
+    locked.current=true;const current=++generation.current;
+    setBusy(true);setError(false);
     try{
       const page=parseSellerInboxPage(await loadPage(next)) as Page;
+      if(!mounted.current||current!==generation.current)return;
       setItems(previous=>next===null?page.items:[
         ...previous,...page.items.filter(item=>!previous.some(old=>old.id===item.id)),
       ]);
       setCursor(page.next_cursor);setLoaded(true);
-    }catch{setError(true);}
-    finally{locked.current=false;setBusy(false);}
+    }catch{if(mounted.current&&current===generation.current)setError(true);}
+    finally{
+      locked.current=false;
+      if(mounted.current&&current===generation.current)setBusy(false);
+    }
   }
   function onSuccess(id:string,result:Receipt){
     setItems(previous=>previous.map(item=>item.id===id&&
