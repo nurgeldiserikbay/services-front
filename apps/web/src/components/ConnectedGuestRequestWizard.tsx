@@ -91,7 +91,8 @@ export function ConnectedGuestRequestWizard({locale,serviceOfferId,statusEnabled
   }
 
   async function create(draft:GuestInquiryDraft,idempotencyKey:string){
-    if(!createCsrf.current||draft.serviceOfferId!==serviceOfferId)
+    if(!createCsrf.current||draft.serviceOfferId!==serviceOfferId||
+       draft.consentToContact!==true||draft.note.length>1000)
       throw new Error('guest_flow_unavailable');
     // A retry must retain this exact key, as guaranteed by the existing UI.
     if (!/^guest_[0-9a-f]{32}$/.test(idempotencyKey)) throw new Error('guest_flow_unavailable');
