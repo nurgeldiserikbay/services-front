@@ -36,6 +36,6 @@ test('guest status UI never assumes pending before verified private status',()=>
  assert.match(check,/Өтінімнің күйін көру үшін/);
  assert.match(check,/Нажмите «Обновить статус»/);
  assert.match(check,/readPrivateGuestStatusResponse/);
- assert.match(check,/result\.version>=currentVersion\.current/);
+ assert.match(check,/shouldReplaceGuestStatus\(currentVersion\.current,result\.version\)/);
  assert.doesNotMatch(check,/setInterval|localStorage|sessionStorage|document\.cookie/);
 });
