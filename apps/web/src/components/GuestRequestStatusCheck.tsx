@@ -50,10 +50,23 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
   const active=useRef<AbortController|null>(null);
   const busy=useRef(false);
   const currentVersion=useRef<number|null>(null);
-  useEffect(()=>()=>{
+  // A receipt switch invalidates both the displayed result and in-flight
+  // requests. Never show one customer's status for another receipt.
+  useEffect(()=>{
     active.current?.abort();
+    active.current=null;
     busy.current=false;
-  },[]);
+    currentVersion.current=null;
+    setState(null);
+    setVersion(null);
+    setPending(false);
+    setError(false);
+    return ()=>{
+      active.current?.abort();
+      active.current=null;
+      busy.current=false;
+    };
+  },[requestId,serviceOfferId]);
 
   async function refresh(){
     if(busy.current)return;
