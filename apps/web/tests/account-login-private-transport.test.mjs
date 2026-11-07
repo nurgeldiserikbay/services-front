@@ -71,7 +71,7 @@ test('private account transport refuses unsafe base URL and noncanonical service
  ]){
   await assert.rejects(verifyBackendAccountOtp({...req,baseUrl,transport}),AccountLoginTransportUnavailable);
  }
- await assert.rejects(verifyBackendAccountOtp({...req,serviceKey:'A'.repeat(43)+'=',transport}),AccountLoginTransportUnavailable);
+ await assert.rejects(verifyBackendAccountOtp({...req,serviceKey:'A'.repeat(42)+'B=',transport}),AccountLoginTransportUnavailable);
  assert.equal(count,0);
 });
 
