@@ -7,7 +7,7 @@ const src=path=>readFileSync(new URL('../src/'+path,import.meta.url),'utf8');
 test('guest private status displays existing timeline only after a validated status response',()=>{
  const component=src('components/GuestRequestStatusCheck.tsx');
  assert.match(component,/import \{RequestTimeline\} from '\.\/RequestTimeline'/);
- assert.match(component,/version!==null&&<>/);
+ assert.match(component,/version!==null&&state!==null&&<>/);
  assert.match(component,/<RequestTimeline state=\{state\} locale=\{locale\}\/>/);
  assert.match(component,/readPrivateGuestStatusResponse/);
  assert.match(component,/result\.version>=currentVersion\.current/);
