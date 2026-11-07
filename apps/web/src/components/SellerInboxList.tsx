@@ -1,5 +1,6 @@
 import type {Locale} from '@/lib/i18n';
 import styles from './SellerInboxList.module.css';
+import {SellerDecisionActions} from './SellerDecisionActions';
 
 export type SellerInboxEntry={
   id:string;service_offer_id:string;title:string;
@@ -28,8 +29,11 @@ const labels={
 } as const;
 
 /** Presentation only. Mount after server-side authentication and strict parsing. */
-export function SellerInboxList({locale,items}:{
+export function SellerInboxList({locale,items,onDecision,onSuccess}:{
   locale:Locale;items:readonly SellerInboxEntry[];
+  onDecision?:(requestId:string,action:'accept'|'decline',version:number,key:string)=>
+    Promise<{id:string;state:'accepted'|'declined';version:number;replayed:boolean}>;
+  onSuccess?:(requestId:string,result:{id:string;state:'accepted'|'declined';version:number;replayed:boolean})=>void;
 }){
   const t=labels[locale];
   const formatter=new Intl.DateTimeFormat(locale==='kk'?'kk-KZ':'ru-RU',{
@@ -49,6 +53,10 @@ export function SellerInboxList({locale,items}:{
         {item.scheduled_start_at&&<p>{t.scheduled}: <time dateTime={item.scheduled_start_at}>
           {format(item.scheduled_start_at)}</time></p>}
         {item.scheduled_start_at&&<small>{t.notice}</small>}
+        {item.state==='pending'&&onDecision&&onSuccess&&
+          <SellerDecisionActions key={item.id+':'+item.version} locale={locale}
+            requestId={item.id} version={item.version} onDecision={onDecision}
+            onSuccess={result=>onSuccess(item.id,result)}/>}
       </li>)}
     </ul>}
   </section>;
