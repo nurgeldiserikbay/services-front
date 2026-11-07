@@ -24,7 +24,9 @@ export type SellerInboxViewPage=Readonly<{
 export function parseSellerInboxPage(raw:unknown):SellerInboxViewPage|null{
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
   const p=raw as Record<string,unknown>;
-  if(!Array.isArray(p.items)||p.items.length>50||
+  if(Object.keys(p).length!==2||
+     Object.keys(p).some(k=>k!=='items'&&k!=='next_cursor')||
+     !Array.isArray(p.items)||p.items.length>50||
      !(p.next_cursor===null||
        typeof p.next_cursor==='string'&&
        p.next_cursor.length<=256&&/^[A-Za-z0-9_-]+$/.test(p.next_cursor)))
@@ -33,7 +35,10 @@ export function parseSellerInboxPage(raw:unknown):SellerInboxViewPage|null{
   for(const item of p.items){
     if(!item||typeof item!=='object'||Array.isArray(item))return null;
     const r=item as Record<string,unknown>;
-    if(!opaque(r.id)||!opaque(r.service_offer_id)||!opaque(r.seller_id)||
+    if(Object.keys(r).length!==9||
+       Object.keys(r).some(k=>!['id','service_offer_id','title','state',
+         'version','seller_kind','seller_id','created_at','scheduled_start_at'].includes(k))||
+       !opaque(r.id)||!opaque(r.service_offer_id)||!opaque(r.seller_id)||
        typeof r.title!=='string'||r.title.length>180||
        (r.seller_kind!=='professional'&&r.seller_kind!=='organization')||
        typeof r.state!=='string'||!STATES.has(r.state as SellerRequestState)||
@@ -50,6 +55,7 @@ export function parseSellerInboxPage(raw:unknown):SellerInboxViewPage|null{
       desiredStartAt:null,
     });
   }
+  if(new Set(requests.map(request=>request.id)).size!==requests.length)return null;
   return {requests,nextCursor:p.next_cursor};
 }
 
