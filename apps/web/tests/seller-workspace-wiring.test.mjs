@@ -47,3 +47,16 @@ test('seller workspace validates canonical dates and serializes pagination',()=>
  assert.match(source,/if\(!cursor\|\|pageLock\.current\)return/);
  assert.match(source,/pageLock\.current=false/);
 });
+
+test('seller inbox refresh errors are observable to decision UI',()=>{
+ const workspace=read('components/SellerWorkspace.tsx');
+ const list=read('components/SellerRequestList.tsx');
+ assert.match(workspace,/throw error;/);
+ assert.match(workspace,/refreshLock\.current=true/);
+ assert.match(workspace,/refreshLock\.current=false/);
+ assert.match(workspace,/if\(!cursor\|\|pageLock\.current\|\|refreshLock\.current\)return/);
+ assert.match(workspace,/void load\(\)\.catch\(\(\)=>\{\}\)/);
+ assert.match(list,/await onRefresh\(\)/);
+ assert.match(list,/__refresh:t\.error/);
+ assert.match(list,/__refresh:''/);
+});
