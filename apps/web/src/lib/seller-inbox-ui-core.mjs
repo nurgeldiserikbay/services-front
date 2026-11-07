@@ -29,5 +29,7 @@ export function parseSellerInboxPage(value){
       throw new Error('seller_inbox_unavailable');
     return {...item};
   });
+  if(new Set(items.map(item=>item.id)).size!==items.length)
+    throw new Error('seller_inbox_unavailable');
   return {items,next_cursor:value.next_cursor};
 }
