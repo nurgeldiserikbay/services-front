@@ -2,6 +2,12 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const STATES=new Set(['pending','accepted','declined','completed','expired',
   'cancelled_by_customer','cancelled_by_provider','cancelled_mutual']);
 export const MAX_STATUS_BYTES=2048;
+const UTC_ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+function validUtcInstant(value){
+ if(typeof value!=='string'||!UTC_ISO.test(value))return false;
+ const date=new Date(value);
+ return Number.isFinite(date.getTime())&&date.toISOString()===value;
+}
 
 /**
  * The browser may display only a status for the exact committed receipt.
@@ -21,8 +27,7 @@ export function parsePrivateGuestStatus(value,expectedRequestId,expectedOfferId)
      value.service_offer_id.toLowerCase()!==expectedOfferId.toLowerCase()||
      typeof value.state!=='string'||!STATES.has(value.state)||
      !Number.isSafeInteger(value.version)||value.version<1||
-     typeof value.created_at!=='string'||value.created_at.length>40||
-     !Number.isFinite(Date.parse(value.created_at)))
+     !validUtcInstant(value.created_at))
     throw new Error('guest_status_unavailable');
   return {id:value.id.toLowerCase(),state:value.state,
     version:value.version,createdAt:value.created_at};
