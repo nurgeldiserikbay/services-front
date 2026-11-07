@@ -92,7 +92,7 @@ export function ConnectedGuestRequestWizard({locale,serviceOfferId,statusEnabled
     if(!createCsrf.current||draft.serviceOfferId!==serviceOfferId)
       throw new Error('guest_flow_unavailable');
     // A retry must retain this exact key, as guaranteed by the existing UI.
-    if (!UUID.test(idempotencyKey)) throw new Error('guest_flow_unavailable');
+    if (!/^guest_[0-9a-f]{32}$/.test(idempotencyKey)) throw new Error('guest_flow_unavailable');
     const response=await post('/api/guest-requests',{
       service_offer_id:draft.serviceOfferId,
       note:draft.note,consent_to_contact:true,
