@@ -7,6 +7,7 @@ import {
   type PrivateGuestStatusState,
 } from '@/lib/guest-status-ui-core.mjs';
 import styles from './GuestRequestStatusCheck.module.css';
+import {RequestTimeline} from './RequestTimeline';
 
 const translations={
   kk:{
@@ -81,7 +82,10 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
   return <section aria-label={t.heading} className={styles.panel}>
     <h3>{t.heading}</h3>
     <p role="status" aria-live="polite">{pending?t.loading:t.statuses[state]}</p>
-    {version!==null&&<small>{t.version}: {version}</small>}
+    {version!==null&&<>
+      <small>{t.version}: {version}</small>
+      <RequestTimeline state={state} locale={locale}/>
+    </>}
     {error&&<p role="alert" className={styles.error}>{t.error}</p>}
     <button type="button" onClick={refresh} disabled={pending}>
       {t.refresh}
