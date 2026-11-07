@@ -42,9 +42,13 @@ function parsePage(raw:unknown):Page{
 export function SellerWorkspace({locale}:{locale:Locale}){
  const [items,setItems]=useState<SellerRequestSummary[]>([]);
  const [csrf,setCsrf]=useState('');
+ const [cursor,setCursor]=useState<string|null>(null);
+ const [moreBusy,setMoreBusy]=useState(false);
+ const [moreError,setMoreError]=useState(false);
  const [status,setStatus]=useState<'loading'|'ready'|'unauthorized'|'error'>('loading');
  const generation=useRef(0);
  const pendingKeys=useRef(new Map<string,string>());
+ const seenCursors=useRef(new Set<string>());
  const load=useCallback(async()=>{
    const current=++generation.current;
    try{
@@ -52,15 +56,45 @@ export function SellerWorkspace({locale}:{locale:Locale}){
        credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},
      });
      if(response.status===401){if(current===generation.current){
-       setItems([]);setCsrf('');setStatus('unauthorized');}return;}
+       setItems([]);setCursor(null);setCsrf('');setStatus('unauthorized');}return;}
      if(!response.ok)throw Error('unavailable');
      const page=parsePage(await response.json());
      if(current!==generation.current)return;
-     setItems(page.items);setCsrf(page.csrf_token);setStatus('ready');
+     seenCursors.current.clear();
+     if(page.next_cursor)seenCursors.current.add(page.next_cursor);
+     setItems(page.items);setCursor(page.next_cursor);
+     setCsrf(page.csrf_token);setStatus('ready');
    }catch{if(current===generation.current){
-     setItems([]);setCsrf('');setStatus('error');}}
+     setItems([]);setCursor(null);setCsrf('');setStatus('error');}}
  },[]);
  useEffect(()=>{void load();return ()=>{generation.current++;};},[load]);
+ const loadMore=useCallback(async()=>{
+   if(!cursor||moreBusy)return;
+   const current=generation.current;
+   setMoreBusy(true);setMoreError(false);
+   try{
+     const response=await fetch('/api/seller/requests?limit=50&cursor='+encodeURIComponent(cursor),{
+       credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},
+     });
+     if(!response.ok)throw Error('unavailable');
+     const page=parsePage(await response.json());
+     if(current!==generation.current)return;
+     if(page.next_cursor&&(page.next_cursor===cursor||
+       seenCursors.current.has(page.next_cursor)))throw Error('cursor_loop');
+     if(page.next_cursor)seenCursors.current.add(page.next_cursor);
+     setItems(previous=>{
+       const byId=new Map(previous.map(item=>[item.id,item]));
+       for(const item of page.items){
+         const old=byId.get(item.id);
+         if(!old||item.version>old.version)byId.set(item.id,item);
+       }
+       return [...byId.values()];
+     });
+     setCursor(page.next_cursor);setCsrf(page.csrf_token);
+   }catch{if(current===generation.current)setMoreError(true);}
+   finally{setMoreBusy(false);}
+ },[cursor,moreBusy]);
+
  const decide=useCallback(async(id:string,version:number,decision:Decision)=>{
    if(!csrf)return 'unauthorized' as const;
    const key=id+':'+version+':'+decision;
@@ -83,9 +117,11 @@ export function SellerWorkspace({locale}:{locale:Locale}){
  },[csrf]);
  const message=locale==='kk'?
    {loading:'Өтінімдер жүктелуде…',unauthorized:'Кіру қажет.',
-    error:'Өтінімдерді жүктеу мүмкін болмады.',retry:'Қайта жүктеу'}:
+    error:'Өтінімдерді жүктеу мүмкін болмады.',retry:'Қайта жүктеу',
+    more:'Тағы көрсету',moreError:'Келесі бетті жүктеу мүмкін болмады.'}:
    {loading:'Загрузка заявок…',unauthorized:'Требуется вход.',
-    error:'Не удалось загрузить заявки.',retry:'Повторить'};
+    error:'Не удалось загрузить заявки.',retry:'Повторить',
+    more:'Показать ещё',moreError:'Не удалось загрузить следующую страницу.'};
  return <section>
    {status==='loading'&&<p role="status">{message.loading}</p>}
    {(status==='unauthorized'||status==='error')&&<>
@@ -97,6 +133,9 @@ export function SellerWorkspace({locale}:{locale:Locale}){
        onDecision={decide} onRefresh={load}/>
      <SellerRequestList locale={locale} requests={items} sellerContext="organization"
        onDecision={decide} onRefresh={load}/>
+     {moreError&&<p role="alert">{message.moreError}</p>}
+     {cursor&&<button type="button" disabled={moreBusy} onClick={()=>void loadMore()}>
+       {message.more}</button>}
    </>}
  </section>;
 }
