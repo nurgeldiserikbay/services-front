@@ -50,7 +50,10 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
   const active=useRef<AbortController|null>(null);
   const busy=useRef(false);
   const currentVersion=useRef<number|null>(null);
-  useEffect(()=>()=>active.current?.abort(),[]);
+  useEffect(()=>()=>{
+    active.current?.abort();
+    busy.current=false;
+  },[]);
 
   async function refresh(){
     if(busy.current)return;
@@ -81,7 +84,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
       }
     }finally{
       if(active.current===controller)active.current=null;
-      busy.current=false;
+      if(active.current===null)busy.current=false;
       if(!controller.signal.aborted)setPending(false);
     }
   }
