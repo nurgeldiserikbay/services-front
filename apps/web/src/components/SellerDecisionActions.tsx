@@ -2,9 +2,10 @@
 
 import {useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
+import {parseSellerDecisionReceipt} from '@/lib/seller-decision-ui-core.mjs';
 
 type Decision='accept'|'decline';
-type Result={state:'accepted'|'declined';version:number};
+type Result={id:string;state:'accepted'|'declined';version:number;replayed:boolean};
 const copy={
   kk:{accept:'Қабылдау',decline:'Бас тарту',working:'Өңделуде…',
     failed:'Әрекет орындалмады. Өтінім мәртебесін жаңартыңыз.',
@@ -36,11 +37,9 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
     }
     try{
       const result=await onDecision(requestId,action,version,pendingKey.current.key);
-      if(result.state!==(action==='accept'?'accepted':'declined')||
-         !Number.isSafeInteger(result.version)||result.version!==version+1)
-        throw new Error('invalid_seller_decision_result');
+      const verified=parseSellerDecisionReceipt(result,requestId,action,version);
       pendingKey.current=null;
-      onSuccess(result);
+      onSuccess(verified);
     }catch{
       setError(true);
     }finally{locked.current=false;setBusy(false);}
