@@ -4,6 +4,8 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import type {SellerRequestSummary} from '@/lib/seller-requests';
 import {SellerRequestList} from './SellerRequestList';
+import {readBoundedSellerUiJson,parseSellerDecisionUiAck}
+ from '@/lib/seller-workspace-response.mjs';
 
 type Decision='accept'|'decline';
 type Page={items:SellerRequestSummary[];next_cursor:string|null;csrf_token:string};
@@ -64,14 +66,15 @@ export function SellerWorkspace({locale}:{locale:Locale}){
    setMoreError(false);
    try{
      const response=await fetch('/api/seller/requests?limit=50',{
-       credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},
+       credentials:'same-origin',cache:'no-store',redirect:'error',
+       signal:AbortSignal.timeout(8000),headers:{Accept:'application/json'},
      });
      if(response.status===401){if(current===generation.current){
        setItems([]);setCursor(null);setCsrf('');setStatus('unauthorized');
        pendingKeys.current.clear();seenCursors.current.clear();}
        throw Error('unauthorized');}
      if(!response.ok)throw Error('unavailable');
-     const page=parsePage(await response.json());
+     const page=parsePage(await readBoundedSellerUiJson(response));
      if(current!==generation.current)return;
      seenCursors.current.clear();
      if(page.next_cursor)seenCursors.current.add(page.next_cursor);
@@ -94,7 +97,8 @@ export function SellerWorkspace({locale}:{locale:Locale}){
    setMoreBusy(true);setMoreError(false);
    try{
      const response=await fetch('/api/seller/requests?limit=50&cursor='+encodeURIComponent(cursor),{
-       credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},
+       credentials:'same-origin',cache:'no-store',redirect:'error',
+       signal:AbortSignal.timeout(8000),headers:{Accept:'application/json'},
      });
      if(response.status===401){
        if(current===generation.current){
@@ -104,7 +108,7 @@ export function SellerWorkspace({locale}:{locale:Locale}){
        return;
      }
      if(!response.ok)throw Error('unavailable');
-     const page=parsePage(await response.json());
+     const page=parsePage(await readBoundedSellerUiJson(response));
      if(current!==generation.current)return;
      if(page.next_cursor&&(page.next_cursor===cursor||
        seenCursors.current.has(page.next_cursor)))throw Error('cursor_loop');
@@ -135,6 +139,7 @@ export function SellerWorkspace({locale}:{locale:Locale}){
    try{
      const response=await fetch('/api/seller/requests/'+encodeURIComponent(id)+'/'+decision,{
        method:'POST',credentials:'same-origin',cache:'no-store',
+       redirect:'error',signal:AbortSignal.timeout(8000),
        headers:{'Content-Type':'application/json'},
        body:JSON.stringify({version,csrf_token:csrf,idempotency_key:idempotencyKey}),
      });
@@ -150,8 +155,10 @@ export function SellerWorkspace({locale}:{locale:Locale}){
      if(response.status===403)return 'forbidden' as const;
      if(response.status===409)return 'conflict' as const;
      if(!response.ok)return 'unavailable' as const;
-     const result=await response.json();
-     if(result?.outcome==='ok'){pendingKeys.current.delete(key);return 'ok' as const;}
+     const result=await readBoundedSellerUiJson(response,{maxBytes:1024});
+     if(parseSellerDecisionUiAck(result)==='ok'){
+       pendingKeys.current.delete(key);return 'ok' as const;
+     }
      return 'unavailable' as const;
    }catch{return 'unavailable' as const;}
  },[csrf]);
