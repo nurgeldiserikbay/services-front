@@ -38,3 +38,12 @@ test('seller workspace paginates without cursor loops or stale version rollback'
  assert.match(source,/current!==generation\.current/);
  assert.match(source,/onClick=\{\(\)=>void loadMore\(\)\}/);
 });
+
+test('seller workspace validates canonical dates and serializes pagination',()=>{
+ const source=read('components/SellerWorkspace.tsx');
+ assert.match(source,/new Date\(value\)\.toISOString\(\)===value/);
+ assert.match(source,/!validDate\(r\.createdAt\)/);
+ assert.match(source,/pageLock\.current=true/);
+ assert.match(source,/if\(!cursor\|\|pageLock\.current\)return/);
+ assert.match(source,/pageLock\.current=false/);
+});
