@@ -10,7 +10,7 @@ import {
 import styles from './SellerRequestList.module.css';
 
 type Decision='accept'|'decline';
-type Result='ok'|'conflict'|'forbidden'|'unavailable';
+type Result='ok'|'conflict'|'forbidden'|'unauthorized'|'unavailable';
 const filters:readonly SellerInboxFilter[]=['all','pending','accepted','closed'];
 const copy={
   kk:{
@@ -20,6 +20,7 @@ const copy={
     error:'Әрекет орындалмады. Қайта жүктеп көріңіз.',
     conflict:'Өтінім күйі өзгерді. Тізімді жаңартыңыз.',
     forbidden:'Бұл өтінімді өзгертуге рұқсатыңыз жоқ.',
+    unauthorized:'Сессия аяқталды. Аккаунтқа қайта кіріңіз.',
     notice:'Қабылдау уақытты автоматты түрде растамайды.',
     filters:{all:'Барлығы',pending:'Жаңа',accepted:'Қабылданған',closed:'Жабылған'},
     noFilter:'Бұл сүзгіде өтінім жоқ',working:'Әрекет орындалып жатыр…',
@@ -32,6 +33,7 @@ const copy={
     error:'Не удалось выполнить действие. Обновите страницу.',
     conflict:'Состояние заявки изменилось. Обновите список.',
     forbidden:'Недостаточно прав для изменения этой заявки.',
+    unauthorized:'Сессия завершилась. Войдите в аккаунт снова.',
     notice:'Принятие не означает подтверждения времени.',
     filters:{all:'Все',pending:'Новые',accepted:'Принятые',closed:'Закрытые'},
     noFilter:'В этом разделе заявок нет',working:'Выполняется действие…',
@@ -78,13 +80,13 @@ export function SellerRequestList({
       const result=await onDecision(req.id,req.version,decision);
       // The caller MUST refresh the actual server state after success.
       // Guard stale props from allowing another decision before that refresh.
-      if(result==='ok'||result==='conflict'||result==='forbidden'){
+      if(result==='ok'||result==='conflict'||result==='forbidden'||result==='unauthorized'){
         setSettled(prev=>({...prev,[req.id]:req.version}));
         // Fetch the server version, never optimistically alter local request state.
         await refresh();
       }
       if(result!=='ok')setErrors(prev=>({
-        ...prev,[req.id]:result==='conflict'?t.conflict:result==='forbidden'?t.forbidden:t.error,
+        ...prev,[req.id]:result==='conflict'?t.conflict:result==='forbidden'?t.forbidden:result==='unauthorized'?t.unauthorized:t.error,
       }));
     }catch{
       setErrors(prev=>({...prev,[req.id]:t.error}));
