@@ -24,3 +24,7 @@ test('seller inbox parser fails closed on sensitive or malformed rows',()=>{
   assert.throws(()=>parseSellerInboxPage({items:[row],next_cursor:'invalid+'}));
   assert.throws(()=>parseSellerInboxPage({items:[row],next_cursor:null,secret:'x'}));
 });
+
+test('seller inbox parser rejects duplicate request IDs in a page',()=>{
+  assert.throws(()=>parseSellerInboxPage({items:[row,{...row,title:'duplicate'}],next_cursor:null}));
+});
