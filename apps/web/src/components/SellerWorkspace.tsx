@@ -67,7 +67,8 @@ export function SellerWorkspace({locale}:{locale:Locale}){
        credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},
      });
      if(response.status===401){if(current===generation.current){
-       setItems([]);setCursor(null);setCsrf('');setStatus('unauthorized');}
+       setItems([]);setCursor(null);setCsrf('');setStatus('unauthorized');
+       pendingKeys.current.clear();seenCursors.current.clear();}
        throw Error('unauthorized');}
      if(!response.ok)throw Error('unavailable');
      const page=parsePage(await response.json());
@@ -79,6 +80,7 @@ export function SellerWorkspace({locale}:{locale:Locale}){
    }catch(error){if(current===generation.current){
      if(!(error instanceof Error&&error.message==='unauthorized')){
        setItems([]);setCursor(null);setCsrf('');setStatus('error');
+       seenCursors.current.clear();
      }
    }
    throw error;
@@ -97,6 +99,7 @@ export function SellerWorkspace({locale}:{locale:Locale}){
      if(response.status===401){
        if(current===generation.current){
          setItems([]);setCursor(null);setCsrf('');setStatus('unauthorized');
+         pendingKeys.current.clear();seenCursors.current.clear();
        }
        return;
      }
@@ -115,7 +118,12 @@ export function SellerWorkspace({locale}:{locale:Locale}){
        return [...byId.values()];
      });
      setCursor(page.next_cursor);setCsrf(page.csrf_token);
-   }catch{if(current===generation.current)setMoreError(true);}
+   }catch{if(current===generation.current){
+     // A failed cursor fetch cannot establish that the old seller scope
+     // is still authorized. Hide old private rows until a fresh read.
+     setItems([]);setCursor(null);setCsrf('');seenCursors.current.clear();
+     setStatus('error');setMoreError(true);
+   }}
    finally{pageLock.current=false;if(current===generation.current)setMoreBusy(false);}
  },[cursor]);
 
@@ -130,7 +138,15 @@ export function SellerWorkspace({locale}:{locale:Locale}){
        headers:{'Content-Type':'application/json'},
        body:JSON.stringify({version,csrf_token:csrf,idempotency_key:idempotencyKey}),
      });
-     if(response.status===401)return 'unauthorized' as const;
+     if(response.status===401){
+       // Seller decisions can reveal a revoked account independently of inbox
+       // polling. Do not leave the previous private seller data visible.
+       generation.current++;
+       setItems([]);setCursor(null);setCsrf('');
+       pendingKeys.current.clear();seenCursors.current.clear();
+       setStatus('unauthorized');
+       return 'unauthorized' as const;
+     }
      if(response.status===403)return 'forbidden' as const;
      if(response.status===409)return 'conflict' as const;
      if(!response.ok)return 'unavailable' as const;
