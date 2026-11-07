@@ -30,7 +30,7 @@ export async function verifyBackendAccountOtp({
    (production&&parsed.protocol!=='https:')||
    parsed.username||parsed.password||parsed.search||parsed.hash||
    !/^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?\/?$/.test(parsed.pathname)||
-   baseUrl.includes('\\\\')||baseUrl.includes('%'))
+   baseUrl.includes('\\')||baseUrl.includes('%'))
    throw new Error('unsafe_base');
   parsed.pathname=parsed.pathname.replace(/\/$/,'')+'/auth/private/account/verify';
   url=parsed.toString();
