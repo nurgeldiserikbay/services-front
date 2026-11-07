@@ -32,9 +32,11 @@ export function SellerInboxList({locale,items}:{
   locale:Locale;items:readonly SellerInboxEntry[];
 }){
   const t=labels[locale];
-  const format=(iso:string)=>new Intl.DateTimeFormat(locale==='kk'?'kk-KZ':'ru-RU',{
+  const formatter=new Intl.DateTimeFormat(locale==='kk'?'kk-KZ':'ru-RU',{
+
     dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Almaty',
-  }).format(new Date(iso));
+  });
+  const format=(iso:string)=>formatter.format(new Date(iso));
   return <section className={styles.section} aria-label={t.heading}>
     <h2>{t.heading}</h2>
     {items.length===0?<p>{t.empty}</p>:<ul className={styles.list}>
