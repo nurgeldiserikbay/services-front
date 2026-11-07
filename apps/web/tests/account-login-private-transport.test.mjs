@@ -55,3 +55,47 @@ test('BFF remains server-only, feature-gated and exposes cookie instructions, no
  assert.match(source,/setCookie/);
  assert.doesNotMatch(source,/return\s*\{[^}]*sessionToken/);
 });
+
+test('private account transport refuses unsafe base URL and noncanonical service key before network',async()=>{
+ let count=0;
+ const transport=async()=>{count++;return reply({session_token:token,expires_in_seconds:300});};
+ for(const baseUrl of [
+  'http://api.example.test/v1',
+  'https://user:password@api.example.test/v1',
+  'https://api.example.test/v1?token=abc',
+  'https://api.example.test/v1#fragment',
+  'https://api.example.test/v1/%2e%2e/v2',
+  'https://api.example.test/v1/%61',
+  'https://api.example.test/v1//foo',
+  'file:///etc/passwd',
+ ]){
+  await assert.rejects(verifyBackendAccountOtp({...req,baseUrl,transport}),AccountLoginTransportUnavailable);
+ }
+ await assert.rejects(verifyBackendAccountOtp({...req,serviceKey:'A'.repeat(42)+'B=',transport}),AccountLoginTransportUnavailable);
+ assert.equal(count,0);
+});
+
+test('private account transport bounds streamed response even when content length is absent',async()=>{
+ let cancelled=false;
+ const transport=async()=>new Response(new ReadableStream({
+  pull(controller){
+   controller.enqueue(new Uint8Array(2049));
+  },
+  cancel(){cancelled=true;}
+ }),{status:200,headers:{'content-type':'application/json'}});
+ await assert.rejects(verifyBackendAccountOtp({...req,transport}),AccountLoginTransportUnavailable);
+ assert.equal(cancelled,true);
+});
+
+test('private account transport rejects spoofed length, malformed JSON and forbidden statuses',async()=>{
+ for(const response of [
+  new Response('not-json',{status:200,headers:{'content-type':'application/json'}}),
+  new Response('{}',{status:200,headers:{'content-type':'text/html'}}),
+  new Response('{}',{status:200,headers:{'content-type':'application/json','content-length':'9000'}}),
+  new Response('{}',{status:200,headers:{'content-type':'application/json','content-length':'NaN'}}),
+  new Response(null,{status:403}),
+  new Response(null,{status:500}),
+ ]){
+  await assert.rejects(verifyBackendAccountOtp({...req,transport:async()=>response}),AccountLoginTransportUnavailable);
+ }
+});
