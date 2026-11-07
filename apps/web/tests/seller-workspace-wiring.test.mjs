@@ -29,3 +29,12 @@ test('seller workspace page is locale-checked and not cached',()=>{
  assert.match(source,/dynamic='force-dynamic'/);
  assert.match(source,/SellerWorkspace/);
 });
+
+test('seller workspace paginates without cursor loops or stale version rollback',()=>{
+ const source=read('components/SellerWorkspace.tsx');
+ assert.match(source,/cursor=\x27\+encodeURIComponent\(cursor\)/);
+ assert.match(source,/seenCursors\.current\.has\(page\.next_cursor\)/);
+ assert.match(source,/item\.version>old\.version/);
+ assert.match(source,/current!==generation\.current/);
+ assert.match(source,/onClick=\{\(\)=>void loadMore\(\)\}/);
+});
