@@ -1,6 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
 import {getOwnSellerInbox} from '@/lib/seller-bff.server';
+import {SellerTransportUnauthorized} from '@/lib/seller-server-transport.mjs';
 import {parseSellerInboxQuery,sellerBffSameOrigin}
  from '@/lib/seller-bff-route-core.mjs';
 
@@ -12,8 +13,8 @@ const HEADERS={
  'X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer',
  'Vary':'Cookie, Origin, Sec-Fetch-Site',
 } as const;
-const reject=(status:400|404|503)=>NextResponse.json(
- {code:status===400?'INVALID_REQUEST':'UNAVAILABLE'},
+const reject=(status:400|401|404|503)=>NextResponse.json(
+ {code:status===400?'INVALID_REQUEST':status===401?'AUTH_REQUIRED':'UNAVAILABLE'},
  {status,headers:HEADERS});
 
 /**
@@ -29,5 +30,5 @@ export async function GET(request:NextRequest):Promise<NextResponse>{
    const page=await getOwnSellerInbox(
      request.cookies.get(ACCOUNT_WEB_COOKIE)?.value,query);
    return NextResponse.json(page,{status:200,headers:HEADERS});
- }catch{return reject(503);}
+ }catch(error){return reject(error instanceof SellerTransportUnauthorized?401:503);}
 }
