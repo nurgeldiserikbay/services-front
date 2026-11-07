@@ -94,6 +94,12 @@ export function SellerWorkspace({locale}:{locale:Locale}){
      const response=await fetch('/api/seller/requests?limit=50&cursor='+encodeURIComponent(cursor),{
        credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},
      });
+     if(response.status===401){
+       if(current===generation.current){
+         setItems([]);setCursor(null);setCsrf('');setStatus('unauthorized');
+       }
+       return;
+     }
      if(!response.ok)throw Error('unavailable');
      const page=parsePage(await response.json());
      if(current!==generation.current)return;
