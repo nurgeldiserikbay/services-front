@@ -1,0 +1,13 @@
+.section{width:100%;max-width:900px;margin:24px auto}
+.section h2{font-size:clamp(1.3rem,3vw,1.8rem);margin:0 0 18px}
+.list{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.item{padding:18px 20px;border:1px solid #dae5e8;border-radius:16px;background:#fff;box-shadow:0 3px 14px rgba(16,46,56,.045)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.top strong{font-size:1.05rem;line-height:1.45;overflow-wrap:anywhere}
+.item small{color:#526675;line-height:1.6}
+.item p{margin:10px 0 4px;line-height:1.5}
+.status{display:inline-block;flex-shrink:0;padding:5px 10px;border-radius:999px;background:#eef3f6;color:#334e61;font-size:.85rem;font-weight:650}
+.status[data-state="pending"]{background:#fff5d9;color:#785100}
+.status[data-state="accepted"],.status[data-state="completed"]{background:#e5f5ec;color:#17613d}
+.status[data-state="declined"],.status[data-state^="cancelled"],.status[data-state="expired"]{background:#f9e9e7;color:#873b35}
+@media(max-width:480px){.item{padding:15px}.top{gap:8px}}
