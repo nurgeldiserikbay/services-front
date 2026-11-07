@@ -16,3 +16,10 @@ test('typed seller decision result is server-authoritative',()=>{
  assert.match(s,/r\.replayed/);
  assert.doesNotMatch(s,/fetch\(|localStorage|sessionStorage|document\.cookie/);
 });
+
+test('seller inbox DTO matches backend title and canonical timestamp contract',()=>{
+ const s=read('lib/seller-request-api-contract.ts');
+ assert.match(s,/r\.title\.length>500/);
+ assert.match(s,/new Date\(value\)\.toISOString\(\)===value/);
+ assert.match(s,/new Set\(requests\.map\(request=>request\.id\)\)/);
+});
