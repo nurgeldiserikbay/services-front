@@ -8,6 +8,9 @@ const MAX_RESPONSE=65536;
 export class SellerClientUnavailable extends Error{
   constructor(){super('Seller inbox unavailable');}
 }
+export class SellerClientAuthenticationRequired extends Error{
+  constructor(){super('Account sign-in required');}
+}
 function validItem(item){
   return item&&typeof item==='object'&&!Array.isArray(item)&&
     Object.keys(item).sort().join(',')===
@@ -57,8 +60,12 @@ export async function loadSellerInbox({limit=20,state=null,cursor=null,transport
       method:'GET',credentials:'same-origin',cache:'no-store',redirect:'error',
       headers:{Accept:'application/json'},signal:AbortSignal.timeout(8000),
     });
+    if(response.status===401)throw new SellerClientAuthenticationRequired();
     return parseSellerBffInbox(await limitedJson(response,200));
-  }catch{throw new SellerClientUnavailable();}
+  }catch(error){
+    if(error instanceof SellerClientAuthenticationRequired)throw error;
+    throw new SellerClientUnavailable();
+  }
 }
 /**
  * Caller owns stable idempotencyKey for retries. Never synthesize a new key

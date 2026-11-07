@@ -3,7 +3,8 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import type {SellerRequestSummary} from '@/lib/seller-requests';
-import {loadSellerInbox,sendSellerDecision} from '@/lib/seller-bff-client.mjs';
+import {loadSellerInbox,sendSellerDecision,
+ SellerClientAuthenticationRequired} from '@/lib/seller-bff-client.mjs';
 import styles from './SellerRequestList.module.css';
 
 type Page={items:SellerRequestSummary[];nextCursor:string|null;csrf:string};
@@ -12,11 +13,13 @@ const labels={
    loading:'Жүктелуде…',empty:'Өтінім жоқ',failed:'Өтінімдерді жүктеу мүмкін болмады.',
    accept:'Қабылдау',decline:'Бас тарту',professional:'Маман',organization:'Компания',
    conflict:'Өтінім өзгерген. Тізім жаңартылады.',forbidden:'Бұл әрекетке рұқсат жоқ.',
+   unauthorized:'Сессия аяқталды. Аккаунтқа қайта кіріңіз.',
    notice:'Өтінімді қабылдау уақытты автоматты түрде растамайды.'},
  ru:{heading:'Заявки',load:'Загрузить',more:'Показать ещё',refresh:'Обновить',
    loading:'Загрузка…',empty:'Заявок нет',failed:'Не удалось загрузить заявки.',
    accept:'Принять',decline:'Отклонить',professional:'Специалист',organization:'Компания',
    conflict:'Заявка изменилась. Список обновляется.',forbidden:'Недостаточно прав.',
+   unauthorized:'Сессия завершена. Войдите в аккаунт снова.',
    notice:'Принятие заявки не подтверждает время автоматически.'},
 } as const;
 
@@ -61,8 +64,13 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
      const updated={items:[...newer.values()],nextCursor:response.nextCursor,csrf:response.csrf};
      current.current=updated;setPage(updated);
      return true;
-   }catch{
-     if(seq===epoch.current)setMessage(t.failed);
+   }catch(error){
+     if(seq===epoch.current){
+       if(error instanceof SellerClientAuthenticationRequired){
+         current.current=null;setPage(null);retry.current.clear();
+         setMessage(t.unauthorized);
+       }else setMessage(t.failed);
+     }
      return false;
    }finally{run.current=false;setBusy(false);}
  },[t.failed]);
@@ -82,7 +90,10 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
    try{
      const outcome=await sendSellerDecision({requestId:item.id,version:item.version,
        decision,csrf:page.csrf,idempotencyKey:nonce});
-     if(outcome==='ok'||outcome==='conflict'||outcome==='forbidden'){
+     if(outcome==='unauthorized'){
+       retry.current.clear();current.current=null;setPage(null);
+       setMessage(t.unauthorized);
+     }else if(outcome==='ok'||outcome==='conflict'||outcome==='forbidden'){
        setBlocked(prev=>({...prev,[item.id]:item.version}));
        if(outcome==='forbidden')setMessage(t.forbidden);
        if(outcome==='conflict')setMessage(t.conflict);

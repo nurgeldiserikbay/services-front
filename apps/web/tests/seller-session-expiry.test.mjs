@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {SellerTransportUnauthorized,fetchSellerInbox,decideSellerRequest}
  from '../src/lib/seller-server-transport.mjs';
 import {mapSellerDecisionOutcome} from '../src/lib/seller-decision-result.mjs';
-import {loadSellerInbox,sendSellerDecision,SellerClientUnavailable}
+import {loadSellerInbox,sendSellerDecision,SellerClientAuthenticationRequired}
  from '../src/lib/seller-bff-client.mjs';
 
 const token='A'.repeat(43);
@@ -38,7 +38,7 @@ test('browser sees only a 401 distinction without raw bearer',async()=>{
  assert.equal(await sendSellerDecision(params),'unauthorized');
  await assert.rejects(loadSellerInbox({
    transport:async()=>new Response('',{status:401}),
- }),SellerClientUnavailable);
+ }),SellerClientAuthenticationRequired);
 });
 test('BFF routes return narrow AUTH_REQUIRED and use cookie-only credentials',()=>{
  const read=source('app/api/seller/requests/route.ts');
