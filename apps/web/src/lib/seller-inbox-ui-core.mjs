@@ -9,6 +9,7 @@ const validUuid=x=>typeof x==='string'&&UUID.test(x);
 /** Parse only public-safe seller inbox fields; no contact or notes allowed. */
 export function parseSellerInboxPage(value){
   if(!value||typeof value!=='object'||Array.isArray(value)||
+    Object.keys(value).length!==2||
     Object.keys(value).some(k=>!['items','next_cursor'].includes(k))||
     !Array.isArray(value.items)||value.items.length>50||
     !(value.next_cursor===null||
