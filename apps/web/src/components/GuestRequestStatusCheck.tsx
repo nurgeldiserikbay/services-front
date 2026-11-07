@@ -83,7 +83,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
       );
       if(controller.signal.aborted)return;
       // Never regress the displayed status when out-of-order responses arrive.
-      if(currentVersion.current===null||result.version>=currentVersion.current){
+      if(currentVersion.current===null||result.version>currentVersion.current){
         currentVersion.current=result.version;
         setState(result.state);
         setVersion(result.version);
