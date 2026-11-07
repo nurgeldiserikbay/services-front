@@ -9,7 +9,8 @@ const DATE=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const opaque=(value:unknown):value is string=>
   typeof value==='string'&&UUID.test(value);
 const validDate=(value:unknown):value is string=>
-  typeof value==='string'&&DATE.test(value)&&Number.isFinite(Date.parse(value));
+  typeof value==='string'&&DATE.test(value)&&Number.isFinite(Date.parse(value))&&
+  new Date(value).toISOString()===value;
 
 export type SellerInboxViewPage=Readonly<{
   requests:SellerRequestSummary[];
@@ -39,7 +40,7 @@ export function parseSellerInboxPage(raw:unknown):SellerInboxViewPage|null{
        Object.keys(r).some(k=>!['id','service_offer_id','title','state',
          'version','seller_kind','seller_id','created_at','scheduled_start_at'].includes(k))||
        !opaque(r.id)||!opaque(r.service_offer_id)||!opaque(r.seller_id)||
-       typeof r.title!=='string'||r.title.length>180||
+       typeof r.title!=='string'||r.title.length>500||
        (r.seller_kind!=='professional'&&r.seller_kind!=='organization')||
        typeof r.state!=='string'||!STATES.has(r.state as SellerRequestState)||
        typeof r.version!=='number'||!Number.isSafeInteger(r.version)||r.version<1||
