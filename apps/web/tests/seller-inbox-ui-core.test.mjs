@@ -37,3 +37,9 @@ test('seller inbox merge preserves newer decision and accepts newer server versi
     [{...row,version:3}]);
   assert.equal(mergeSellerInboxPages([row],[row]).length,1);
 });
+
+test('seller inbox rejects missing envelope fields',()=>{
+  assert.throws(()=>parseSellerInboxPage({items:[row]}));
+  assert.throws(()=>parseSellerInboxPage({next_cursor:null}));
+  assert.throws(()=>parseSellerInboxPage({items:[row],next_cursor:null,debug:true}));
+});
