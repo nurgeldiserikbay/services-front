@@ -67,8 +67,12 @@ export function SellerRequestList({
   async function refresh(){
     if(!onRefresh||refreshLock.current)return;
     refreshLock.current=true;setRefreshing(true);
-    try{await onRefresh();}
-    catch{setErrors(prev=>({...prev,__refresh:t.error}));}
+    try{
+      await onRefresh();
+      setErrors(prev=>({...prev,__refresh:''}));
+    }catch{
+      setErrors(prev=>({...prev,__refresh:t.error}));
+    }
     finally{refreshLock.current=false;setRefreshing(false);}
   }
   async function decide(req:SellerRequestSummary,decision:Decision){
@@ -81,8 +85,10 @@ export function SellerRequestList({
       // The caller MUST refresh the actual server state after success.
       // Guard stale props from allowing another decision before that refresh.
       if(result==='ok'||result==='conflict'||result==='forbidden'||result==='unauthorized'){
+        // Never allow another decision against an unverified old version.
         setSettled(prev=>({...prev,[req.id]:req.version}));
-        // Fetch the server version, never optimistically alter local request state.
+        // A failed refresh must be visible; the request stays locked until a
+        // later server snapshot changes its version.
         await refresh();
       }
       if(result!=='ok')setErrors(prev=>({
