@@ -6,7 +6,7 @@ export interface SearchItem {
   is_sponsored: boolean;
   slug?: string | null;
 }
-export interface SearchResponse { items: SearchItem[] }
+export interface SearchResponse { items: SearchItem[]; next_cursor: string | null }
 export type SearchScope = 'city' | 'country' | 'global';
 
 /** Server-side only: never forward guest cookies or capabilities to public search. */
@@ -15,6 +15,7 @@ export async function searchPublicMarketplace(
   scope: SearchScope,
   location: {countryId?: string; cityId?: string} = {},
   signal?: AbortSignal,
+  cursor?: string,
 ): Promise<SearchResponse> {
   const rawBase = process.env.SERVICES_API_BASE_URL;
   if (!rawBase) throw new Error('SERVICES_API_BASE_URL not configured');
@@ -26,6 +27,10 @@ export async function searchPublicMarketplace(
   if (scope === 'country' && location.countryId) url.searchParams.set('country_id',location.countryId);
   if (scope === 'city' && location.cityId) url.searchParams.set('city_id',location.cityId);
   url.searchParams.set('kind', 'all');
+  if (cursor) {
+    if (!/^[0-9]{1,5}$/.test(cursor) || Number(cursor) > 10000) throw new Error('Invalid search cursor');
+    url.searchParams.set('cursor', cursor);
+  }
   const response = await fetch(url, {
     cache: 'no-store',
     signal,
@@ -34,7 +39,11 @@ export async function searchPublicMarketplace(
   if (!response.ok) throw new Error('Public search unavailable');
   const data: unknown = await response.json();
   if (!data || typeof data !== 'object' || !('items' in data) ||
-      !Array.isArray(data.items) || data.items.some((item: unknown) => !validItem(item))) {
+      !Array.isArray(data.items) || data.items.length > 50 ||
+      data.items.some((item: unknown) => !validItem(item)) ||
+      !('next_cursor' in data) ||
+      !(data.next_cursor === null || (typeof data.next_cursor === 'string' &&
+        /^[0-9]{1,5}$/.test(data.next_cursor) && Number(data.next_cursor) <= 10000))) {
     throw new Error('Unexpected search response');
   }
   return data as SearchResponse;
