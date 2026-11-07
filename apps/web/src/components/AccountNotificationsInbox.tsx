@@ -3,16 +3,18 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import type {AccountNotification} from '@/lib/account-notifications-transport.mjs';
+import {readNotificationBrowserReply,notificationTopicLabel}
+ from '@/lib/account-notifications-ui.mjs';
 
 const strings={
  kk:{title:'Хабарламалар',refresh:'Жаңарту',loading:'Жүктелуде…',
   empty:'Әзірге хабарлама жоқ',error:'Хабарламаларды жүктеу мүмкін болмады.',
   unauthorized:'Сессия аяқталды. Аккаунтқа қайта кіріңіз.',
-  message:'Өтінім бойынша жаңалық',note:'Бұл — қосымша ішіндегі хабарлама. SMS немесе email жіберілгенін білдірмейді.'},
+  note:'Бұл — қосымша ішіндегі хабарлама. SMS немесе email жіберілгенін білдірмейді.'},
  ru:{title:'Уведомления',refresh:'Обновить',loading:'Загрузка…',
   empty:'Уведомлений пока нет',error:'Не удалось загрузить уведомления.',
   unauthorized:'Сессия завершилась. Войдите снова.',
-  message:'Обновление по заявке',note:'Это уведомление внутри приложения, оно не подтверждает отправку SMS или email.'},
+  note:'Это уведомление внутри приложения, оно не подтверждает отправку SMS или email.'},
 } as const;
 
 export function AccountNotificationsInbox({locale}:{locale:Locale}){
@@ -32,13 +34,7 @@ export function AccountNotificationsInbox({locale}:{locale:Locale}){
     headers:{Accept:'application/json'},signal:AbortSignal.timeout(8000),
    });
    if(!response.ok)throw new Error(response.status===401?'unauthorized':'unavailable');
-   const {validateNotificationInbox}=await import('@/lib/account-notifications-transport.mjs');
-   const size=response.headers.get('content-length');
-   if(size!==null&&(!/^\d+$/.test(size)||Number(size)>32768))
-    throw new Error('unavailable');
-   const body=await response.text();
-   if(new TextEncoder().encode(body).byteLength>32768)throw new Error('unavailable');
-   const result=validateNotificationInbox(JSON.parse(body));
+   const result=await readNotificationBrowserReply(response);
    if(current===generation.current)setItems(result.items);
   }catch(e){
    if(current===generation.current){
@@ -56,7 +52,7 @@ export function AccountNotificationsInbox({locale}:{locale:Locale}){
   {error&&<p role="alert">{error}</p>}
   {!busy&&items?.length===0&&<p role="status">{t.empty}</p>}
   {items&&<ul>{items.map(item=><li key={item.id}>
-    <strong>{t.message}</strong> <time dateTime={item.created_at}>
+    <strong>{notificationTopicLabel(locale,item.topic)}</strong> <time dateTime={item.created_at}>
      {item.created_at.slice(0,10)}</time>
    </li>)}</ul>}
  </section>;

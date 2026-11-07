@@ -68,7 +68,8 @@ test('notification route and page are private, gated and backend revalidated',()
  assert.match(page,/notFound\(\)/);
  assert.match(ui,/setItems\(null\)/);
  assert.match(ui,/credentials:'same-origin'/);
- assert.match(ui,/Өтінім бойынша жаңалық/);
- assert.match(ui,/Обновление по заявке/);
+ assert.match(ui,/notificationTopicLabel\(locale,item.topic\)/);
+ assert.match(ui,/readNotificationBrowserReply\(response\)/);
+ assert.doesNotMatch(ui,/response\.text\(\)/);
  assert.doesNotMatch(route+bridge+page+ui,/localStorage|sessionStorage|NEXT_PUBLIC_.*TOKEN/);
 });

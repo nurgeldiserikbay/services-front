@@ -40,6 +40,7 @@ export default async function AccountRequestsPage({
       </Link>
       <nav aria-label={kk?'Навигация':'Навигация'}>
         <Link href={'/'+locale}>{kk?'Каталогқа қайту':'Вернуться в каталог'}</Link>
+        {process.env.SERVICES_WEB_ENABLE_ACCOUNT_NOTIFICATIONS==='enabled'&&<Link href={'/'+locale+'/account/notifications'}>{kk?'Хабарламалар':'Уведомления'}</Link>}
       </nav>
     </header>
     <section aria-label={kk?'Маманның жұмыс аймағы':'Рабочее место исполнителя'}>
