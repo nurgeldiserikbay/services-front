@@ -3,7 +3,7 @@
 import {useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import {
-  privateGuestStatusUrl,readPrivateGuestStatusResponse,
+  privateGuestStatusUrl,readPrivateGuestStatusResponse,shouldReplaceGuestStatus,
   type PrivateGuestStatusState,
 } from '@/lib/guest-status-ui-core.mjs';
 import styles from './GuestRequestStatusCheck.module.css';
@@ -83,7 +83,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
       );
       if(controller.signal.aborted)return;
       // Never regress the displayed status when out-of-order responses arrive.
-      if(currentVersion.current===null||result.version>currentVersion.current){
+      if(shouldReplaceGuestStatus(currentVersion.current,result.version)){
         currentVersion.current=result.version;
         setState(result.state);
         setVersion(result.version);
