@@ -1,5 +1,6 @@
 import type {SellerRequestSummary,SellerRequestState} from './seller-requests';
 export class SellerClientUnavailable extends Error{}
+export class SellerClientAuthenticationRequired extends Error{}
 export function parseSellerBffInbox(raw:unknown):{
   items:SellerRequestSummary[];nextCursor:string|null;csrf:string;
 };
