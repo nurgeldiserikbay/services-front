@@ -60,3 +60,10 @@ test('seller inbox refresh errors are observable to decision UI',()=>{
  assert.match(list,/__refresh:t\.error/);
  assert.match(list,/__refresh:''/);
 });
+
+test('paginated seller requests revoke local private data on expired session',()=>{
+ const source=read('components/SellerWorkspace.tsx');
+ const segment=source.split('const loadMore=useCallback')[1];
+ assert.match(segment,/response\.status===401/);
+ assert.match(segment,/setItems\(\[\]\);setCursor\(null\);setCsrf\(''\);setStatus\('unauthorized'\)/);
+});
