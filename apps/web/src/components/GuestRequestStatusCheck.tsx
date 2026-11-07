@@ -7,7 +7,7 @@ import {
   type PrivateGuestStatusState,
 } from '@/lib/guest-status-ui-core.mjs';
 import styles from './GuestRequestStatusCheck.module.css';
-import {buildRequestTimeline} from '@/lib/request-timeline';
+import {RequestTimeline} from './RequestTimeline';
 
 const translations={
   kk:{
@@ -79,21 +79,12 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
     }
   }
 
-  const timeline=buildRequestTimeline(state,locale);
   return <section aria-label={t.heading} className={styles.panel}>
     <h3>{t.heading}</h3>
     <p role="status" aria-live="polite">{pending?t.loading:t.statuses[state]}</p>
     {version!==null&&<>
       <small>{t.version}: {version}</small>
-      <ol className={styles.timeline} aria-label={locale==='kk'?'Өтінім барысы':'Ход заявки'}>
-        {timeline.steps.map(step=><li key={step.key}
-          className={step.complete?styles.complete:styles.waiting}
-          aria-current={!step.complete&&step.key==='accepted'&&state==='pending'?'step':undefined}>
-          <span aria-hidden="true" className={styles.marker}>{step.complete?'✓':'·'}</span>
-          <span>{step.label}</span>
-        </li>)}
-      </ol>
-      <p className={styles.timelineStatus}>{timeline.status}</p>
+      <RequestTimeline state={state} locale={locale}/>
     </>}
     {error&&<p role="alert" className={styles.error}>{t.error}</p>}
     <button type="button" onClick={refresh} disabled={pending}>
