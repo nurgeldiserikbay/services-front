@@ -11,3 +11,7 @@ export function listBackendAccountSessions(
 export function revokeBackendAccountSession(
  options:AccountSessionTransportOptions,
 ):Promise<true>;
+
+export function revokeBackendAccountSessionById(
+ options:AccountSessionTransportOptions&{sessionId:string},
+):Promise<true>;
