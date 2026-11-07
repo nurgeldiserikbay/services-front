@@ -9,6 +9,10 @@ type Decision='accept'|'decline';
 type Page={items:SellerRequestSummary[];next_cursor:string|null;csrf_token:string};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CSRF=/^[A-Za-z0-9_-]{43}$/;
+const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const validDate=(value:unknown):value is string=>typeof value==='string'&&
+  ISO.test(value)&&Number.isFinite(Date.parse(value))&&
+  new Date(value).toISOString()===value;
 const states=new Set(['pending','accepted','declined','cancelled_by_customer',
   'cancelled_by_provider','cancelled_mutual','completed','expired']);
 function parsePage(raw:unknown):Page{
@@ -32,7 +36,7 @@ function parsePage(raw:unknown):Page{
       !states.has(r.state as string)||
       !Number.isSafeInteger(r.version)||Number(r.version)<1||
       (r.sellerKind!=='professional'&&r.sellerKind!=='organization')||
-      typeof r.createdAt!=='string'||!/^\d{4}-\d\d-\d\dT/.test(r.createdAt)||
+      !validDate(r.createdAt)||
       r.desiredStartAt!==null)throw Error('invalid');
  }
  if(new Set(data.items.map((r:SellerRequestSummary)=>r.id)).size!==data.items.length)
@@ -49,8 +53,12 @@ export function SellerWorkspace({locale}:{locale:Locale}){
  const generation=useRef(0);
  const pendingKeys=useRef(new Map<string,string>());
  const seenCursors=useRef(new Set<string>());
+ const pageLock=useRef(false);
  const load=useCallback(async()=>{
    const current=++generation.current;
+   pageLock.current=false;
+   setMoreBusy(false);
+   setMoreError(false);
    try{
      const response=await fetch('/api/seller/requests?limit=50',{
        credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},
@@ -69,7 +77,8 @@ export function SellerWorkspace({locale}:{locale:Locale}){
  },[]);
  useEffect(()=>{void load();return ()=>{generation.current++;};},[load]);
  const loadMore=useCallback(async()=>{
-   if(!cursor||moreBusy)return;
+   if(!cursor||pageLock.current)return;
+   pageLock.current=true;
    const current=generation.current;
    setMoreBusy(true);setMoreError(false);
    try{
@@ -92,8 +101,8 @@ export function SellerWorkspace({locale}:{locale:Locale}){
      });
      setCursor(page.next_cursor);setCsrf(page.csrf_token);
    }catch{if(current===generation.current)setMoreError(true);}
-   finally{setMoreBusy(false);}
- },[cursor,moreBusy]);
+   finally{pageLock.current=false;if(current===generation.current)setMoreBusy(false);}
+ },[cursor]);
 
  const decide=useCallback(async(id:string,version:number,decision:Decision)=>{
    if(!csrf)return 'unauthorized' as const;
