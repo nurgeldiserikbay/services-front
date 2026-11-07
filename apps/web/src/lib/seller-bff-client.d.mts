@@ -10,4 +10,4 @@ export function loadSellerInbox(input?:{
 export function sendSellerDecision(input:{
   requestId:string;version:number;decision:'accept'|'decline';
   csrf:string;idempotencyKey:string;transport?:typeof fetch;
-}):Promise<'ok'|'conflict'|'forbidden'|'unavailable'>;
+}):Promise<'ok'|'conflict'|'forbidden'|'unauthorized'|'unavailable'>;
