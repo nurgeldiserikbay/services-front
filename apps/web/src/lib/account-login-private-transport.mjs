@@ -16,6 +16,8 @@ export async function verifyBackendAccountOtp({
  baseUrl,production=true,serviceKey,challengeId,channel,code,transport=fetch,
 }){
  if(typeof serviceKey!=='string'||!KEY.test(serviceKey)||
+  Buffer.from(serviceKey,'base64').length!==32||
+  Buffer.from(serviceKey,'base64').toString('base64')!==serviceKey||
   typeof challengeId!=='string'||!UUID.test(challengeId)||
   (channel!=='EMAIL'&&channel!=='SMS')||
   typeof code!=='string'||!/^[0-9]{6}$/.test(code))
@@ -27,7 +29,8 @@ export async function verifyBackendAccountOtp({
    (parsed.protocol!=='https:'&&parsed.protocol!=='http:')||
    (production&&parsed.protocol!=='https:')||
    parsed.username||parsed.password||parsed.search||parsed.hash||
-   parsed.pathname.includes('..')||parsed.pathname.endsWith('//'))
+   !/^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?\/?$/.test(parsed.pathname)||
+   baseUrl.includes('\\\\')||baseUrl.includes('%'))
    throw new Error('unsafe_base');
   parsed.pathname=parsed.pathname.replace(/\/$/,'')+'/auth/private/account/verify';
   url=parsed.toString();
