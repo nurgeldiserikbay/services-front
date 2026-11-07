@@ -48,3 +48,10 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
     throw new Error('guest_status_unavailable');
   return parsePrivateGuestStatus(JSON.parse(data),expectedId,expectedOfferId);
 }
+
+/** Only a strictly newer server version may replace a displayed status. */
+export function shouldReplaceGuestStatus(currentVersion,nextVersion){
+  return Number.isSafeInteger(nextVersion)&&nextVersion>=1&&
+    (currentVersion===null||
+      (Number.isSafeInteger(currentVersion)&&currentVersion>=1&&nextVersion>currentVersion));
+}
