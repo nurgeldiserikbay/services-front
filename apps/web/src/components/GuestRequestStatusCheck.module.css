@@ -5,11 +5,3 @@
 .panel button{min-height:44px;padding:10px 17px;margin-top:8px}
 .panel button:disabled{opacity:.55;cursor:wait}
 .error{color:#9d342d}
-
-.timeline{list-style:none;display:grid;gap:9px;margin:14px 0;padding:0}
-.timeline li{display:flex;align-items:center;gap:10px;min-height:30px;font-size:.9rem}
-.marker{display:inline-flex;align-items:center;justify-content:center;flex:0 0 26px;height:26px;border-radius:50%;font-size:.9rem;font-weight:700}
-.complete{color:#176f57}.complete .marker{background:#dff4e9;color:#12674d}
-.waiting{color:#647884}.waiting .marker{background:#ebf0f1;color:#647884}
-.panel .timelineStatus{font-weight:650;margin:12px 0 4px}
-@media(max-width:480px){.panel{padding:14px}.timeline li{align-items:flex-start}}
