@@ -1,16 +1,27 @@
 # Services Frontend
 
-Next.js public web, shared presentation packages and future Capacitor application. Canonical contracts: [services](https://github.com/nurgeldiserikbay/services); current G0 review: [PR #4](https://github.com/nurgeldiserikbay/services/pull/4).
+Next.js public web, shared presentation packages and future Capacitor application. Canonical contracts: [services](https://github.com/nurgeldiserikbay/services).
 
-## Current implemented foundation
+## Implementation inventory (reviewed 2026-11-08)
 
-- Next.js 16 SSR web application in `apps/web`, pnpm workspace.
-- Mobile-first multilingual kk/ru discovery shell; country/global scope controls and accessible search form.
-- Typed server-side public `GET /v1/search` fetcher with input/response checks and no guest token forwarding.
-- Empty, unavailable and result states. No fabricated specialists, reviews, ratings or organizations.
-- CI checks types, baseline tests and Next.js production build.
+The old scaffold-only summary was outdated. The repository has progressed beyond a discovery shell. Recent work includes:
 
-**Not implemented:** actual search API backend, business pages, auth, guest OTP, bookings, PWA offline flows, Capacitor native builds and admin portal. The landing screen is a real frontend foundation, not a production-ready catalog.
+- Mobile-first kk/ru discovery and public search, with server-side API boundaries.
+- Guest request status UI and seller inbox/decision workflows; strict TypeScript declarations and regression coverage were addressed in [PR #47](https://github.com/nurgeldiserikbay/services-front/pull/47).
+- Seller workspace fail-closed invalidation and bounded BFF response handling in [PR #48](https://github.com/nurgeldiserikbay/services-front/pull/48) and [PR #49](https://github.com/nurgeldiserikbay/services-front/pull/49).
+- Feature-gated account notification inbox with HttpOnly BFF and localized event display in [PR #50](https://github.com/nurgeldiserikbay/services-front/pull/50) and [PR #51](https://github.com/nurgeldiserikbay/services-front/pull/51).
+- Default-off trusted OTP verification/cookie bridge in [PR #52](https://github.com/nurgeldiserikbay/services-front/pull/52), with transport hardening in [PR #53](https://github.com/nurgeldiserikbay/services-front/pull/53).
+
+**Important:** These PR descriptions establish implementation scope, not current merge status or passing CI. A feature-gated or unmounted module is not an enabled user journey. Do not claim production-ready login, OTP, notifications, native builds, or complete booking flows without deployment and E2E evidence.
+
+## Release gates (all require verification)
+
+1. Verify backend dependency versions, merged PRs, OpenAPI compatibility and latest green CI on the exact release commit.
+2. Implement and securely configure the real OTP provider, trusted backend ingress, pre-auth CSRF and rate limits before enabling any public account login route.
+3. Verify cookie scope, Secure/HttpOnly/SameSite, session expiry/revocation and cross-account data isolation end-to-end.
+4. Run real-database guest request → seller accept/decline → status/notification journeys, including cancellation windows, idempotent retries, stale responses and unauthorized access.
+5. Test kk/ru localization, keyboard accessibility, mobile layout, error/empty/loading states, and PWA/Capacitor separately.
+6. Confirm KZ data residency, secrets management, privacy-safe logging, monitoring, rollback and staging smoke tests.
 
 ## Local development
 
@@ -24,10 +35,16 @@ pnpm dev
 # http://localhost:3000/kk or /ru
 ```
 
-Set `SERVICES_API_BASE_URL` to the backend HTTPS endpoint when public search exists. The current backend implements health only; a search attempt correctly reports service unavailable instead of inventing results.
+Before release:
 
-## Parallel development boundaries
+```bash
+pnpm typecheck
+pnpm test
+pnpm build
+```
 
-The backend enforces seller ownership, ACL, request transitions and data protection; frontend handles localization, accessibility, SEO and presentation without redefining domain logic. Never run Next.js SSR inside Capacitor WebView: mobile runtime receives its own static application shell and uses shared feature/UI packages.
+Passing local commands alone does not replace CI, integration or staging verification.
 
-The first independent delivery after scaffold is catalog search (API and web integration) followed by professional/organization public pages.
+## Ownership boundaries
+
+Backend enforces identity, seller ownership, authorization, transactional request transitions and data protection. Frontend handles presentation, localization, accessibility and SEO, without trusting browser-provided role claims. Capacitor must use a static mobile shell rather than running Next.js SSR inside a WebView.
