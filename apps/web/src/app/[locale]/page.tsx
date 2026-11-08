@@ -1,33 +1,36 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { dictionary, isLocale } from '@/lib/i18n';
-import { searchPublicMarketplace, type SearchItem, type SearchScope } from '@/lib/api';
+import { getPublicProfessions, searchPublicMarketplace, type SearchDeliveryMode, type SearchItem, type SearchScope } from '@/lib/api';
 import { GeographyPicker } from '@/components/GeographyPicker';
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; scope?: string; country_id?: string; city_id?: string; profession_id?: string; cursor?: string }>;
+  searchParams: Promise<{ q?: string; scope?: string; country_id?: string; city_id?: string; profession_id?: string; delivery_mode?: string; cursor?: string }>;
 };
 
 export default async function Marketplace({ params, searchParams }: Props) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const t = dictionary[locale];
-  const { q: rawQ, scope: rawScope, country_id: rawCountryId, city_id: rawCityId, profession_id: rawProfessionId, cursor: rawCursor } = await searchParams;
+  const { q: rawQ, scope: rawScope, country_id: rawCountryId, city_id: rawCityId, profession_id: rawProfessionId, delivery_mode: rawDeliveryMode, cursor: rawCursor } = await searchParams;
   const q = typeof rawQ === 'string' ? rawQ.slice(0, 180).trim() : '';
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const countryId = typeof rawCountryId === 'string' && uuid.test(rawCountryId) ? rawCountryId : '';
   const cityId = countryId && typeof rawCityId === 'string' && uuid.test(rawCityId) ? rawCityId : '';
   const professionId = typeof rawProfessionId === 'string' && uuid.test(rawProfessionId) ? rawProfessionId.toLowerCase() : '';
+  const deliveryMode: SearchDeliveryMode = rawDeliveryMode === 'at_location' || rawDeliveryMode === 'at_customer' || rawDeliveryMode === 'online' ? rawDeliveryMode : 'any';
   const scope: SearchScope = rawScope === 'city' && cityId ? 'city' :
     rawScope === 'country' && countryId ? 'country' : 'global';
   const cursor = typeof rawCursor === 'string' && rawCursor.length <= 512 && /^[A-Za-z0-9_-]+$/.test(rawCursor) ? rawCursor : '';
+  let professions: Awaited<ReturnType<typeof getPublicProfessions>> = [];
+  try { professions = await getPublicProfessions(); } catch { /* Keep search usable when taxonomy is unavailable. */ }
   let nextCursor: string | null = null;
   let items: SearchItem[] = [];
   let error = false;
   if (q) {
     try {
-      const result = await searchPublicMarketplace(q, scope, {countryId, cityId}, undefined, cursor, professionId || undefined);
+      const result = await searchPublicMarketplace(q, scope, {countryId, cityId}, undefined, cursor, professionId || undefined, deliveryMode);
       items = result.items;
       nextCursor = result.next_cursor;
     } catch {
@@ -41,6 +44,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
     if (countryId) query.set('country_id', countryId);
     if (cityId) query.set('city_id', cityId);
     if (professionId) query.set('profession_id', professionId);
+    if (deliveryMode !== 'any') query.set('delivery_mode', deliveryMode);
     if (cursor) query.set('cursor', cursor);
     const suffix = query.size ? '?' + query.toString() : '';
     return '/' + next + suffix;
@@ -55,6 +59,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
       if (countryId) query.set('country_id', countryId); // UI context; API sends only city_id.
     }
     if (professionId) query.set('profession_id', professionId);
+    if (deliveryMode !== 'any') query.set('delivery_mode', deliveryMode);
     if (next) query.set('cursor', next);
     return '/' + locale + '?' + query.toString();
   };
@@ -77,7 +82,18 @@ export default async function Marketplace({ params, searchParams }: Props) {
             <input autoComplete="off" id="query" name="q" placeholder={t.searchPlaceholder} maxLength={180} defaultValue={q} />
             <button type="submit">{t.search}</button>
           </div>
-          {professionId && <input type="hidden" name="profession_id" value={professionId} />}
+          <label htmlFor="profession_id">{t.professionFilter}</label>
+          <select id="profession_id" name="profession_id" defaultValue={professionId}>
+            <option value="">{t.allProfessions}</option>
+            {professions.map(profession => <option key={profession.id} value={profession.id}>{profession.name}</option>)}
+          </select>
+          <label htmlFor="delivery_mode">{t.deliveryFilter}</label>
+          <select id="delivery_mode" name="delivery_mode" defaultValue={deliveryMode}>
+            <option value="any">{t.anyDelivery}</option>
+            <option value="at_location">{t.atLocation}</option>
+            <option value="at_customer">{t.atCustomer}</option>
+            <option value="online">{t.onlineDelivery}</option>
+          </select>
           <GeographyPicker locale={locale} initialCountryId={countryId}
             initialCityId={cityId} initialScope={scope} />
         </form>
