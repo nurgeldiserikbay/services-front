@@ -26,3 +26,10 @@ test('shared timeline uses bounded known states and never declares accepted time
  assert.match(rules,/pending:'Ожидает ответа исполнителя'/);
  assert.doesNotMatch(rules,/confirmed_at|scheduled_start_at|setTimeout|Date\.now/);
 });
+
+test('guest status ignores superseded in-flight replies and errors',()=>{
+ const component=src('components/GuestRequestStatusCheck.tsx');
+ assert.match(component,/controller\.signal\.aborted\|\|active\.current!==controller/);
+ assert.match(component,/!controller\.signal\.aborted&&active\.current===controller/);
+ assert.match(component,/!controller\.signal\.aborted&&active\.current===null\)setPending\(false\)/);
+});
