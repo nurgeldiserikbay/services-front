@@ -9,6 +9,9 @@ test('public search accepts opaque keyset cursors and forwards profession IDs', 
   assert.match(api, /cursor\.length > 512/);
   assert.match(api, /data\.next_cursor\.length <= 512/);
   assert.match(api, /url\.searchParams\.set\('profession_id', professionId\.toLowerCase\(\)\)/);
+  assert.match(api, /export async function getPublicProfessions\(\)/);
+  assert.match(api, /value\.length > 2000/);
+  assert.match(api, /typeof item\.code !== 'string'/);
   assert.doesNotMatch(api, /Number\(cursor\).*10000/);
 });
 
