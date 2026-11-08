@@ -31,6 +31,8 @@ jobs:
       SERVICES_API_BASE_URL: https://localhost:8443/v1
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/checkout@v4
         with:
           repository: nurgeldiserikbay/services-back
