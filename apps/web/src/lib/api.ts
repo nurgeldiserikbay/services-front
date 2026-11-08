@@ -16,6 +16,7 @@ export async function searchPublicMarketplace(
   location: {countryId?: string; cityId?: string} = {},
   signal?: AbortSignal,
   cursor?: string,
+  professionId?: string,
 ): Promise<SearchResponse> {
   const rawBase = process.env.SERVICES_API_BASE_URL;
   if (!rawBase) throw new Error('SERVICES_API_BASE_URL not configured');
@@ -27,8 +28,13 @@ export async function searchPublicMarketplace(
   if (scope === 'country' && location.countryId) url.searchParams.set('country_id',location.countryId);
   if (scope === 'city' && location.cityId) url.searchParams.set('city_id',location.cityId);
   url.searchParams.set('kind', 'all');
+  if (professionId) {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuid.test(professionId)) throw new Error('Invalid profession ID');
+    url.searchParams.set('profession_id', professionId.toLowerCase());
+  }
   if (cursor) {
-    if (!/^[0-9]{1,5}$/.test(cursor) || Number(cursor) > 10000) throw new Error('Invalid search cursor');
+    if (cursor.length > 512 || !/^[A-Za-z0-9_-]+$/.test(cursor)) throw new Error('Invalid search cursor');
     url.searchParams.set('cursor', cursor);
   }
   const response = await fetch(url, {
@@ -43,7 +49,7 @@ export async function searchPublicMarketplace(
       data.items.some((item: unknown) => !validItem(item)) ||
       !('next_cursor' in data) ||
       !(data.next_cursor === null || (typeof data.next_cursor === 'string' &&
-        /^[0-9]{1,5}$/.test(data.next_cursor) && Number(data.next_cursor) <= 10000))) {
+        data.next_cursor.length <= 512 && /^[A-Za-z0-9_-]+$/.test(data.next_cursor)))) {
     throw new Error('Unexpected search response');
   }
   return data as SearchResponse;
