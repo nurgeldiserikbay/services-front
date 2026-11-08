@@ -7,6 +7,7 @@ export interface SearchItem {
   slug?: string | null;
 }
 export interface SearchResponse { items: SearchItem[]; next_cursor: string | null }
+export interface ProfessionOption { id: string; code: string; name: string }
 export type SearchScope = 'city' | 'country' | 'global';
 
 /** Server-side only: never forward guest cookies or capabilities to public search. */
@@ -53,6 +54,33 @@ export async function searchPublicMarketplace(
     throw new Error('Unexpected search response');
   }
   return data as SearchResponse;
+}
+/** Read the canonical public taxonomy; never invent fallback professions. */
+export async function getPublicProfessions(): Promise<ProfessionOption[]> {
+  const response = await fetch(getPublicApiUrl('/professions'), {
+    cache: 'no-store',
+    headers: {Accept: 'application/json'},
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) throw new Error('Public professions unavailable');
+  const value: unknown = await response.json();
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!Array.isArray(value) || value.length > 500) throw new Error('Invalid public professions response');
+  const seen = new Set<string>();
+  const items: ProfessionOption[] = [];
+  for (const row of value) {
+    if (!row || typeof row !== 'object') throw new Error('Invalid public profession');
+    const item = row as Record<string, unknown>;
+    if (typeof item.id !== 'string' || !uuid.test(item.id) ||
+        typeof item.code !== 'string' || item.code.trim().length === 0 || item.code.length > 96 || item.code.split('').some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127) ||
+        typeof item.name !== 'string' || item.name.trim().length === 0 || item.name.length > 200 || item.name.split('').some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127) ||
+        seen.has(item.id.toLowerCase())) {
+      throw new Error('Invalid public profession');
+    }
+    seen.add(item.id.toLowerCase());
+    items.push({id: item.id.toLowerCase(), code: item.code, name: item.name});
+  }
+  return items;
 }
 function validItem(value: unknown): value is SearchItem {
   if (!value || typeof value !== 'object') return false;

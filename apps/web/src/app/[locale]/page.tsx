@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { dictionary, isLocale } from '@/lib/i18n';
-import { searchPublicMarketplace, type SearchItem, type SearchScope } from '@/lib/api';
+import { getPublicProfessions, searchPublicMarketplace, type SearchItem, type SearchScope } from '@/lib/api';
 import { GeographyPicker } from '@/components/GeographyPicker';
 
 type Props = {
@@ -22,18 +22,21 @@ export default async function Marketplace({ params, searchParams }: Props) {
   const scope: SearchScope = rawScope === 'city' && cityId ? 'city' :
     rawScope === 'country' && countryId ? 'country' : 'global';
   const cursor = typeof rawCursor === 'string' && rawCursor.length <= 512 && /^[A-Za-z0-9_-]+$/.test(rawCursor) ? rawCursor : '';
-  let nextCursor: string | null = null;
-  let items: SearchItem[] = [];
-  let error = false;
-  if (q) {
-    try {
-      const result = await searchPublicMarketplace(q, scope, {countryId, cityId}, undefined, cursor, professionId || undefined);
-      items = result.items;
-      nextCursor = result.next_cursor;
-    } catch {
-      error = true;
-    }
-  }
+  const [professionDirectory, search] = await Promise.all([
+    getPublicProfessions()
+      .then(items => ({items, error: false}))
+      .catch(() => ({items: [], error: true})),
+    q
+      ? searchPublicMarketplace(q, scope, {countryId, cityId}, undefined, cursor, professionId || undefined)
+          .then(result => ({result, error: false}))
+          .catch(() => ({result: null, error: true}))
+      : Promise.resolve({result: null, error: false}),
+  ]);
+  const professionOptions = professionDirectory.items;
+  const hasSelectedProfession = professionOptions.some(item => item.id === professionId);
+  const items: SearchItem[] = search.result?.items ?? [];
+  const nextCursor: string | null = search.result?.next_cursor ?? null;
+  const error = search.error;
   const localeLink = (next: 'kk' | 'ru') => {
     const query = new URLSearchParams();
     if (q) query.set('q', q);
@@ -77,7 +80,22 @@ export default async function Marketplace({ params, searchParams }: Props) {
             <input autoComplete="off" id="query" name="q" placeholder={t.searchPlaceholder} maxLength={180} defaultValue={q} />
             <button type="submit">{t.search}</button>
           </div>
-          {professionId && <input type="hidden" name="profession_id" value={professionId} />}
+          {professionOptions.length > 0 ? (
+            <fieldset className="professionPicker">
+              <legend>{t.profession}</legend>
+              <select id="profession_id" name="profession_id" defaultValue={hasSelectedProfession ? professionId : ''}>
+                <option value="">{t.allProfessions}</option>
+                {professionOptions.map(option => (
+                  <option key={option.id} value={option.id}>{option.name}</option>
+                ))}
+              </select>
+            </fieldset>
+          ) : (
+            <>
+              {professionId && <input type="hidden" name="profession_id" value={professionId} />}
+              {professionDirectory.error && <p role="status" className="professionError">{t.professionsUnavailable}</p>}
+            </>
+          )}
           <GeographyPicker locale={locale} initialCountryId={countryId}
             initialCityId={cityId} initialScope={scope} />
         </form>
