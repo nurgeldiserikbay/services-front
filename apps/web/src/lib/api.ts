@@ -8,6 +8,7 @@ export interface SearchItem {
 }
 export interface SearchResponse { items: SearchItem[]; next_cursor: string | null }
 export type SearchScope = 'city' | 'country' | 'global';
+export type SearchDeliveryMode = 'any' | 'at_location' | 'at_customer' | 'online';
 
 /** Server-side only: never forward guest cookies or capabilities to public search. */
 export async function searchPublicMarketplace(
@@ -17,6 +18,7 @@ export async function searchPublicMarketplace(
   signal?: AbortSignal,
   cursor?: string,
   professionId?: string,
+  deliveryMode: SearchDeliveryMode = 'any',
 ): Promise<SearchResponse> {
   const rawBase = process.env.SERVICES_API_BASE_URL;
   if (!rawBase) throw new Error('SERVICES_API_BASE_URL not configured');
@@ -28,6 +30,7 @@ export async function searchPublicMarketplace(
   if (scope === 'country' && location.countryId) url.searchParams.set('country_id',location.countryId);
   if (scope === 'city' && location.cityId) url.searchParams.set('city_id',location.cityId);
   url.searchParams.set('kind', 'all');
+  url.searchParams.set('delivery_mode', deliveryMode);
   if (professionId) {
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuid.test(professionId)) throw new Error('Invalid profession ID');
@@ -62,6 +65,11 @@ function validItem(value: unknown): value is SearchItem {
     && (x.slug === undefined || x.slug === null || typeof x.slug === 'string');
 }
 
+export interface PublicProfession {
+  id: string;
+  code: string;
+  name: string;
+}
 export interface PublicOffer {
   id: string;
   title: string;
@@ -113,6 +121,21 @@ function validOffers(x: unknown): x is PublicOffer[] {
     hasObject(o) && typeof o.id === 'string' && typeof o.title === 'string' &&
     ['at_location','at_customer','online','hybrid'].includes(String(o.delivery_mode)) &&
     (o.price_label === null || typeof o.price_label === 'string'));
+}
+export async function getPublicProfessions(): Promise<PublicProfession[]> {
+  const value = await readPublicResource('/professions');
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!Array.isArray(value) || value.length > 2000 || value.some((item: unknown) =>
+    !hasObject(item) || typeof item.id !== 'string' || !uuid.test(item.id) ||
+    typeof item.code !== 'string' || item.code.length === 0 ||
+    typeof item.name !== 'string' || item.name.length === 0)) {
+    throw new Error('Invalid profession taxonomy response');
+  }
+  return value.map((item) => ({
+    id: item.id.toLowerCase(),
+    code: item.code,
+    name: item.name,
+  }));
 }
 export async function getPublicProfessional(slug: string): Promise<PublicProfessional> {
   if (!/^[a-z0-9][a-z0-9-]{0,159}$/.test(slug)) throw new PublicResourceNotFound('Invalid slug');
