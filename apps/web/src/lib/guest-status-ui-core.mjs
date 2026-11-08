@@ -43,10 +43,40 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
   const declared=response.headers.get('content-length');
   if(declared!==null&&(!/^\d+$/.test(declared)||Number(declared)>MAX_STATUS_BYTES))
     throw new Error('guest_status_unavailable');
-  const data=await response.text();
-  if(new TextEncoder().encode(data).byteLength>MAX_STATUS_BYTES)
-    throw new Error('guest_status_unavailable');
-  return parsePrivateGuestStatus(JSON.parse(data),expectedId,expectedOfferId);
+  // Bound the actual stream before decoding: Content-Length is untrusted and
+  // response.text() would buffer an arbitrarily large private backend reply.
+  let data;
+  if(response.body&&typeof response.body.getReader==='function'){
+    const reader=response.body.getReader();
+    const chunks=[];
+    let total=0;
+    try{
+      while(true){
+        const {done,value}=await reader.read();
+        if(done)break;
+        if(!(value instanceof Uint8Array))throw new Error('guest_status_unavailable');
+        total+=value.byteLength;
+        if(total>MAX_STATUS_BYTES)throw new Error('guest_status_unavailable');
+        chunks.push(value);
+      }
+    }catch{
+      await reader.cancel().catch(()=>{});
+      throw new Error('guest_status_unavailable');
+    }finally{
+      reader.releaseLock();
+    }
+    const bytes=new Uint8Array(total);
+    let offset=0;
+    for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+    data=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  }else{
+    // Test doubles without a ReadableStream still receive post-read bounds.
+    data=await response.text();
+    if(new TextEncoder().encode(data).byteLength>MAX_STATUS_BYTES)
+      throw new Error('guest_status_unavailable');
+  }
+  try{return parsePrivateGuestStatus(JSON.parse(data),expectedId,expectedOfferId);}
+  catch{throw new Error('guest_status_unavailable');}
 }
 
 /** Only a strictly newer server version may replace a displayed status. */
