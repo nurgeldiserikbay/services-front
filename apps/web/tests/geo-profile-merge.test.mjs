@@ -13,7 +13,7 @@ test('public discovery retains geographic selection and links to published profi
   assert.match(page, /GeographyPicker/);
   assert.match(page, /country_id/);
   assert.match(page, /city_id/);
-  assert.match(page, /searchPublicMarketplace\(q, scope, \{countryId, cityId\}, undefined, cursor, professionId \|\| undefined\)/);
+  assert.match(page, /searchPublicMarketplace\(q, scope, \{countryId, cityId\}, undefined, cursor, professionId \|\| undefined, deliveryMode\)/);
   assert.match(page, /\/professionals\//);
   assert.match(page, /\/organizations\//);
   assert.match(page, /encodeURIComponent\(item\.slug\)/);
