@@ -68,7 +68,8 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
     const bytes=new Uint8Array(total);
     let offset=0;
     for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
-    data=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+    try{data=new TextDecoder('utf-8',{fatal:true}).decode(bytes)}
+    catch{throw new Error('guest_status_unavailable')}
   }else{
     // Test doubles without a ReadableStream still receive post-read bounds.
     data=await response.text();
