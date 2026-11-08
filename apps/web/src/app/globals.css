@@ -25,3 +25,8 @@
 .offerDetail section{padding-top:18px;border-top:1px solid var(--line)}
 .offerBack{color:var(--accent);font-weight:700;text-decoration:underline}
 
+
+.professionPicker{border:0;padding:0;margin:20px 0 0;max-width:390px}
+.professionPicker legend{font-size:.88rem;font-weight:700;margin-bottom:10px}
+.professionPicker select{width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text);font:inherit;padding:12px}
+.professionError{font-size:.82rem;color:var(--muted);margin:8px 0 0}
