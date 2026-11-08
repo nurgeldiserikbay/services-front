@@ -2,12 +2,18 @@ import assert from 'node:assert/strict';
 
 const webBase = process.env.WEB_BASE_URL ?? 'http://127.0.0.1:3000';
 const query = 'Stage 2 Journey';
+const requestTimeoutMs = 10_000;
+
+async function fetchPage(url, description) {
+  const response = await fetch(url, {signal: AbortSignal.timeout(requestTimeoutMs)});
+  assert.equal(response.status, 200, `${description} should render`);
+  assert.match(response.headers.get('content-type') ?? '', /text\/html/i, `${description} should return HTML`);
+  return response.text();
+}
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
-const searchResponse = await fetch(searchUrl);
-assert.equal(searchResponse.status, 200, 'localized search page should render');
-const searchHtml = await searchResponse.text();
+const searchHtml = await fetchPage(searchUrl, 'localized search page');
 assert.match(searchHtml, /<html lang="ru">/, 'document language should match the Russian route');
 assert.equal((searchHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1, 'search page should have one primary heading');
 assert.match(searchHtml, /<main class="shell">/, 'search content should have a main landmark');
@@ -23,9 +29,7 @@ function findHref(html, path) {
 
 const professionalHref = findHref(searchHtml, '/ru/professionals/ci-stage2-specialist');
 assert.ok(professionalHref, 'search result should link to the specialist profile');
-const professionalResponse = await fetch(new URL(professionalHref, webBase));
-assert.equal(professionalResponse.status, 200, 'specialist profile should render');
-const professionalHtml = await professionalResponse.text();
+const professionalHtml = await fetchPage(new URL(professionalHref, webBase), 'specialist profile');
 assert.match(professionalHtml, /<html lang="ru">/);
 assert.equal((professionalHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1, 'specialist page should have one primary heading');
 assert.match(professionalHtml, /<main class="shell publicDetail">/);
@@ -35,9 +39,7 @@ assert.match(professionalHtml, /<title>Stage 2 Journey Specialist — Services<\
 
 const companyHref = findHref(searchHtml, '/ru/organizations/10000000-0000-4000-8000-000000000006');
 assert.ok(companyHref, 'search result should link to the company profile');
-const companyResponse = await fetch(new URL(companyHref, webBase));
-assert.equal(companyResponse.status, 200, 'company profile should render');
-const companyHtml = await companyResponse.text();
+const companyHtml = await fetchPage(new URL(companyHref, webBase), 'company profile');
 assert.match(companyHtml, /<html lang="ru">/);
 assert.equal((companyHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1, 'company page should have one primary heading');
 assert.match(companyHtml, /<main class="shell publicDetail">/);
