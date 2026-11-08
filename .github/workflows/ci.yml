@@ -75,7 +75,7 @@ jobs:
         run: |
           (cd services-back && PORT=3101 npm start > "$RUNNER_TEMP/services-back.log" 2>&1 &)
           for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:3101/v1/professions >/dev/null; then exit 0; fi
+            if curl --connect-timeout 2 --max-time 5 --fail --silent http://127.0.0.1:3101/v1/professions >/dev/null; then exit 0; fi
             sleep 2
           done
           cat "$RUNNER_TEMP/services-back.log"
@@ -114,7 +114,7 @@ jobs:
           server.listen(8443, '127.0.0.1');
           NODE
           for attempt in {1..20}; do
-            if curl --cacert "$RUNNER_TEMP/api.crt" --fail --silent https://localhost:8443/v1/professions >/dev/null; then exit 0; fi
+            if curl --connect-timeout 2 --max-time 5 --cacert "$RUNNER_TEMP/api.crt" --fail --silent https://localhost:8443/v1/professions >/dev/null; then exit 0; fi
             sleep 1
           done
           exit 1
@@ -122,7 +122,7 @@ jobs:
         run: |
           (cd apps/web && pnpm start --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/services-front.log" 2>&1 &)
           for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:3000/ru >/dev/null; then exit 0; fi
+            if curl --connect-timeout 2 --max-time 5 --fail --silent http://127.0.0.1:3000/ru >/dev/null; then exit 0; fi
             sleep 2
           done
           cat "$RUNNER_TEMP/services-front.log"
