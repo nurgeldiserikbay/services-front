@@ -6,27 +6,28 @@ import { GeographyPicker } from '@/components/GeographyPicker';
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; scope?: string; country_id?: string; city_id?: string; cursor?: string }>;
+  searchParams: Promise<{ q?: string; scope?: string; country_id?: string; city_id?: string; profession_id?: string; cursor?: string }>;
 };
 
 export default async function Marketplace({ params, searchParams }: Props) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const t = dictionary[locale];
-  const { q: rawQ, scope: rawScope, country_id: rawCountryId, city_id: rawCityId, cursor: rawCursor } = await searchParams;
+  const { q: rawQ, scope: rawScope, country_id: rawCountryId, city_id: rawCityId, profession_id: rawProfessionId, cursor: rawCursor } = await searchParams;
   const q = typeof rawQ === 'string' ? rawQ.slice(0, 180).trim() : '';
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const countryId = typeof rawCountryId === 'string' && uuid.test(rawCountryId) ? rawCountryId : '';
   const cityId = countryId && typeof rawCityId === 'string' && uuid.test(rawCityId) ? rawCityId : '';
+  const professionId = typeof rawProfessionId === 'string' && uuid.test(rawProfessionId) ? rawProfessionId.toLowerCase() : '';
   const scope: SearchScope = rawScope === 'city' && cityId ? 'city' :
     rawScope === 'country' && countryId ? 'country' : 'global';
-  const cursor = typeof rawCursor === 'string' && /^[0-9]{1,5}$/.test(rawCursor) && Number(rawCursor) <= 10000 ? rawCursor : '';
+  const cursor = typeof rawCursor === 'string' && rawCursor.length <= 512 && /^[A-Za-z0-9_-]+$/.test(rawCursor) ? rawCursor : '';
   let nextCursor: string | null = null;
   let items: SearchItem[] = [];
   let error = false;
   if (q) {
     try {
-      const result = await searchPublicMarketplace(q, scope, {countryId, cityId}, undefined, cursor);
+      const result = await searchPublicMarketplace(q, scope, {countryId, cityId}, undefined, cursor, professionId || undefined);
       items = result.items;
       nextCursor = result.next_cursor;
     } catch {
@@ -39,6 +40,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
     query.set('scope', scope);
     if (countryId) query.set('country_id', countryId);
     if (cityId) query.set('city_id', cityId);
+    if (professionId) query.set('profession_id', professionId);
     if (cursor) query.set('cursor', cursor);
     const suffix = query.size ? '?' + query.toString() : '';
     return '/' + next + suffix;
@@ -52,6 +54,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
       query.set('city_id', cityId);
       if (countryId) query.set('country_id', countryId); // UI context; API sends only city_id.
     }
+    if (professionId) query.set('profession_id', professionId);
     if (next) query.set('cursor', next);
     return '/' + locale + '?' + query.toString();
   };
@@ -74,6 +77,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
             <input autoComplete="off" id="query" name="q" placeholder={t.searchPlaceholder} maxLength={180} defaultValue={q} />
             <button type="submit">{t.search}</button>
           </div>
+          {professionId && <input type="hidden" name="profession_id" value={professionId} />}
           <GeographyPicker locale={locale} initialCountryId={countryId}
             initialCityId={cityId} initialScope={scope} />
         </form>
@@ -97,9 +101,8 @@ export default async function Marketplace({ params, searchParams }: Props) {
               {item.is_sponsored && <span className="sponsored">{t.sponsored}</span>}
             </li>
           ))}</ul>}
-        {q && !error && (nextCursor || cursor) && <nav aria-label={t.pagination} className="pagination">
-          {cursor && <Link href={pageLink(String(Math.max(0, Number(cursor) - 50)))}>{t.previousPage}</Link>}
-          {nextCursor && <Link href={pageLink(nextCursor)}>{t.nextPage}</Link>}
+        {q && !error && nextCursor && <nav aria-label={t.pagination} className="pagination">
+          <Link href={pageLink(nextCursor)}>{t.nextPage}</Link>
         </nav>}
       </section>
       <footer>{t.footer}</footer>
