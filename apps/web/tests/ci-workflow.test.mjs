@@ -16,4 +16,6 @@ test('frontend CI protects the cross-repository integration journey',()=>{
   previous=index;
  }
  assert.match(workflow,/node apps\/web\/tests\/public-profile-journey\.e2e\.mjs/);
+ assert.ok(workflow.includes('curl --cacert "$RUNNER_TEMP/api.crt" --fail --silent https://localhost:8443/v1/professions'));
+ assert.doesNotMatch(workflow,/curl\\s+--insecure\\b/);
 });
