@@ -81,7 +81,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
       const result=await readPrivateGuestStatusResponse(
         response,requestId,serviceOfferId,
       );
-      if(controller.signal.aborted)return;
+      if(controller.signal.aborted||active.current!==controller)return;
       // Never regress the displayed status when out-of-order responses arrive.
       if(shouldReplaceGuestStatus(currentVersion.current,result.version)){
         currentVersion.current=result.version;
@@ -89,7 +89,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
         setVersion(result.version);
       }
     }catch{
-      if(!controller.signal.aborted){
+      if(!controller.signal.aborted&&active.current===controller){
         // An expired request capability or failed backend revalidation must
         // never leave a stale status looking like a fresh verified answer.
         currentVersion.current=null;
@@ -98,7 +98,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
     }finally{
       if(active.current===controller)active.current=null;
       if(active.current===null)busy.current=false;
-      if(!controller.signal.aborted)setPending(false);
+      if(!controller.signal.aborted&&active.current===null)setPending(false);
     }
   }
 
