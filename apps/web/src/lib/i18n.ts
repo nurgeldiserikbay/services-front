@@ -20,6 +20,8 @@ export const dictionary = {
     geoComingSoon: 'Қала мен елді таңдау географиялық каталог қосылғанда қолжетімді болады.',
     resultKinds: {professional: 'Маман', organization: 'Компания', offer: 'Қызмет'},
     backToSearch: 'Іздеуге қайту',
+    profileUnavailable: 'Профильді қазір жүктеу мүмкін болмады. Кейінірек қайталаңыз.',
+    profileLoading: 'Профиль жүктеліп жатыр…',
     publicOnlyNotice: 'Бұл бетте тек жария деректер көрсетіледі. Тапсырыс беру мен байланысу функциялары кейін қосылады.',
     results: 'Іздеу нәтижелері',
     pagination: 'Іздеу беттері', previousPage: 'Алдыңғы бет', nextPage: 'Келесі бет',
@@ -51,6 +53,8 @@ export const dictionary = {
     geoComingSoon: 'Выбор города и страны появится после подключения географического каталога.',
     resultKinds: {professional: 'Специалист', organization: 'Компания', offer: 'Услуга'},
     backToSearch: 'Назад к поиску',
+    profileUnavailable: 'Не удалось загрузить профиль. Повторите попытку позже.',
+    profileLoading: 'Загружаем профиль…'
     publicOnlyNotice: 'Здесь отображаются только опубликованные сведения. Отправка заявки и связь будут подключены отдельно.',
     results: 'Результаты поиска',
     pagination: 'Страницы поиска', previousPage: 'Назад', nextPage: 'Далее',
