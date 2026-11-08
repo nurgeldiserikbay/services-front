@@ -18,3 +18,13 @@ test('marketplace preserves profession filters and follows the server cursor', (
   assert.match(page, /pageLink\(nextCursor\)/);
   assert.doesNotMatch(page, /Number\(cursor\) - 50/);
 });
+
+test('marketplace filter controls forward and preserve profession and delivery selections', () => {
+  assert.match(api, /url\.searchParams\.set\('delivery_mode', deliveryMode\)/);
+  assert.match(api, /url\.searchParams\.set\('profession_id', professionId\.toLowerCase\(\)\)/);
+  assert.match(page, /getPublicProfessions\(\)/);
+  assert.match(page, /name="profession_id"/);
+  assert.match(page, /name="delivery_mode"/);
+  assert.match(page, /query\.set\('delivery_mode', deliveryMode\)/);
+  assert.match(page, /query\.set\('profession_id', professionId\)/);
+});
