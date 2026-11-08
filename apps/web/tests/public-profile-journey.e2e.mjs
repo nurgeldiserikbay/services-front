@@ -24,7 +24,12 @@ assert.match(searchHtml, /Stage 2 Journey Company Offer/, 'search should render 
 
 function findHref(html, path) {
   const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
-  return links.find((href) => href.includes(path));
+  const href = links.find((candidate) => {
+    const url = new URL(candidate, webBase);
+    return url.origin === new URL(webBase).origin && url.pathname === path;
+  });
+  assert.ok(href, `Expected same-origin link to ${path}`);
+  return href;
 }
 
 const professionalHref = findHref(searchHtml, '/ru/professionals/ci-stage2-specialist');
