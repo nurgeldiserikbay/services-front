@@ -22,7 +22,7 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       DATABASE_URL: postgresql://services:services@127.0.0.1:5432/services_test
-      SERVICES_API_BASE_URL: http://127.0.0.1:3101/v1
+      SERVICES_API_BASE_URL: https://localhost:8443/v1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -79,6 +79,41 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Create trusted HTTPS bridge to the test API
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout "$RUNNER_TEMP/api.key" \
+            -out "$RUNNER_TEMP/api.crt" -days 1 -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+          echo "NODE_EXTRA_CA_CERTS=$RUNNER_TEMP/api.crt" >> "$GITHUB_ENV"
+          TLS_KEY="$RUNNER_TEMP/api.key" TLS_CERT="$RUNNER_TEMP/api.crt" \
+            node --input-type=module <<'NODE' &
+          import fs from 'node:fs';
+          import http from 'node:http';
+          import https from 'node:https';
+          const server = https.createServer({
+            key: fs.readFileSync(process.env.TLS_KEY),
+            cert: fs.readFileSync(process.env.TLS_CERT),
+          }, (request, response) => {
+            const upstream = http.request({
+              hostname: '127.0.0.1', port: 3101, path: request.url,
+              method: request.method, headers: {...request.headers, host: '127.0.0.1:3101'},
+            }, (upstreamResponse) => {
+              response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
+              upstreamResponse.pipe(response);
+            });
+            upstream.on('error', () => {
+              response.writeHead(502);
+              response.end('test API unavailable');
+            });
+            request.pipe(upstream);
+          });
+          server.listen(8443, '127.0.0.1');
+          NODE
+          for attempt in {1..20}; do
+            if curl --insecure --fail --silent https://localhost:8443/v1/professions >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
       - name: Start frontend production server
         run: |
           (cd apps/web && pnpm start --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/services-front.log" 2>&1 &)
