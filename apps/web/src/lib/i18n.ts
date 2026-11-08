@@ -54,7 +54,7 @@ export const dictionary = {
     resultKinds: {professional: 'Специалист', organization: 'Компания', offer: 'Услуга'},
     backToSearch: 'Назад к поиску',
     profileUnavailable: 'Не удалось загрузить профиль. Повторите попытку позже.',
-    profileLoading: 'Загружаем профиль…'
+    profileLoading: 'Загружаем профиль…',
     publicOnlyNotice: 'Здесь отображаются только опубликованные сведения. Отправка заявки и связь будут подключены отдельно.',
     results: 'Результаты поиска',
     pagination: 'Страницы поиска', previousPage: 'Назад', nextPage: 'Далее',
