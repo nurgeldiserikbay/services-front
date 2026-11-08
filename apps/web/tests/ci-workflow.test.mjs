@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
 test('frontend CI protects the cross-repository integration journey',()=>{
- const workflow=readFileSync('../../.github/workflows/ci.yml','utf8');
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
  assert.match(workflow,/^permissions:\n  contents: read$/m);
  assert.match(workflow,/^    timeout-minutes: 30$/m);
  assert.match(workflow,/repository: nurgeldiserikbay\/services-back\n\s+ref: main\n\s+path: services-back\n\s+persist-credentials: false/);
