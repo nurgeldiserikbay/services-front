@@ -5,15 +5,88 @@ on:
 jobs:
   web:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: services_test
+          POSTGRES_USER: services
+          POSTGRES_PASSWORD: services
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U services -d services_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
     env:
       NEXT_TELEMETRY_DISABLED: '1'
+      DATABASE_URL: postgresql://services:services@127.0.0.1:5432/services_test
+      SERVICES_API_BASE_URL: http://127.0.0.1:3101/v1
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: nurgeldiserikbay/services-back
+          ref: main
+          path: services-back
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: corepack enable
       - run: pnpm install --no-frozen-lockfile
+      - name: Install and migrate backend test API
+        working-directory: services-back
+        run: |
+          npm install --no-audit --no-fund
+          npm run db:migrate
+          npm run db:seed:geo
+          npm run build
+      - name: Seed public search-to-profile fixtures
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO users(id) VALUES ('10000000-0000-4000-8000-000000000001');
+          INSERT INTO persons(id,user_id,display_name) VALUES
+            ('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','CI Specialist');
+          INSERT INTO professions(id,code,name) VALUES
+            ('10000000-0000-4000-8000-000000000003','ci-stage2-profession','Stage 2 CI Profession');
+          INSERT INTO service_definitions(id,code,name) VALUES
+            ('10000000-0000-4000-8000-000000000004','ci-stage2-service','Stage 2 CI Service');
+          INSERT INTO profession_services(profession_id,service_id) VALUES
+            ('10000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000004');
+          INSERT INTO professional_profiles(id,person_id,profession_id,slug,status,title) VALUES
+            ('10000000-0000-4000-8000-000000000005','10000000-0000-4000-8000-000000000002',
+             '10000000-0000-4000-8000-000000000003','ci-stage2-specialist','PUBLISHED','Stage 2 Journey Specialist');
+          INSERT INTO organizations(id,owner_person_id,slug,name,status) VALUES
+            ('10000000-0000-4000-8000-000000000006','10000000-0000-4000-8000-000000000002',
+             'ci-stage2-company','Stage 2 Journey Company','ACTIVE');
+          INSERT INTO service_offers(id,definition_id,professional_id,title,status,delivery_mode,contacts) VALUES
+            ('10000000-0000-4000-8000-000000000007','10000000-0000-4000-8000-000000000004',
+             '10000000-0000-4000-8000-000000000005','Stage 2 Journey Specialist Offer','PUBLISHED','online','{}'::jsonb);
+          INSERT INTO service_offers(id,definition_id,organization_id,title,status,delivery_mode,contacts) VALUES
+            ('10000000-0000-4000-8000-000000000008','10000000-0000-4000-8000-000000000004',
+             '10000000-0000-4000-8000-000000000006','Stage 2 Journey Company Offer','PUBLISHED','online','{}'::jsonb);
+          SQL
+      - name: Start backend test API
+        run: |
+          (cd services-back && PORT=3101 npm start > "$RUNNER_TEMP/services-back.log" 2>&1 &)
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3101/v1/professions >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/services-back.log"
+          exit 1
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Start frontend production server
+        run: |
+          (cd apps/web && pnpm start --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/services-front.log" 2>&1 &)
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/ru >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/services-front.log"
+          exit 1
+      - name: Verify live search-to-profile journey
+        run: node apps/web/tests/public-profile-journey.e2e.mjs
