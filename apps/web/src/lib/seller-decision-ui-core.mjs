@@ -15,7 +15,11 @@ export function buildSellerDecisionRequest(requestId,action,version,key){
 
 /** Validate the exact backend decision receipt before updating UI state. */
 export function parseSellerDecisionReceipt(value,requestId,action,expectedVersion){
-  if(!value||typeof value!=='object'||Array.isArray(value)||
+  if(typeof requestId!=='string'||!UUID.test(requestId)||
+     (action!=='accept'&&action!=='decline')||
+     !Number.isSafeInteger(expectedVersion)||expectedVersion<1||
+     expectedVersion>=Number.MAX_SAFE_INTEGER||
+     !value||typeof value!=='object'||Array.isArray(value)||
      Object.keys(value).length!==4||
      Object.keys(value).some(k=>!['id','state','version','replayed'].includes(k))||
      value.id!==requestId||
