@@ -8,7 +8,7 @@ import {PublicOffers} from '@/components/PublicOffers';
 type Params={params:Promise<{locale:string;id:string}>};
 async function load(id:string) {
   try{return await getPublicOrganization(id)}
-  catch(err){if(err instanceof PublicResourceNotFound)notFound();throw err}
+  catch(err){if(err instanceof PublicResourceNotFound)notFound();return null}
 }
 export async function generateMetadata({params}:Params):Promise<Metadata>{
   const {locale,id}=await params;
@@ -26,11 +26,13 @@ export default async function OrganizationPage({params}:Params){
   return <main className="shell publicDetail">
     <header className="header"><Link className="brand" href={'/'+locale}>Services<span className="brandDot">.</span></Link>
       <Link href={'/'+locale}>{t.backToSearch}</Link></header>
-    <section className="publicDetailHero">
-      <p className="eyebrow">{t.resultKinds.organization}</p>
-      <h1>{organization.name}</h1>
-      <p className="intro">{t.publicOnlyNotice}</p>
-    </section>
-    <PublicOffers locale={locale} offers={organization.offers}/>
+    {organization ? <>
+      <section className="publicDetailHero">
+        <p className="eyebrow">{t.resultKinds.organization}</p>
+        <h1>{organization.name}</h1>
+        <p className="intro">{t.publicOnlyNotice}</p>
+      </section>
+      <PublicOffers locale={locale} offers={organization.offers}/>
+    </> : <p role="alert" className="message">{t.profileUnavailable}</p>}
   </main>;
 }
