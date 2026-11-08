@@ -72,8 +72,8 @@ export async function getPublicProfessions(): Promise<ProfessionOption[]> {
     if (!row || typeof row !== 'object') throw new Error('Invalid public profession');
     const item = row as Record<string, unknown>;
     if (typeof item.id !== 'string' || !uuid.test(item.id) ||
-        typeof item.code !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,119}$/.test(item.code) ||
-        typeof item.name !== 'string' || item.name.trim().length === 0 || item.name.length > 200 ||
+        typeof item.code !== 'string' || item.code.trim().length === 0 || item.code.length > 96 || /[\\u0000-\\u001f\\u007f]/.test(item.code) ||
+        typeof item.name !== 'string' || item.name.trim().length === 0 || item.name.length > 200 || /[\\u0000-\\u001f\\u007f]/.test(item.name) ||
         seen.has(item.id.toLowerCase())) {
       throw new Error('Invalid public profession');
     }
