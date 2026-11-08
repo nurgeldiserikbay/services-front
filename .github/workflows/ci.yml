@@ -2,9 +2,12 @@ name: Frontend foundation CI
 on:
   push:
   pull_request:
+permissions:
+  contents: read
 jobs:
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -30,6 +33,7 @@ jobs:
           repository: nurgeldiserikbay/services-back
           ref: main
           path: services-back
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
