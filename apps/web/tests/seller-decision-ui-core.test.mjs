@@ -34,3 +34,15 @@ test('seller decision receipt rejects stale, cross-request and extra fields',()=
     {...valid,replayed:'false'},{...valid,contact:'private'},
   ])assert.throws(()=>parseSellerDecisionReceipt(bad,id,'decline',1));
 });
+
+test('seller receipt rejects malformed expected request context before UI update',()=>{
+ const valid={id,state:'declined',version:2,replayed:false};
+ for(const args of [
+  [valid,'not-a-uuid','decline',1],
+  [valid,id,'cancel',1],
+  [valid,id,'decline',0],
+  [valid,id,'decline',1.5],
+  [valid,id,'decline',Number.MAX_SAFE_INTEGER],
+  [valid,id,'decline',NaN],
+ ])assert.throws(()=>parseSellerDecisionReceipt(...args),/invalid_seller_decision_receipt/);
+});
