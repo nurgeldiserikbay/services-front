@@ -68,7 +68,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
     <main className="shell">
       <header className="header">
         <Link className="brand" href={'/' + locale}>{t.brand}<span className="brandDot">.</span></Link>
-        <nav className="language" aria-label="Language">
+        <nav className="language" aria-label={t.languageNavigation}>
           <Link href={localeLink('kk')} aria-current={locale === 'kk' ? 'page' : undefined}>ҚАЗ</Link>
           <Link href={localeLink('ru')} aria-current={locale === 'ru' ? 'page' : undefined}>РУС</Link>
         </nav>
