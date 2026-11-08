@@ -5,6 +5,7 @@ import test from 'node:test';
 test('frontend CI protects the cross-repository integration journey',()=>{
  const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
  assert.match(workflow,/^permissions:\n  contents: read$/m);
+ assert.equal((workflow.match(/persist-credentials: false/g) ?? []).length,2,'both checkouts must avoid persisted credentials');
  assert.match(workflow,/^    timeout-minutes: 30$/m);
  assert.match(workflow,/^concurrency:\n  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}\n  cancel-in-progress: true$/m);
  assert.match(workflow,/repository: nurgeldiserikbay\/services-back\n\s+ref: main\n\s+path: services-back\n\s+persist-credentials: false/);
