@@ -33,7 +33,7 @@ export function parseSellerDecisionReceipt(value,requestId,action,expectedVersio
 /** Reuse a retry key only for the exact same decision context. */
 export function nextSellerDecisionAttempt(previous,requestId,version,action,newKey){
   if(typeof requestId!=='string'||!UUID.test(requestId)||
-     !Number.isSafeInteger(version)||version<1||
+     !Number.isSafeInteger(version)||version<1||version>=Number.MAX_SAFE_INTEGER||
      !['accept','decline'].includes(action)||
      typeof newKey!=='string'||!UUID.test(newKey))
     throw new Error('invalid_seller_decision');
