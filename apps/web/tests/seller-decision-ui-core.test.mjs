@@ -72,4 +72,8 @@ test('stale seller responses never match a changed request or version',()=>{
  assert.equal(isCurrentSellerDecisionResponse(2,2,id,otherId,3,3),false);
  assert.equal(isCurrentSellerDecisionResponse(2,2,id,id,3,4),false);
  assert.equal(isCurrentSellerDecisionResponse(-1,-1,id,id,3,3),false);
+ assert.equal(isCurrentSellerDecisionResponse(2,NaN,id,id,3,3),false);
+ assert.equal(isCurrentSellerDecisionResponse(2,2,'invalid','invalid',3,3),false);
+ assert.equal(isCurrentSellerDecisionResponse(2,2,id,id,0,0),false);
+ assert.equal(isCurrentSellerDecisionResponse(2,2,id,id,Number.MAX_SAFE_INTEGER,Number.MAX_SAFE_INTEGER),false);
 });
