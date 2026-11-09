@@ -56,7 +56,10 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
         requestId,context.current.requestId,version,context.current.version))return;
       const verified=parseSellerDecisionReceipt(result,requestId,action,version);
       pendingKey.current=null;
-      onSuccess(verified);
+      // A parent callback error must not be mistaken for a failed server decision.
+      try{onSuccess(verified);}catch(error){
+        console.error('Seller decision committed, but parent update failed',error);
+      }
     }catch{
       if(isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
         requestId,context.current.requestId,version,context.current.version))setError(true);
