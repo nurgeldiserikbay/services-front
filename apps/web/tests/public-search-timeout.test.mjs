@@ -134,3 +134,29 @@ test('public search rejects a pending fetch when the caller cancels', async () =
     else process.env.SERVICES_API_BASE_URL = previousBase;
   }
 });
+
+test('public search rejects when its network timeout fires', async () => {
+  const previousBase = process.env.SERVICES_API_BASE_URL;
+  const previousFetch = globalThis.fetch;
+  const originalTimeout = AbortSignal.timeout;
+  process.env.SERVICES_API_BASE_URL = 'https://api.example.test/v1';
+  const timeoutController = new AbortController();
+  try {
+    AbortSignal.timeout = (milliseconds) => {
+      assert.equal(milliseconds, 5000);
+      return timeoutController.signal;
+    };
+    globalThis.fetch = (_url, {signal}) => new Promise((_resolve, reject) => {
+      if (signal.aborted) return reject(signal.reason);
+      signal.addEventListener('abort', () => reject(signal.reason), {once: true});
+    });
+    const pending = searchPublicMarketplace('plumber', 'global');
+    timeoutController.abort(new Error('network timeout'));
+    await assert.rejects(pending, /network timeout/);
+  } finally {
+    AbortSignal.timeout = originalTimeout;
+    globalThis.fetch = previousFetch;
+    if (previousBase === undefined) delete process.env.SERVICES_API_BASE_URL;
+    else process.env.SERVICES_API_BASE_URL = previousBase;
+  }
+});
