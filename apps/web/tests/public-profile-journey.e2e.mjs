@@ -203,6 +203,8 @@ async function expectNotFound(path, description) {
   }
 }
 
+await expectNotFound('/ru/services/10000000-0000-4000-8000-000000000099', 'unknown Russian offer');
+await expectNotFound('/kk/services/10000000-0000-4000-8000-000000000099', 'unknown Kazakh offer');
 await expectNotFound('/ru/professionals/ci-stage2-unpublished', 'unknown specialist');
 await expectNotFound(
   '/ru/organizations/10000000-0000-4000-8000-000000000099',
