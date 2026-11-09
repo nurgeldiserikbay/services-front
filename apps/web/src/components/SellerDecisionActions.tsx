@@ -31,6 +31,8 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   const pendingKey=useRef<{requestId:string;version:number;action:Decision;key:string}|null>(null);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState(false);
+  const [committed,setCommitted]=useState(false);
+  const committedRef=useRef(false);
   const context=useRef({requestId,version});
   const generation=useRef(0);
   // Invalidate only committed context changes; rendering must remain pure.
@@ -42,11 +44,13 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       locked.current=false;
       setBusy(false);
       setError(false);
+      committedRef.current=false;
+      setCommitted(false);
     }
   },[requestId,version]);
   useEffect(()=>()=>{generation.current++;},[]);
   async function submit(action:Decision){
-    if(locked.current||!validContext)return;
+    if(locked.current||committedRef.current||!validContext)return;
     if(action==='decline'&&!window.confirm(t.confirm))return;
     const attemptGeneration=generation.current;
     locked.current=true;setBusy(true);setError(false);
@@ -59,6 +63,9 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
         requestId,context.current.requestId,version,context.current.version))return;
       const verified=parseSellerDecisionReceipt(result,requestId,action,version);
       pendingKey.current=null;
+      // A committed decision cannot be submitted again before parent context refreshes.
+      committedRef.current=true;
+      setCommitted(true);
       // A parent callback error must not be mistaken for a failed server decision.
       try{onSuccess(verified);}catch(error){
         console.error('Seller decision committed, but parent update failed',error);
@@ -75,7 +82,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   }
   return <div>
     <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:12}}>
-      <button type="button" disabled={busy||!validContext} onClick={()=>void submit('accept')}>
+      <button type="button" disabled={busy||committed||!validContext} onClick={()=>void submit('accept')}>
         {busy?t.working:t.accept}
       </button>
       <button type="button" disabled={busy||!validContext} onClick={()=>void submit('decline')}>
