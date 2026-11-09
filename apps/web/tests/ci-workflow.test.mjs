@@ -8,7 +8,9 @@ test('frontend CI protects the cross-repository integration journey',()=>{
  assert.equal((workflow.match(/persist-credentials: false/g) ?? []).length,2,'both checkouts must avoid persisted credentials');
  assert.match(workflow,/^    timeout-minutes: 30$/m);
  assert.match(workflow,/^concurrency:\n  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}\n  cancel-in-progress: true$/m);
- assert.match(workflow,/repository: nurgeldiserikbay\/services-back\n\s+ref: main\n\s+path: services-back\n\s+persist-credentials: false/);
+ // The full immutable checkout SHA is validated in backend-ci-pin.test.mjs.
+ assert.match(workflow,/repository: nurgeldiserikbay\/services-back/);
+ assert.match(workflow,/\s+path: services-back\n\s+persist-credentials: false/);
  const gates=['npm run db:migrate','npm run db:seed:geo','pnpm typecheck','pnpm test','pnpm build','Verify live search-to-profile journey'];
  let previous=-1;
  for(const gate of gates){
