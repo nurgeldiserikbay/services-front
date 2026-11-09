@@ -47,6 +47,10 @@ export function nextSellerDecisionAttempt(previous,requestId,version,action,newK
 export function isCurrentSellerDecisionResponse(attemptGeneration,currentGeneration,
   attemptedRequestId,currentRequestId,attemptedVersion,currentVersion){
   return Number.isSafeInteger(attemptGeneration)&&attemptGeneration>=0&&
+    Number.isSafeInteger(currentGeneration)&&currentGeneration>=0&&
+    typeof attemptedRequestId==='string'&&UUID.test(attemptedRequestId)&&
     attemptGeneration===currentGeneration&&
-    attemptedRequestId===currentRequestId&&attemptedVersion===currentVersion;
+    attemptedRequestId===currentRequestId&&
+    Number.isSafeInteger(attemptedVersion)&&attemptedVersion>=1&&
+    attemptedVersion<Number.MAX_SAFE_INTEGER&&attemptedVersion===currentVersion;
 }
