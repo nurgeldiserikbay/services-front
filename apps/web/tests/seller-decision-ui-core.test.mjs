@@ -99,3 +99,14 @@ test('invalid prior idempotency keys are never reused',()=>{
      /invalid_seller_decision/);
  }
 });
+
+test('request metadata canonicalizes UUIDs without weakening receipt identity',()=>{
+ const upperId=id.toUpperCase();
+ const upperKey=key.toUpperCase();
+ const request=buildSellerDecisionRequest(upperId,'accept',1,upperKey);
+ assert.equal(request.path,`/v1/requests/${id}/accept`);
+ assert.equal(request.headers['Idempotency-Key'],key);
+ assert.throws(()=>parseSellerDecisionReceipt({
+   id,state:'accepted',version:2,replayed:false,
+ },upperId,'accept',1),/invalid_seller_decision_receipt/);
+});
