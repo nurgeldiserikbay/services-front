@@ -37,10 +37,16 @@ and unpublished/missing profile isolation. Next.js streaming not-found responses
 can carry HTTP 200; the E2E gate requires a `noindex` marker and absence of
 published-profile content in that case.
 
-**This is not a staging or production sign-off.** The CI checks out backend
-`main` at runtime rather than pinning an immutable backend SHA, so the backend
-commit above is separately observed evidence, not a cryptographically pinned
-dependency of the frontend run. Admin is not included in that public journey.
+**This is not a staging or production sign-off.** The historical evidence table above
+records earlier runs, before the backend was pinned. Frontend CI now checks out
+backend commit `60fa93314c7251b8a261a4f8f5090a8da6665305` for a reproducible
+cross-repository integration baseline (Frontend commit `fadff9ed7c573f6ba5844b6d35cc343663a40c0b`).
+To adopt a later backend release: select a backend commit whose audit and
+build-and-test jobs both passed; update the checkout `ref` in
+`.github/workflows/ci.yml`; rerun frontend build, unit and live public-journey
+integration checks; and record both exact SHAs with CI links. This pin is not
+an automatic compatibility guarantee when the backend is updated.
+Admin is not included in that public journey.
 The full authenticated request lifecycle, OTP provider integration, cancellation,
 notifications, role/permission boundaries, concurrency, PWA offline and
 Capacitor/device acceptance still require end-to-end evidence before enabling
