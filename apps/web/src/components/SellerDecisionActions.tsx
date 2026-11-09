@@ -32,6 +32,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState(false);
   const [committed,setCommitted]=useState(false);
+  const [committedState,setCommittedState]=useState<Decision|null>(null);
   const committedRef=useRef(false);
   const context=useRef({requestId,version});
   const generation=useRef(0);
@@ -46,6 +47,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       setError(false);
       committedRef.current=false;
       setCommitted(false);
+      setCommittedState(null);
     }
   },[requestId,version]);
   useEffect(()=>()=>{generation.current++;},[]);
@@ -66,6 +68,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       // A committed decision cannot be submitted again before parent context refreshes.
       committedRef.current=true;
       setCommitted(true);
+      setCommittedState(action);
       // A parent callback error must not be mistaken for a failed server decision.
       try{onSuccess(verified);}catch(error){
         console.error('Seller decision committed, but parent update failed',error);
@@ -90,6 +93,9 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       </button>
     </div>
     {busy&&<span role="status" aria-live="polite" style={{position:'absolute',width:1,height:1,overflow:'hidden',clipPath:'inset(50%)'}}>{t.working}</span>}
+    {committedState&&<p role="status" aria-live="polite">{committedState==='accept'?
+      (locale==='kk'?'Өтінім қабылданды':'Заявка принята'):
+      (locale==='kk'?'Өтінім қабылданбады':'Заявка отклонена')}</p>}
     {error&&<p role="alert">{t.failed}</p>}
   </div>;
 }
