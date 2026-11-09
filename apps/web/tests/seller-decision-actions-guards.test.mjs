@@ -37,3 +37,8 @@ test('both seller decision buttons display processing label while busy',()=>{
  assert.match(component,/\{busy\?t\.working:t\.accept\}/);
  assert.match(component,/\{busy\?t\.working:t\.decline\}/);
 });
+
+test('seller action validates request ID type before matching UUID syntax',()=>{
+ assert.match(component,/typeof requestId==='string'&&/);
+ assert.match(component,/!validContext\)return/);
+});
