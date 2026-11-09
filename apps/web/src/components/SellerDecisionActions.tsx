@@ -25,15 +25,17 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
 }){
   const t=copy[locale];
   const locked=useRef(false);
-  const pendingKey=useRef<{action:Decision;key:string}|null>(null);
+  const pendingKey=useRef<{requestId:string;version:number;action:Decision;key:string}|null>(null);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState(false);
   async function submit(action:Decision){
     if(locked.current)return;
     if(action==='decline'&&!window.confirm(t.confirm))return;
     locked.current=true;setBusy(true);setError(false);
-    if(pendingKey.current?.action!==action){
-      pendingKey.current={action,key:crypto.randomUUID()};
+    if(pendingKey.current?.action!==action||
+       pendingKey.current.requestId!==requestId||
+       pendingKey.current.version!==version){
+      pendingKey.current={requestId,version,action,key:crypto.randomUUID()};
     }
     try{
       const result=await onDecision(requestId,action,version,pendingKey.current.key);
