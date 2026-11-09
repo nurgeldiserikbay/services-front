@@ -44,9 +44,10 @@ export async function searchPublicMarketplace(
     if (cursor.length > 512 || !/^[A-Za-z0-9_-]+$/.test(cursor)) throw new Error('Invalid search cursor');
     url.searchParams.set('cursor', cursor);
   }
+  const timeout = AbortSignal.timeout(5000);
   const response = await fetch(url, {
     cache: 'no-store',
-    signal,
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     headers: { Accept: 'application/json' },
   });
   if (!response.ok) throw new Error('Public search unavailable');
