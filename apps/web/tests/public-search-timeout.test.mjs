@@ -89,3 +89,28 @@ test('public search rejects malformed API responses', async () => {
     else process.env.SERVICES_API_BASE_URL = previousBase;
   }
 });
+
+test('public search enforces a five-second timeout budget', async () => {
+  const previousBase = process.env.SERVICES_API_BASE_URL;
+  const previousFetch = globalThis.fetch;
+  const originalTimeout = AbortSignal.timeout;
+  process.env.SERVICES_API_BASE_URL = 'https://api.example.test/v1';
+  const durations = [];
+  try {
+    AbortSignal.timeout = (milliseconds) => {
+      durations.push(milliseconds);
+      return originalTimeout(milliseconds);
+    };
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({items: [], next_cursor: null}),
+    });
+    await searchPublicMarketplace('plumber', 'global');
+    assert.deepEqual(durations, [5000]);
+  } finally {
+    AbortSignal.timeout = originalTimeout;
+    globalThis.fetch = previousFetch;
+    if (previousBase === undefined) delete process.env.SERVICES_API_BASE_URL;
+    else process.env.SERVICES_API_BASE_URL = previousBase;
+  }
+});
