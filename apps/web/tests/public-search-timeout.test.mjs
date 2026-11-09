@@ -114,3 +114,23 @@ test('public search enforces a five-second timeout budget', async () => {
     else process.env.SERVICES_API_BASE_URL = previousBase;
   }
 });
+
+test('public search rejects a pending fetch when the caller cancels', async () => {
+  const previousBase = process.env.SERVICES_API_BASE_URL;
+  const previousFetch = globalThis.fetch;
+  process.env.SERVICES_API_BASE_URL = 'https://api.example.test/v1';
+  const controller = new AbortController();
+  try {
+    globalThis.fetch = (_url, {signal}) => new Promise((_resolve, reject) => {
+      if (signal.aborted) return reject(signal.reason);
+      signal.addEventListener('abort', () => reject(signal.reason), {once: true});
+    });
+    const pending = searchPublicMarketplace('plumber', 'global', {}, controller.signal);
+    controller.abort(new Error('caller cancelled'));
+    await assert.rejects(pending, /caller cancelled/);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousBase === undefined) delete process.env.SERVICES_API_BASE_URL;
+    else process.env.SERVICES_API_BASE_URL = previousBase;
+  }
+});
