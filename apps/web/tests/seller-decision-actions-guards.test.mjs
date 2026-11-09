@@ -27,3 +27,8 @@ test('invalid request context gives actionable bilingual error feedback',()=>{
  assert.match(component,/Өтінім деректері жарамсыз/);
  assert.match(component,/Данные заявки недействительны/);
 });
+
+test('both seller action buttons expose their busy state to assistive technology',()=>{
+ const matches=component.match(/aria-busy=\{busy\} disabled=\{busy\|\|committed\|\|!validContext\}/g)??[];
+ assert.equal(matches.length,2);
+});
