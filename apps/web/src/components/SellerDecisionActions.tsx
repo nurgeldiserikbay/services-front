@@ -96,6 +96,9 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
     {committedState&&<p role="status" aria-live="polite">{committedState==='accept'?
       (locale==='kk'?'Өтінім қабылданды':'Заявка принята'):
       (locale==='kk'?'Өтінім қабылданбады':'Заявка отклонена')}</p>}
+    {!validContext&&<p role="alert">{locale==='kk'?
+      'Өтінім деректері жарамсыз. Бетті жаңартыңыз.':
+      'Данные заявки недействительны. Обновите страницу.'}</p>}
     {error&&<p role="alert">{t.failed}</p>}
   </div>;
 }
