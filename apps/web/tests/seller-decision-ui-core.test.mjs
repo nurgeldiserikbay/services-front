@@ -59,5 +59,8 @@ test('decision retries reuse keys only for identical request version and action'
    assert.equal(next.key,otherKey);
    assert.notEqual(next,first);
  }
+ for(const invalidVersion of [0,-1,1.5,NaN,Number.MAX_SAFE_INTEGER]){
+   assert.throws(()=>nextSellerDecisionAttempt(first,id,invalidVersion,'accept',otherKey),/invalid_seller_decision/);
+ }
  assert.throws(()=>nextSellerDecisionAttempt(first,'bad',1,'accept',otherKey));
 });
