@@ -89,7 +89,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
         {busy?t.working:t.accept}
       </button>
       <button type="button" aria-busy={busy} disabled={busy||committed||!validContext} onClick={()=>void submit('decline')}>
-        {t.decline}
+        {busy?t.working:t.decline}
       </button>
     </div>
     {busy&&<span role="status" aria-live="polite" style={{position:'absolute',width:1,height:1,overflow:'hidden',clipPath:'inset(50%)'}}>{t.working}</span>}
