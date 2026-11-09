@@ -101,12 +101,19 @@ test('invalid prior idempotency keys are never reused',()=>{
 });
 
 test('request metadata canonicalizes UUIDs without weakening receipt identity',()=>{
- const upperId=id.toUpperCase();
- const upperKey=key.toUpperCase();
+ // Alphabetic hex digits are required: numeric-only UUIDs have identical upper/lowercase forms.
+ const mixedId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const mixedKey='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ const upperId=mixedId.toUpperCase();
+ const upperKey=mixedKey.toUpperCase();
  const request=buildSellerDecisionRequest(upperId,'accept',1,upperKey);
- assert.equal(request.path,`/v1/requests/${id}/accept`);
- assert.equal(request.headers['Idempotency-Key'],key);
+ assert.equal(request.path,`/v1/requests/${mixedId}/accept`);
+ assert.equal(request.headers['Idempotency-Key'],mixedKey);
+ // The response must match the exact expected request context, not merely a UUID ignoring case.
  assert.throws(()=>parseSellerDecisionReceipt({
-   id,state:'accepted',version:2,replayed:false,
+   id:mixedId,state:'accepted',version:2,replayed:false,
  },upperId,'accept',1),/invalid_seller_decision_receipt/);
+ assert.deepEqual(parseSellerDecisionReceipt({
+   id:mixedId,state:'accepted',version:2,replayed:false,
+ },mixedId,'accept',1),{id:mixedId,state:'accepted',version:2,replayed:false});
 });
