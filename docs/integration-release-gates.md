@@ -22,5 +22,29 @@ Status: **unverified / default off**. A merged feature does not imply an enabled
 - PWA offline and Capacitor native shell are separate acceptance targets; never claim them from Next.js SSR build alone.
 - Record backend/frontend commit SHAs, API contract version, CI links and staging sign-off.
 
+
+## Verified CI evidence — 2026-11-09
+
+| Component | Commit | CI result |
+| --- | --- | --- |
+| Backend | `d61979f0474e77083a39026595383846c040bf95` | [passed](https://github.com/nurgeldiserikbay/services-back/actions/runs/42564674158) |
+| Frontend | `1759838c73dc64b3c9801c3f000ae48e4e38a171` | [passed](https://github.com/nurgeldiserikbay/services-front/actions/runs/42566470762) |
+| Admin | `10af6d84bfd7a37c230215cdbcc049dc7842e993` | [passed](https://github.com/nurgeldiserikbay/services-admin/actions/runs/42562591327) |
+
+The frontend workflow checks a real PostgreSQL-backed backend and production Next.js
+server for Kazakh/Russian public search, specialist and organization profiles,
+and unpublished/missing profile isolation. Next.js streaming not-found responses
+can carry HTTP 200; the E2E gate requires a `noindex` marker and absence of
+published-profile content in that case.
+
+**This is not a staging or production sign-off.** The CI checks out backend
+`main` at runtime rather than pinning an immutable backend SHA, so the backend
+commit above is separately observed evidence, not a cryptographically pinned
+dependency of the frontend run. Admin is not included in that public journey.
+The full authenticated request lifecycle, OTP provider integration, cancellation,
+notifications, role/permission boundaries, concurrency, PWA offline and
+Capacitor/device acceptance still require end-to-end evidence before enabling
+the corresponding release gates.
+
 ## Dependencies
 F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ingress. F2 depends on backend request state machine, notification outbox and tested DB migrations. Do not enable default-off features to bypass gates.
