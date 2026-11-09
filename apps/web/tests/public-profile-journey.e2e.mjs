@@ -58,6 +58,26 @@ if (apiBase) {
   }
 }
 
+// Exercise the real production Next.js BFF route, not just source-level
+// feature-gate assertions. CI intentionally leaves guest creation disabled.
+const disabledCreate = await fetch(new URL('/api/guest-requests', webBase), {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({service_offer_id: '10000000-0000-4000-8000-000000000007'}),
+  signal: AbortSignal.timeout(requestTimeoutMs),
+  redirect: 'manual',
+});
+assert.equal(disabledCreate.status, 404,
+  'guest creation must be unavailable before explicit release approval');
+assert.match(disabledCreate.headers.get('cache-control') ?? '', /no-store/,
+  'private guest endpoint must never be cached');
+assert.match(disabledCreate.headers.get('x-robots-tag') ?? '', /noindex/,
+  'guest endpoint must not be indexed');
+const disabledBody = await disabledCreate.text();
+assert.doesNotMatch(disabledBody, /(?:request_capability|create_capability|csrf_token)/i,
+  'disabled endpoint must not expose guest secrets');
+console.log('[journey] guest creation remains default-off and non-cacheable');
+
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
