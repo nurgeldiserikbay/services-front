@@ -88,3 +88,14 @@ test('decision receipts reject missing fields and prototype-shaped payloads',()=
  ])assert.throws(()=>parseSellerDecisionReceipt(bad,id,'accept',1),
    /invalid_seller_decision_receipt/);
 });
+
+test('invalid prior idempotency keys are never reused',()=>{
+ const invalidPrior={requestId:id,version:1,action:'accept',key:'not-a-uuid'};
+ const next=nextSellerDecisionAttempt(invalidPrior,id,1,'accept',otherKey);
+ assert.equal(next.key,otherKey);
+ assert.notEqual(next,invalidPrior);
+ for(const bad of [null,{},'not-a-uuid',42]){
+   assert.throws(()=>nextSellerDecisionAttempt(null,id,1,'accept',bad),
+     /invalid_seller_decision/);
+ }
+});
