@@ -77,3 +77,14 @@ test('stale seller responses never match a changed request or version',()=>{
  assert.equal(isCurrentSellerDecisionResponse(2,2,id,id,0,0),false);
  assert.equal(isCurrentSellerDecisionResponse(2,2,id,id,Number.MAX_SAFE_INTEGER,Number.MAX_SAFE_INTEGER),false);
 });
+
+test('decision receipts reject missing fields and prototype-shaped payloads',()=>{
+ const valid={id,state:'accepted',version:2,replayed:false};
+ for(const bad of [null,undefined,[],{},
+   {id,state:'accepted',version:2},
+   {...valid,replayed:null},
+   {...valid,version:'2'},
+   {...valid,__proto__:null,extra:'unsafe'},
+ ])assert.throws(()=>parseSellerDecisionReceipt(bad,id,'accept',1),
+   /invalid_seller_decision_receipt/);
+});
