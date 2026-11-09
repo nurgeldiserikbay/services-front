@@ -30,3 +30,9 @@ export function nextSellerDecisionAttempt(
   previous:SellerDecisionAttempt|null,
   requestId:string,version:number,action:SellerDecisionAction,newKey:string,
 ):SellerDecisionAttempt;
+
+export function isCurrentSellerDecisionResponse(
+  attemptGeneration:number,currentGeneration:number,
+  attemptedRequestId:string,currentRequestId:string,
+  attemptedVersion:number,currentVersion:number,
+):boolean;
