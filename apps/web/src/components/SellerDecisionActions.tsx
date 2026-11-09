@@ -24,6 +24,9 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   onSuccess:(result:Result)=>void;
 }){
   const t=copy[locale];
+  const validContext=Number.isSafeInteger(version)&&version>=1&&
+    version<Number.MAX_SAFE_INTEGER&&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId);
   const locked=useRef(false);
   const pendingKey=useRef<{requestId:string;version:number;action:Decision;key:string}|null>(null);
   const [busy,setBusy]=useState(false);
@@ -43,7 +46,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   },[requestId,version]);
   useEffect(()=>()=>{generation.current++;},[]);
   async function submit(action:Decision){
-    if(locked.current)return;
+    if(locked.current||!validContext)return;
     if(action==='decline'&&!window.confirm(t.confirm))return;
     const attemptGeneration=generation.current;
     locked.current=true;setBusy(true);setError(false);
@@ -72,13 +75,14 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   }
   return <div>
     <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:12}}>
-      <button type="button" disabled={busy} onClick={()=>void submit('accept')}>
+      <button type="button" disabled={busy||!validContext} onClick={()=>void submit('accept')}>
         {busy?t.working:t.accept}
       </button>
       <button type="button" disabled={busy} onClick={()=>void submit('decline')}>
         {t.decline}
       </button>
     </div>
+    {busy&&<span role="status" aria-live="polite" style={{position:'absolute',width:1,height:1,overflow:'hidden',clipPath:'inset(50%)'}}>{t.working}</span>}
     {error&&<p role="alert">{t.failed}</p>}
   </div>;
 }
