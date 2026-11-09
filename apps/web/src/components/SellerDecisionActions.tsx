@@ -2,7 +2,7 @@
 
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
-import {nextSellerDecisionAttempt,parseSellerDecisionReceipt} from '@/lib/seller-decision-ui-core.mjs';
+import {isCurrentSellerDecisionResponse,nextSellerDecisionAttempt,parseSellerDecisionReceipt} from '@/lib/seller-decision-ui-core.mjs';
 
 type Decision='accept'|'decline';
 type Result={id:string;state:'accepted'|'declined';version:number;replayed:boolean};
@@ -52,14 +52,19 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
         pendingKey.current,requestId,version,action,crypto.randomUUID(),
       );
       const result=await onDecision(requestId,action,version,pendingKey.current.key);
-      if(generation.current!==attemptGeneration)return;
+      if(!isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
+        requestId,context.current.requestId,version,context.current.version))return;
       const verified=parseSellerDecisionReceipt(result,requestId,action,version);
       pendingKey.current=null;
       onSuccess(verified);
     }catch{
-      if(generation.current===attemptGeneration)setError(true);
+      if(isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
+        requestId,context.current.requestId,version,context.current.version))setError(true);
     }finally{
-      if(generation.current===attemptGeneration){locked.current=false;setBusy(false);}
+      if(isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
+        requestId,context.current.requestId,version,context.current.version)){
+        locked.current=false;setBusy(false);
+      }
     }
   }
   return <div>
