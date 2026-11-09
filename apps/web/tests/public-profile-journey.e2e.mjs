@@ -43,6 +43,21 @@ if (apiBase) {
   }
 }
 
+// Confirm the backend itself does not publish unknown resources, independent of
+// Next.js streaming status codes and SEO handling.
+if (apiBase) {
+  for (const endpoint of [
+    '/professionals/ci-stage2-unpublished',
+    '/organizations/10000000-0000-4000-8000-000000000099',
+  ]) {
+    const url = new URL(apiBase.replace(/\/$/, '') + endpoint);
+    const response = await fetch(url, {signal: AbortSignal.timeout(requestTimeoutMs)});
+    assert.equal(response.status, 404,
+      `Backend must not expose unknown public resource ${endpoint}; got ${response.status}`);
+    console.log(`[journey] API hidden resource OK: ${endpoint} (404)`);
+  }
+}
+
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
