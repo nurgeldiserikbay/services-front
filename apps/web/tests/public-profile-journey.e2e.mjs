@@ -118,6 +118,22 @@ for (const [locale, profileHtml, offerId, title] of [
     'guest request form must not mount without explicitly enabled rollout gates');
 }
 
+// Validate the same offer journey in Kazakh, not just the search and
+// seller profiles. This catches locale-specific broken offer links.
+for (const [profilePath, offerId, title] of [
+  ['/kk/professionals/ci-stage2-specialist', '10000000-0000-4000-8000-000000000007', 'Stage 2 Journey Specialist Offer'],
+  ['/kk/organizations/10000000-0000-4000-8000-000000000006', '10000000-0000-4000-8000-000000000008', 'Stage 2 Journey Company Offer'],
+]) {
+  const profileHtml = await fetchPage(new URL(profilePath, webBase), 'Kazakh offer-link source');
+  const offerHref = findHref(profileHtml, `/kk/services/${offerId}`);
+  const offerHtml = await fetchPage(new URL(offerHref, webBase), 'Kazakh published offer');
+  assert.match(offerHtml, /<html lang="kk">/);
+  assert.ok(offerHtml.includes(`<h1>${title}</h1>`),
+    'Kazakh offer must show the real published title');
+  assert.doesNotMatch(offerHtml, /<form[^>]*class="[^"]*guest/i,
+    'guest form must remain disabled without explicit rollout gates');
+}
+
 const kazakhSearchUrl = new URL('/kk', webBase);
 kazakhSearchUrl.searchParams.set('q', query);
 const kazakhSearchHtml = await fetchPage(kazakhSearchUrl, 'Kazakh localized search page');
