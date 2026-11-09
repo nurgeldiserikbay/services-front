@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import {nextSellerDecisionAttempt,parseSellerDecisionReceipt} from '@/lib/seller-decision-ui-core.mjs';
 
@@ -30,18 +30,18 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   const [error,setError]=useState(false);
   const context=useRef({requestId,version});
   const generation=useRef(0);
-  // Invalidate older responses synchronously on render, not only after effects.
-  if(context.current.requestId!==requestId||context.current.version!==version){
-    context.current={requestId,version};
-    generation.current++;
-    pendingKey.current=null;
-    locked.current=false;
-  }
-  useEffect(()=>{
-    setBusy(false);
-    setError(false);
-    return ()=>{generation.current++;};
+  // Invalidate only committed context changes; rendering must remain pure.
+  useLayoutEffect(()=>{
+    if(context.current.requestId!==requestId||context.current.version!==version){
+      context.current={requestId,version};
+      generation.current++;
+      pendingKey.current=null;
+      locked.current=false;
+      setBusy(false);
+      setError(false);
+    }
   },[requestId,version]);
+  useEffect(()=>()=>{generation.current++;},[]);
   async function submit(action:Decision){
     if(locked.current)return;
     if(action==='decline'&&!window.confirm(t.confirm))return;
