@@ -21,3 +21,9 @@ test('committed decision feedback is localized and reset with request context',(
  assert.match(component,/Заявка отклонена/);
  assert.match(component,/committedState&&<p role="status" aria-live="polite">/);
 });
+
+test('invalid request context gives actionable bilingual error feedback',()=>{
+ assert.match(component,/!validContext&&<p role="alert">/);
+ assert.match(component,/Өтінім деректері жарамсыз/);
+ assert.match(component,/Данные заявки недействительны/);
+});
