@@ -6,6 +6,9 @@ const component=readFileSync(new URL('../src/components/SellerDecisionActions.ts
 
 test('both seller decision buttons fail closed on invalid request context',()=>{
  assert.match(component,/if\(locked\.current\|\|!validContext\)return/);
- assert.match(component,/disabled=\{busy\|\|!validContext\} onClick=\{\(\)=>void submit\('accept'\)\}/);
- assert.match(component,/disabled=\{busy\|\|!validContext\} onClick=\{\(\)=>void submit\('decline'\)\}/);
+ assert.match(component,/disabled=\{busy\|\|committed\|\|!validContext\} onClick=\{\(\)=>void submit\('accept'\)\}/);
+ assert.match(component,/disabled=\{busy\|\|committed\|\|!validContext\} onClick=\{\(\)=>void submit\('decline'\)\}/);
+ assert.match(component,/if\(locked\.current\|\|committedRef\.current\|\|!validContext\)return/);
+ assert.match(component,/committedRef\.current=true/);
+ assert.match(component,/committedRef\.current=false/);
 });
