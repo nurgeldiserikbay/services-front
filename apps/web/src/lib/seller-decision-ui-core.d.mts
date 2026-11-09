@@ -19,3 +19,14 @@ export function buildSellerDecisionRequest(
 export function parseSellerDecisionReceipt(
   value:unknown,requestId:string,action:SellerDecisionAction,expectedVersion:number,
 ):SellerDecisionReceipt;
+
+export type SellerDecisionAttempt=Readonly<{
+  requestId:string;
+  version:number;
+  action:SellerDecisionAction;
+  key:string;
+}>;
+export function nextSellerDecisionAttempt(
+  previous:SellerDecisionAttempt|null,
+  requestId:string,version:number,action:SellerDecisionAction,newKey:string,
+):SellerDecisionAttempt;
