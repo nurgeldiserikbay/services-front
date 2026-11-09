@@ -1,6 +1,6 @@
 'use client';
 
-import {useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import {nextSellerDecisionAttempt,parseSellerDecisionReceipt} from '@/lib/seller-decision-ui-core.mjs';
 
@@ -28,21 +28,39 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   const pendingKey=useRef<{requestId:string;version:number;action:Decision;key:string}|null>(null);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState(false);
+  const context=useRef({requestId,version});
+  const generation=useRef(0);
+  // Invalidate older responses synchronously on render, not only after effects.
+  if(context.current.requestId!==requestId||context.current.version!==version){
+    context.current={requestId,version};
+    generation.current++;
+    pendingKey.current=null;
+    locked.current=false;
+  }
+  useEffect(()=>{
+    setBusy(false);
+    setError(false);
+    return ()=>{generation.current++;};
+  },[requestId,version]);
   async function submit(action:Decision){
     if(locked.current)return;
     if(action==='decline'&&!window.confirm(t.confirm))return;
+    const attemptGeneration=generation.current;
     locked.current=true;setBusy(true);setError(false);
     pendingKey.current=nextSellerDecisionAttempt(
       pendingKey.current,requestId,version,action,crypto.randomUUID(),
     );
     try{
       const result=await onDecision(requestId,action,version,pendingKey.current.key);
+      if(generation.current!==attemptGeneration)return;
       const verified=parseSellerDecisionReceipt(result,requestId,action,version);
       pendingKey.current=null;
       onSuccess(verified);
     }catch{
-      setError(true);
-    }finally{locked.current=false;setBusy(false);}
+      if(generation.current===attemptGeneration)setError(true);
+    }finally{
+      if(generation.current===attemptGeneration){locked.current=false;setBusy(false);}
+    }
   }
   return <div>
     <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:12}}>
