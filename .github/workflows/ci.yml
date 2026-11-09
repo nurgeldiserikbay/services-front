@@ -51,6 +51,11 @@ jobs:
           npm run db:migrate
           npm run db:seed:geo
           npm run build
+      - name: Install PostgreSQL client and verify migrated schema
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          test "$(psql "$DATABASE_URL" -Atc 'SELECT current_database()')" = services_test
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT to_regclass('public.users'), to_regclass('public.professional_profiles'), to_regclass('public.service_offers');"
       - name: Seed public search-to-profile fixtures
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
