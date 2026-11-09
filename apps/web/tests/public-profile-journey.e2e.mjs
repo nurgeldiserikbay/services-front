@@ -66,4 +66,21 @@ assert.match(kazakhSearchHtml, /Stage 2 Journey Company Offer/,
 findHref(kazakhSearchHtml, '/kk/professionals/ci-stage2-specialist');
 findHref(kazakhSearchHtml, '/kk/organizations/10000000-0000-4000-8000-000000000006');
 
+const kazakhProfessionalHref = findHref(kazakhSearchHtml, '/kk/professionals/ci-stage2-specialist');
+const kazakhProfessionalHtml = await fetchPage(
+  new URL(kazakhProfessionalHref, webBase), 'Kazakh specialist profile');
+assert.match(kazakhProfessionalHtml, /<html lang="kk">/);
+assert.equal((kazakhProfessionalHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1,
+  'Kazakh specialist profile should have one primary heading');
+assert.match(kazakhProfessionalHtml, /Stage 2 Journey Specialist Offer/);
+
+const kazakhCompanyHref = findHref(
+  kazakhSearchHtml, '/kk/organizations/10000000-0000-4000-8000-000000000006');
+const kazakhCompanyHtml = await fetchPage(
+  new URL(kazakhCompanyHref, webBase), 'Kazakh company profile');
+assert.match(kazakhCompanyHtml, /<html lang="kk">/);
+assert.equal((kazakhCompanyHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1,
+  'Kazakh company profile should have one primary heading');
+assert.match(kazakhCompanyHtml, /Stage 2 Journey Company Offer/);
+
 console.log('Live Kazakh/Russian search → specialist and company profiles: passed');
