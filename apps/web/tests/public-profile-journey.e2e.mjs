@@ -5,10 +5,20 @@ const query = 'Stage 2 Journey';
 const requestTimeoutMs = 10_000;
 
 async function fetchPage(url, description) {
-  const response = await fetch(url, {signal: AbortSignal.timeout(requestTimeoutMs)});
-  assert.equal(response.status, 200, `${description} should render`);
-  assert.match(response.headers.get('content-type') ?? '', /text\/html/i, `${description} should return HTML`);
-  return response.text();
+  console.log(`[journey] GET ${description}: ${url}`);
+  let response;
+  try {
+    response = await fetch(url, {signal: AbortSignal.timeout(requestTimeoutMs)});
+  } catch (error) {
+    throw new Error(`${description} request failed at ${url}: ${error?.message ?? error}`, {cause: error});
+  }
+  const body = await response.text();
+  assert.equal(response.status, 200,
+    `${description} should render at ${url}; received ${response.status}; body: ${body.slice(0, 500)}`);
+  assert.match(response.headers.get('content-type') ?? '', /text\/html/i,
+    `${description} should return HTML at ${url}`);
+  console.log(`[journey] OK ${description} (${response.status})`);
+  return body;
 }
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
