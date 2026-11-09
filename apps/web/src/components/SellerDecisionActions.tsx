@@ -2,7 +2,7 @@
 
 import {useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
-import {parseSellerDecisionReceipt} from '@/lib/seller-decision-ui-core.mjs';
+import {nextSellerDecisionAttempt,parseSellerDecisionReceipt} from '@/lib/seller-decision-ui-core.mjs';
 
 type Decision='accept'|'decline';
 type Result={id:string;state:'accepted'|'declined';version:number;replayed:boolean};
@@ -32,11 +32,9 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
     if(locked.current)return;
     if(action==='decline'&&!window.confirm(t.confirm))return;
     locked.current=true;setBusy(true);setError(false);
-    if(pendingKey.current?.action!==action||
-       pendingKey.current.requestId!==requestId||
-       pendingKey.current.version!==version){
-      pendingKey.current={requestId,version,action,key:crypto.randomUUID()};
-    }
+    pendingKey.current=nextSellerDecisionAttempt(
+      pendingKey.current,requestId,version,action,crypto.randomUUID(),
+    );
     try{
       const result=await onDecision(requestId,action,version,pendingKey.current.key);
       const verified=parseSellerDecisionReceipt(result,requestId,action,version);
