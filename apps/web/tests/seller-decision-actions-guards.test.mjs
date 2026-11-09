@@ -32,3 +32,8 @@ test('both seller action buttons expose their busy state to assistive technology
  const matches=component.match(/aria-busy=\{busy\} disabled=\{busy\|\|committed\|\|!validContext\}/g)??[];
  assert.equal(matches.length,2);
 });
+
+test('both seller decision buttons display processing label while busy',()=>{
+ assert.match(component,/\{busy\?t\.working:t\.accept\}/);
+ assert.match(component,/\{busy\?t\.working:t\.decline\}/);
+});
