@@ -42,3 +42,11 @@ export function nextSellerDecisionAttempt(previous,requestId,version,action,newK
     return previous;
   return {requestId,version,action,key:newKey};
 }
+
+/** A response is usable only for the same mounted request context. */
+export function isCurrentSellerDecisionResponse(attemptGeneration,currentGeneration,
+  attemptedRequestId,currentRequestId,attemptedVersion,currentVersion){
+  return Number.isSafeInteger(attemptGeneration)&&attemptGeneration>=0&&
+    attemptGeneration===currentGeneration&&
+    attemptedRequestId===currentRequestId&&attemptedVersion===currentVersion;
+}
