@@ -121,7 +121,18 @@ async function expectNotFound(path, description) {
   const response = await fetch(new URL(path, webBase), {
     signal: AbortSignal.timeout(requestTimeoutMs),
   });
-  assert.equal(response.status, 404, `${description} must not be publicly visible`);
+  const html = await response.text();
+  // Next.js may return HTTP 200 after streaming has started even when
+  // notFound() renders its 404 boundary. Require explicit noindex in that case.
+  if (response.status === 200) {
+    assert.match(html, /<meta[^>]+name="robots"[^>]+content="noindex"/i,
+      `${description} streamed not-found page must be noindex`);
+    assert.doesNotMatch(html, /class="publicDetailHero"/,
+      `${description} must not expose a published profile`);
+  } else {
+    assert.equal(response.status, 404,
+      `${description} must return 404 or a noindex streaming not-found page`);
+  }
 }
 
 await expectNotFound('/ru/professionals/ci-stage2-unpublished', 'unknown specialist');
