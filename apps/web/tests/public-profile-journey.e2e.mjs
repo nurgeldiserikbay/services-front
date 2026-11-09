@@ -20,6 +20,29 @@ async function fetchPage(url, description) {
   console.log(`[journey] OK ${description} (${response.status})`);
   return body;
 }
+// Fail early with the actual API status instead of a misleading missing-HTML assertion.
+const apiBase = process.env.SERVICES_API_BASE_URL;
+if (apiBase) {
+  for (const [endpoint, expected] of [
+    ['/search?q=Stage%202%20Journey&scope=global&kind=all', 'items'],
+    ['/professionals/ci-stage2-specialist', 'offers'],
+    ['/organizations/10000000-0000-4000-8000-000000000006', 'offers'],
+  ]) {
+    const url = new URL(apiBase.replace(/\/$/, '') + endpoint);
+    console.log(`[journey] API preflight: ${url.pathname}`);
+    const response = await fetch(url, {signal: AbortSignal.timeout(requestTimeoutMs)});
+    const body = await response.text();
+    assert.equal(response.status, 200,
+      `API ${url.pathname} returned ${response.status}: ${body.slice(0, 500)}`);
+    let payload;
+    try { payload = JSON.parse(body); }
+    catch { throw new Error(`API ${url.pathname} returned invalid JSON`); }
+    assert.ok(payload && typeof payload === 'object' && expected in payload,
+      `API ${url.pathname} missing ${expected}; body: ${body.slice(0, 500)}`);
+    console.log(`[journey] API OK: ${url.pathname}`);
+  }
+}
+
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
