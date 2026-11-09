@@ -85,7 +85,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   }
   return <div>
     <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:12}}>
-      <button type="button" disabled={busy||committed||!validContext} onClick={()=>void submit('accept')}>
+      <button type="button" aria-busy={busy} disabled={busy||committed||!validContext} onClick={()=>void submit('accept')}>
         {busy?t.working:t.accept}
       </button>
       <button type="button" disabled={busy||committed||!validContext} onClick={()=>void submit('decline')}>
