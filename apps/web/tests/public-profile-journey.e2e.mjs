@@ -57,7 +57,7 @@ const kazakhSearchUrl = new URL('/kk', webBase);
 kazakhSearchUrl.searchParams.set('q', query);
 const kazakhSearchHtml = await fetchPage(kazakhSearchUrl, 'Kazakh localized search page');
 assert.match(kazakhSearchHtml, /<html lang="kk">/, 'Kazakh route should declare its language');
-assert.equal((kazakhSearchHtml.match(/<h1(?:\\s|>)/g) ?? []).length, 1,
+assert.equal((kazakhSearchHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1,
   'Kazakh search page should have one primary heading');
 assert.match(kazakhSearchHtml, /Stage 2 Journey Specialist Offer/,
   'Kazakh search should render the specialist result');
