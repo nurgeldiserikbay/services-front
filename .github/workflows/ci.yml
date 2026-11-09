@@ -151,5 +151,5 @@ jobs:
           fi
           echo '=== PostgreSQL migration status ==='
           if [ -d services-back ]; then
-            (cd services-back && npm run db:migrate:status) || true
+            (cd services-back && npx prisma migrate status) || true
           fi
