@@ -47,10 +47,10 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
     if(action==='decline'&&!window.confirm(t.confirm))return;
     const attemptGeneration=generation.current;
     locked.current=true;setBusy(true);setError(false);
-    pendingKey.current=nextSellerDecisionAttempt(
-      pendingKey.current,requestId,version,action,crypto.randomUUID(),
-    );
     try{
+      pendingKey.current=nextSellerDecisionAttempt(
+        pendingKey.current,requestId,version,action,crypto.randomUUID(),
+      );
       const result=await onDecision(requestId,action,version,pendingKey.current.key);
       if(generation.current!==attemptGeneration)return;
       const verified=parseSellerDecisionReceipt(result,requestId,action,version);
