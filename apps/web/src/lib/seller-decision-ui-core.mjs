@@ -29,3 +29,16 @@ export function parseSellerDecisionReceipt(value,requestId,action,expectedVersio
     throw new Error('invalid_seller_decision_receipt');
   return {id:value.id,state:value.state,version:value.version,replayed:value.replayed};
 }
+
+/** Reuse a retry key only for the exact same decision context. */
+export function nextSellerDecisionAttempt(previous,requestId,version,action,newKey){
+  if(typeof requestId!=='string'||!UUID.test(requestId)||
+     !Number.isSafeInteger(version)||version<1||
+     !['accept','decline'].includes(action)||
+     typeof newKey!=='string'||!UUID.test(newKey))
+    throw new Error('invalid_seller_decision');
+  if(previous?.requestId===requestId&&previous.version===version&&
+     previous.action===action&&typeof previous.key==='string'&&UUID.test(previous.key))
+    return previous;
+  return {requestId,version,action,key:newKey};
+}
