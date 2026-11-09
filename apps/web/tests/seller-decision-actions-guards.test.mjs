@@ -11,3 +11,13 @@ test('both seller decision buttons fail closed on invalid request context',()=>{
  assert.match(component,/committedRef\.current=true/);
  assert.match(component,/committedRef\.current=false/);
 });
+
+test('committed decision feedback is localized and reset with request context',()=>{
+ assert.match(component,/setCommittedState\(action\)/);
+ assert.match(component,/setCommittedState\(null\)/);
+ assert.match(component,/Өтінім қабылданды/);
+ assert.match(component,/Заявка принята/);
+ assert.match(component,/Өтінім қабылданбады/);
+ assert.match(component,/Заявка отклонена/);
+ assert.match(component,/committedState&&<p role="status" aria-live="polite">/);
+});
