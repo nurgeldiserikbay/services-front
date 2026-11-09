@@ -36,7 +36,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: nurgeldiserikbay/services-back
-          ref: main
+          # Tested backend baseline; update deliberately together with frontend API contracts.
+          # Avoid a moving main branch changing frontend CI inputs between runs.
+          ref: 60fa93314c7251b8a261a4f8f5090a8da6665305
           path: services-back
           persist-credentials: false
       - uses: actions/setup-node@v4
