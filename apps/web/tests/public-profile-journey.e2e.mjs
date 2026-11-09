@@ -83,4 +83,23 @@ assert.equal((kazakhCompanyHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1,
   'Kazakh company profile should have one primary heading');
 assert.match(kazakhCompanyHtml, /Stage 2 Journey Company Offer/);
 
+
+async function expectNotFound(path, description) {
+  const response = await fetch(new URL(path, webBase), {
+    signal: AbortSignal.timeout(requestTimeoutMs),
+  });
+  assert.equal(response.status, 404, `${description} must not be publicly visible`);
+}
+
+await expectNotFound('/ru/professionals/ci-stage2-unpublished', 'unknown specialist');
+await expectNotFound(
+  '/ru/organizations/10000000-0000-4000-8000-000000000099',
+  'unknown company',
+);
+await expectNotFound('/kk/professionals/ci-stage2-unpublished', 'unknown Kazakh specialist');
+await expectNotFound(
+  '/kk/organizations/10000000-0000-4000-8000-000000000099',
+  'unknown Kazakh company',
+);
+
 console.log('Live Kazakh/Russian search → specialist and company profiles: passed');
