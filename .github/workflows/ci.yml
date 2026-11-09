@@ -134,3 +134,22 @@ jobs:
           exit 1
       - name: Verify live search-to-profile journey
         run: node apps/web/tests/public-profile-journey.e2e.mjs
+      - name: Collect integration diagnostics on failure
+        if: failure()
+        run: |
+          echo '=== Backend API log (last 150 lines) ==='
+          if [ -f "$RUNNER_TEMP/services-back.log" ]; then
+            tail -n 150 "$RUNNER_TEMP/services-back.log"
+          else
+            echo 'Backend log was not created'
+          fi
+          echo '=== Frontend server log (last 150 lines) ==='
+          if [ -f "$RUNNER_TEMP/services-front.log" ]; then
+            tail -n 150 "$RUNNER_TEMP/services-front.log"
+          else
+            echo 'Frontend log was not created'
+          fi
+          echo '=== PostgreSQL migration status ==='
+          if [ -d services-back ]; then
+            (cd services-back && npm run db:migrate:status) || true
+          fi
