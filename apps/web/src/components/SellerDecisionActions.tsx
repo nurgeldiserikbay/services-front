@@ -78,7 +78,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       <button type="button" disabled={busy||!validContext} onClick={()=>void submit('accept')}>
         {busy?t.working:t.accept}
       </button>
-      <button type="button" disabled={busy} onClick={()=>void submit('decline')}>
+      <button type="button" disabled={busy||!validContext} onClick={()=>void submit('decline')}>
         {t.decline}
       </button>
     </div>
