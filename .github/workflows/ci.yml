@@ -55,7 +55,16 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
           test "$(psql "$DATABASE_URL" -Atc 'SELECT current_database()')" = services_test
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT to_regclass('public.users'), to_regclass('public.professional_profiles'), to_regclass('public.service_offers');"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          BEGIN
+            IF to_regclass('public.users') IS NULL OR
+               to_regclass('public.professional_profiles') IS NULL OR
+               to_regclass('public.service_offers') IS NULL THEN
+              RAISE EXCEPTION 'Missing migrated tables required by frontend fixtures';
+            END IF;
+          END $verify$;
+          SQL
       - name: Seed public search-to-profile fixtures
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
