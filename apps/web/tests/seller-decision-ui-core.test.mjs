@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {buildSellerDecisionRequest,parseSellerDecisionReceipt} from '../src/lib/seller-decision-ui-core.mjs';
+import {buildSellerDecisionRequest,parseSellerDecisionReceipt,nextSellerDecisionAttempt} from '../src/lib/seller-decision-ui-core.mjs';
 
 const id='11111111-1111-4111-8111-111111111111';
 const key='22222222-2222-4222-8222-222222222222';
@@ -45,4 +45,19 @@ test('seller receipt rejects malformed expected request context before UI update
   [valid,id,'decline',Number.MAX_SAFE_INTEGER],
   [valid,id,'decline',NaN],
  ])assert.throws(()=>parseSellerDecisionReceipt(...args),/invalid_seller_decision_receipt/);
+});
+
+const otherId='33333333-3333-4333-8333-333333333333';
+const otherKey='44444444-4444-4444-8444-444444444444';
+test('decision retries reuse keys only for identical request version and action',()=>{
+ const first=nextSellerDecisionAttempt(null,id,1,'accept',key);
+ assert.equal(nextSellerDecisionAttempt(first,id,1,'accept',otherKey),first);
+ for(const [requestId,version,action] of [
+   [otherId,1,'accept'],[id,2,'accept'],[id,1,'decline'],
+ ]){
+   const next=nextSellerDecisionAttempt(first,requestId,version,action,otherKey);
+   assert.equal(next.key,otherKey);
+   assert.notEqual(next,first);
+ }
+ assert.throws(()=>nextSellerDecisionAttempt(first,'bad',1,'accept',otherKey));
 });
