@@ -4,7 +4,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 export function buildSellerDecisionRequest(requestId,action,version,key){
   if(typeof requestId!=='string'||!UUID.test(requestId)||
      !['accept','decline'].includes(action)||
-     !Number.isSafeInteger(version)||version<1||
+     !Number.isSafeInteger(version)||version<1||version>=Number.MAX_SAFE_INTEGER||
      typeof key!=='string'||!UUID.test(key))
     throw new Error('invalid_seller_decision');
   return {
