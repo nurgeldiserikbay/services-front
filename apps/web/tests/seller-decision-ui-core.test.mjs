@@ -15,7 +15,8 @@ test('seller decision request matches backend version and idempotency contract',
 test('seller decision request rejects unsafe input',()=>{
   for(const args of [
     ['not-id','accept',1,key],[id,'cancel',1,key],[id,'accept',0,key],
-    [id,'accept',1.5,key],[id,'accept',1,'short'],
+    [id,'accept',1.5,key],[id,'accept',Number.MAX_SAFE_INTEGER,key],
+    [id,'accept',1,'short'],
   ])assert.throws(()=>buildSellerDecisionRequest(...args));
 });
 
