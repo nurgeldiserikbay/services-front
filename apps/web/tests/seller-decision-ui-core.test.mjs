@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {buildSellerDecisionRequest,parseSellerDecisionReceipt,nextSellerDecisionAttempt} from '../src/lib/seller-decision-ui-core.mjs';
+import {buildSellerDecisionRequest,parseSellerDecisionReceipt,nextSellerDecisionAttempt,isCurrentSellerDecisionResponse} from '../src/lib/seller-decision-ui-core.mjs';
 
 const id='11111111-1111-4111-8111-111111111111';
 const key='22222222-2222-4222-8222-222222222222';
@@ -63,4 +63,12 @@ test('decision retries reuse keys only for identical request version and action'
    assert.throws(()=>nextSellerDecisionAttempt(first,id,invalidVersion,'accept',otherKey),/invalid_seller_decision/);
  }
  assert.throws(()=>nextSellerDecisionAttempt(first,'bad',1,'accept',otherKey));
+});
+
+test('stale seller responses never match a changed request or version',()=>{
+ assert.equal(isCurrentSellerDecisionResponse(2,2,id,id,3,3),true);
+ assert.equal(isCurrentSellerDecisionResponse(2,3,id,id,3,3),false);
+ assert.equal(isCurrentSellerDecisionResponse(2,2,id,otherId,3,3),false);
+ assert.equal(isCurrentSellerDecisionResponse(2,2,id,id,3,4),false);
+ assert.equal(isCurrentSellerDecisionResponse(-1,-1,id,id,3,3),false);
 });
