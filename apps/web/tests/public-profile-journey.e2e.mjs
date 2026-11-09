@@ -101,6 +101,23 @@ assert.match(companyHtml, /Stage 2 Journey Company Offer/);
 assert.match(companyHtml, /<title>Stage 2 Journey Company — Services<\/title>/);
 
 
+// Continue the real public journey from a seller profile to its published
+// offer. The guest OTP/create wizard must remain disabled in CI by default.
+for (const [locale, profileHtml, offerId, title] of [
+  ['ru', professionalHtml, '10000000-0000-4000-8000-000000000007', 'Stage 2 Journey Specialist Offer'],
+  ['ru', companyHtml, '10000000-0000-4000-8000-000000000008', 'Stage 2 Journey Company Offer'],
+]) {
+  const offerPath = `/${locale}/services/${offerId}`;
+  const offerHref = findHref(profileHtml, offerPath);
+  const offerHtml = await fetchPage(new URL(offerHref, webBase), `${locale} published offer`);
+  assert.match(offerHtml, new RegExp(`<html lang="${locale}">`));
+  assert.ok(offerHtml.includes(`<h1>${title}</h1>`), 'offer must show its published title');
+  assert.ok(offerHtml.includes(`<title>${title} — Services</title>`),
+    'offer must have a public SEO title');
+  assert.doesNotMatch(offerHtml, /<form[^>]*class="[^"]*guest/i,
+    'guest request form must not mount without explicitly enabled rollout gates');
+}
+
 const kazakhSearchUrl = new URL('/kk', webBase);
 kazakhSearchUrl.searchParams.set('q', query);
 const kazakhSearchHtml = await fetchPage(kazakhSearchUrl, 'Kazakh localized search page');
