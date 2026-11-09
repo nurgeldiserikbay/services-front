@@ -39,7 +39,7 @@ published-profile content in that case.
 
 **This is not a staging or production sign-off.** The historical evidence table above
 records earlier runs, before the backend was pinned. Frontend CI now checks out
-backend commit `60fa93314c7251b8a261a4f8f5090a8da6665305` for a reproducible
+backend commit `321bb1a523c5194d2d20cc9a34eaebacc4d2f32c` for a reproducible
 cross-repository integration baseline (Frontend commit `fadff9ed7c573f6ba5844b6d35cc343663a40c0b`).
 To adopt a later backend release: select a backend commit whose audit and
 build-and-test jobs both passed; update the checkout `ref` in
@@ -54,3 +54,9 @@ the corresponding release gates.
 
 ## Dependencies
 F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ingress. F2 depends on backend request state machine, notification outbox and tested DB migrations. Do not enable default-off features to bypass gates.
+
+## Backend baseline refresh — 2026-11-09
+
+- The previously pinned Backend commit `60fa93314c7251b8a261a4f8f5090a8da6665305` is superseded by `321bb1a523c5194d2d20cc9a34eaebacc4d2f32c` after its independent [successful dependency-audit and build-and-test run](https://github.com/nurgeldiserikbay/services-back/actions/runs/42655722090).
+- Frontend CI checks out this **immutable** backend SHA, migrates PostgreSQL, boots the API and runs Next.js build, tests and its real search-to-profile HTTP journey.
+- This refresh validates public journey compatibility with a newer backend, not the future admin login/MFA or the complete guest-to-seller transactional lifecycle. Staging sign-off remains outstanding.
