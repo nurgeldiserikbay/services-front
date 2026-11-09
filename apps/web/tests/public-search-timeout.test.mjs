@@ -52,3 +52,40 @@ test('public search propagates caller cancellation to its network signal', async
     else process.env.SERVICES_API_BASE_URL = previousBase;
   }
 });
+
+test('public search rejects upstream HTTP errors without returning fake results', async () => {
+  const previousBase = process.env.SERVICES_API_BASE_URL;
+  const previousFetch = globalThis.fetch;
+  process.env.SERVICES_API_BASE_URL = 'https://api.example.test/v1';
+  try {
+    globalThis.fetch = async () => ({ok: false, status: 503});
+    await assert.rejects(
+      searchPublicMarketplace('plumber', 'global'),
+      /Public search unavailable/,
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousBase === undefined) delete process.env.SERVICES_API_BASE_URL;
+    else process.env.SERVICES_API_BASE_URL = previousBase;
+  }
+});
+
+test('public search rejects malformed API responses', async () => {
+  const previousBase = process.env.SERVICES_API_BASE_URL;
+  const previousFetch = globalThis.fetch;
+  process.env.SERVICES_API_BASE_URL = 'https://api.example.test/v1';
+  try {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({items: [{kind: 'offer', id: 'id', title: 'Title'}], next_cursor: null}),
+    });
+    await assert.rejects(
+      searchPublicMarketplace('plumber', 'global'),
+      /Unexpected search response/,
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousBase === undefined) delete process.env.SERVICES_API_BASE_URL;
+    else process.env.SERVICES_API_BASE_URL = previousBase;
+  }
+});
