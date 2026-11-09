@@ -26,6 +26,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   const t=copy[locale];
   const validContext=Number.isSafeInteger(version)&&version>=1&&
     version<Number.MAX_SAFE_INTEGER&&
+    typeof requestId==='string'&&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId);
   const locked=useRef(false);
   const pendingKey=useRef<{requestId:string;version:number;action:Decision;key:string}|null>(null);
