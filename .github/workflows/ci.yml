@@ -114,6 +114,8 @@ jobs:
           exit 1
       - name: Verify pinned backend admin HTTP boundary stays private
         run: node apps/web/tests/admin-api-boundary.e2e.mjs
+      - name: Verify guest and seller lifecycle HTTP boundaries deny anonymous calls
+        run: node apps/web/tests/request-lifecycle-boundary.e2e.mjs
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
