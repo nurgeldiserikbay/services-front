@@ -82,12 +82,18 @@ F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ing
 
 ## Seller cross-account negative-side-effect baseline — 2026-11-10
 
-- Frontend CI now pins backend `cee0b6421cf87fae07da540adae3b3cfc1000c57`, independently verified by [Backend CI #42848147427](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848147427).
+- Frontend CI now pins backend `eae4f943905a9bd7bdbbebb162fc5277cf792c5c`, independently verified by [Backend CI #42848147427](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848147427).
 - PostgreSQL seller authorization tests verify an unrelated verified account cannot accept or decline an organization's request; rejected decisions preserve the pending request and emit no acceptance/decline outbox or corresponding notification intents.
 - Cross-repository Frontend CI must pass with this pin before integration compatibility is confirmed. This remains separate from full authenticated HTTP journey and staging release sign-off.
 
 ## Canonical seller mutation HTTP header baseline — 2026-11-10
 
-- CI pins backend `cee0b6421cf87fae07da540adae3b3cfc1000c57` (green [Backend run #42848990121](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848990121)).
+- CI pins backend `eae4f943905a9bd7bdbbebb162fc5277cf792c5c` (green [Backend run #42848990121](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848990121)).
 - The backend contract tests require a canonical bearer token, normalize valid uppercase UUID request identifiers, and reject ambiguous bearer formatting before seller decisions.
 - This pin update is a compatibility check only; authenticated HTTP lifecycle and staging sign-off remain separate release gates.
+
+## Private OTP failed-attempt session isolation — 2026-11-10
+
+- Frontend CI pins backend `eae4f943905a9bd7bdbbebb162fc5277cf792c5c` ([Backend CI #42850380295](https://github.com/nurgeldiserikbay/services-back/actions/runs/42850380295), green).
+- Backend PostgreSQL-backed private login tests assert that a rejected OTP attempt increments attempt tracking without issuing a session, before a later successful single-use verification.
+- Frontend CI passing with the pin is still required to establish cross-repository compatibility; full authenticated HTTP E2E and staging gates are not implied.
