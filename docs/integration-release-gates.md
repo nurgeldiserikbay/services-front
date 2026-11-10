@@ -82,24 +82,30 @@ F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ing
 
 ## Seller cross-account negative-side-effect baseline — 2026-11-10
 
-- Frontend CI now pins backend `2eb122b7761c1797d9741e92f814141244123fc4`, independently verified by [Backend CI #42848147427](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848147427).
+- Frontend CI now pins backend `73f77a7b85772b8f794ae8acd36c01290ac86537`, independently verified by [Backend CI #42848147427](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848147427).
 - PostgreSQL seller authorization tests verify an unrelated verified account cannot accept or decline an organization's request; rejected decisions preserve the pending request and emit no acceptance/decline outbox or corresponding notification intents.
 - Cross-repository Frontend CI must pass with this pin before integration compatibility is confirmed. This remains separate from full authenticated HTTP journey and staging release sign-off.
 
 ## Canonical seller mutation HTTP header baseline — 2026-11-10
 
-- CI pins backend `2eb122b7761c1797d9741e92f814141244123fc4` (green [Backend run #42848990121](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848990121)).
+- CI pins backend `73f77a7b85772b8f794ae8acd36c01290ac86537` (green [Backend run #42848990121](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848990121)).
 - The backend contract tests require a canonical bearer token, normalize valid uppercase UUID request identifiers, and reject ambiguous bearer formatting before seller decisions.
 - This pin update is a compatibility check only; authenticated HTTP lifecycle and staging sign-off remain separate release gates.
 
 ## Private OTP failed-attempt session isolation — 2026-11-10
 
-- Frontend CI pins backend `2eb122b7761c1797d9741e92f814141244123fc4` ([Backend CI #42850380295](https://github.com/nurgeldiserikbay/services-back/actions/runs/42850380295), green).
+- Frontend CI pins backend `73f77a7b85772b8f794ae8acd36c01290ac86537` ([Backend CI #42850380295](https://github.com/nurgeldiserikbay/services-back/actions/runs/42850380295), green).
 - Backend PostgreSQL-backed private login tests assert that a rejected OTP attempt increments attempt tracking without issuing a session, before a later successful single-use verification.
 - Frontend CI passing with the pin is still required to establish cross-repository compatibility; full authenticated HTTP E2E and staging gates are not implied.
 
 ## Untrusted private BFF OTP boundary — 2026-11-10
 
-- Integration workflow pins backend `2eb122b7761c1797d9741e92f814141244123fc4`, independently green in [Backend CI #42875132027](https://github.com/nurgeldiserikbay/services-back/actions/runs/42875132027).
+- Integration workflow pins backend `73f77a7b85772b8f794ae8acd36c01290ac86537`, independently green in [Backend CI #42875132027](https://github.com/nurgeldiserikbay/services-back/actions/runs/42875132027).
 - PostgreSQL-backed private-login regression verifies an untrusted BFF credential cannot consume or increment attempts on a valid delivered OTP challenge; subsequent invalid-code tracking and single-use valid login remain covered.
 - This does not replace a complete authenticated customer-to-seller HTTP journey or staging approval.
+
+## OTP consumed-proof replay audit — 2026-11-10
+
+- Frontend CI pins backend `73f77a7b85772b8f794ae8acd36c01290ac86537` (green [Backend CI #42879267010](https://github.com/nurgeldiserikbay/services-back/actions/runs/42879267010)).
+- PostgreSQL-backed OTP sign-in test verifies replay of a consumed challenge is rejected and counted as an additional verification attempt, without issuing another session or invalidating the original active session.
+- Cross-repository integration CI and a full authenticated customer/seller HTTP E2E remain separate gates.
