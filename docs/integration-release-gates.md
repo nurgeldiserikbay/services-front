@@ -72,4 +72,4 @@ F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ing
 
 - Frontend CI now checks out backend `3b8957274c718ef3e0f1ec89ae4dbb9adf31eed6`, independently verified by [Backend CI #42836562004](https://github.com/nurgeldiserikbay/services-back/actions/runs/42836562004).
 - This backend adds PostgreSQL-backed cross-account seller isolation regression coverage. The frontend live HTTP boundary also checks forged bearer tokens with mandatory `If-Match` and `Idempotency-Key` preconditions and a test-only account-session HMAC key.
-- Frontend CI on the refreshed baseline is pending; this entry records the selected immutable integration dependency, **not** a passed frontend run or staging sign-off.
+- Frontend commit `bf743528484f463ae34696b9d7ad537e03096d60` passed [Frontend CI #42839951881](https://github.com/nurgeldiserikbay/services-front/actions/runs/42839951881), including the pinned PostgreSQL-backed backend HTTP boundaries, unit tests, production build, and public search-to-profile journey. This is **not** staging sign-off or evidence of a complete authenticated request lifecycle.
