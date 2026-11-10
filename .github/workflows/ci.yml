@@ -41,7 +41,7 @@ jobs:
           repository: nurgeldiserikbay/services-back
           # Tested backend baseline; update deliberately together with frontend API contracts.
           # Avoid a moving main branch changing frontend CI inputs between runs.
-          ref: f9728c425d782bd261788eb048800cc95e493818
+          ref: 3b8957274c718ef3e0f1ec89ae4dbb9adf31eed6
           path: services-back
           persist-credentials: false
       - uses: actions/setup-node@v4
