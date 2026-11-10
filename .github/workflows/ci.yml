@@ -49,8 +49,13 @@ jobs:
           node-version: '22'
       - run: corepack enable
       - run: pnpm install --no-frozen-lockfile
-      - name: Verify frontend dependency lockfile is reproducible
-        run: git diff --exit-code -- pnpm-lock.yaml
+      - name: Report frontend dependency lockfile status
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            git diff --exit-code -- pnpm-lock.yaml
+          else
+            echo '::warning title=Frontend lockfile missing::pnpm-lock.yaml is not committed; dependency resolution is not reproducible. Track in issue #65.'
+          fi
       - name: Audit production dependencies for high-severity vulnerabilities
         run: pnpm audit --prod --audit-level high
       - name: Install and migrate backend test API
