@@ -12,8 +12,8 @@ const checks=[
  {label:'accept without seller session',url:`${api}/requests/${id}/accept`,init:{method:'POST'},allowed:[401]},
  {label:'decline without seller session',url:`${api}/requests/${id}/decline`,init:{method:'POST'},allowed:[401]},
  {label:'seller inbox with forged bearer',url:`${api}/me/seller-requests`,init:{method:'GET',headers:{Authorization:forgedBearer}},allowed:[401]},
- {label:'accept with forged bearer',url:`${api}/requests/${id}/accept`,init:{method:'POST',headers:{Authorization:forgedBearer}},allowed:[401]},
- {label:'decline with forged bearer',url:`${api}/requests/${id}/decline`,init:{method:'POST',headers:{Authorization:forgedBearer}},allowed:[401]},
+ {label:'accept with forged bearer',url:`${api}/requests/${id}/accept`,init:{method:'POST',headers:{Authorization:forgedBearer,'If-Match':'"1"','Idempotency-Key':randomBytes(16).toString('hex')}},allowed:[401]},
+ {label:'decline with forged bearer',url:`${api}/requests/${id}/decline`,init:{method:'POST',headers:{Authorization:forgedBearer,'If-Match':'"1"','Idempotency-Key':randomBytes(16).toString('hex')}},allowed:[401]},
 ];
 for(const check of checks){
  const response=await fetch(check.url,{
