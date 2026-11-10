@@ -68,7 +68,12 @@ jobs:
           BEGIN
             IF to_regclass('public.users') IS NULL OR
                to_regclass('public.professional_profiles') IS NULL OR
-               to_regclass('public.service_offers') IS NULL THEN
+               to_regclass('public.service_offers') IS NULL OR
+               to_regclass('public.service_definitions') IS NULL OR
+               to_regclass('public.professions') IS NULL OR
+               to_regclass('public.profession_services') IS NULL OR
+               to_regclass('public.organizations') IS NULL OR
+               to_regclass('public.persons') IS NULL THEN
               RAISE EXCEPTION 'Missing migrated tables required by frontend fixtures';
             END IF;
           END $verify$;
