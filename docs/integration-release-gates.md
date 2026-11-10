@@ -79,3 +79,9 @@ F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ing
 - Current frontend workflow pins backend `3dd9ce7b142be0cb329c4b57fd82be43d43bd702`, verified by [Backend CI #42843725076](https://github.com/nurgeldiserikbay/services-back/actions/runs/42843725076).
 - Backend regression coverage includes cancellation outbox/notification deduplication, late cancellation reliability proposal idempotency, in-app delivery retry deduplication, cross-account notification isolation, and session revocation without deleting notification intents.
 - The refreshed frontend cross-repository CI must pass before this pin can be treated as a verified integration pair. The authenticated browser-to-backend request lifecycle and staging approval remain open release gates.
+
+## Seller cross-account negative-side-effect baseline — 2026-11-10
+
+- Frontend CI now pins backend `0e49d5bcc4ef541cf52df193157cfa079f80977b`, independently verified by [Backend CI #42848147427](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848147427).
+- PostgreSQL seller authorization tests verify an unrelated verified account cannot accept or decline an organization's request; rejected decisions preserve the pending request and emit no acceptance/decline outbox or corresponding notification intents.
+- Cross-repository Frontend CI must pass with this pin before integration compatibility is confirmed. This remains separate from full authenticated HTTP journey and staging release sign-off.
