@@ -11,7 +11,7 @@ test('frontend CI protects the cross-repository integration journey',()=>{
  // The full immutable checkout SHA is validated in backend-ci-pin.test.mjs.
  assert.match(workflow,/repository: nurgeldiserikbay\/services-back/);
  assert.match(workflow,/\s+path: services-back\n\s+persist-credentials: false/);
- const gates=['npm run db:migrate','npm run db:seed:geo','Verify pinned backend admin HTTP boundary stays private','pnpm typecheck','pnpm test','pnpm build','Verify live search-to-profile journey'];
+ const gates=['npm run db:migrate','npm run db:seed:geo','Verify pinned backend admin HTTP boundary stays private','Verify guest and seller lifecycle HTTP boundaries deny anonymous calls','pnpm typecheck','pnpm test','pnpm build','Verify live search-to-profile journey'];
  let previous=-1;
  for(const gate of gates){
   const index=workflow.indexOf(gate);
@@ -20,6 +20,7 @@ test('frontend CI protects the cross-repository integration journey',()=>{
   previous=index;
  }
  assert.match(workflow,/node apps\/web\/tests\/admin-api-boundary\.e2e\.mjs/);
+ assert.match(workflow,/node apps\/web\/tests\/request-lifecycle-boundary\.e2e\.mjs/);
  assert.match(workflow,/node apps\/web\/tests\/public-profile-journey\.e2e\.mjs/);
  assert.ok(workflow.includes('curl --connect-timeout 2 --max-time 5 --cacert "$RUNNER_TEMP/api.crt" --fail --silent https://localhost:8443/v1/professions'));
  assert.doesNotMatch(workflow,/curl\s+--insecure\b/);
