@@ -29,6 +29,9 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
       DATABASE_URL: postgresql://services:services@127.0.0.1:5432/services_test
       SERVICES_API_BASE_URL: https://localhost:8443/v1
+      # Test-only HMAC key: permits negative bearer checks to reach the
+      # session lookup rather than fail on missing server configuration.
+      ACCOUNT_SESSION_HMAC_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     steps:
       - uses: actions/checkout@v4
         with:
