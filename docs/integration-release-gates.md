@@ -39,7 +39,7 @@ published-profile content in that case.
 
 **This is not a staging or production sign-off.** The historical evidence table above
 records earlier runs, before the backend was pinned. Frontend CI now checks out
-backend commit `321bb1a523c5194d2d20cc9a34eaebacc4d2f32c` for a reproducible
+backend commit `f9728c425d782bd261788eb048800cc95e493818` for a reproducible
 cross-repository integration baseline (Frontend commit `fadff9ed7c573f6ba5844b6d35cc343663a40c0b`).
 To adopt a later backend release: select a backend commit whose audit and
 build-and-test jobs both passed; update the checkout `ref` in
@@ -60,3 +60,10 @@ F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ing
 - The previously pinned Backend commit `60fa93314c7251b8a261a4f8f5090a8da6665305` is superseded by `321bb1a523c5194d2d20cc9a34eaebacc4d2f32c` after its independent [successful dependency-audit and build-and-test run](https://github.com/nurgeldiserikbay/services-back/actions/runs/42655722090).
 - Frontend CI checks out this **immutable** backend SHA, migrates PostgreSQL, boots the API and runs Next.js build, tests and its real search-to-profile HTTP journey.
 - This refresh validates public journey compatibility with a newer backend, not the future admin login/MFA or the complete guest-to-seller transactional lifecycle. Staging sign-off remains outstanding.
+
+## Backend compatibility refresh — 2026-11-10
+
+- Re-pin the frontend integration API to backend `f9728c425d782bd261788eb048800cc95e493818`, which passed both [Backend audit and build/test CI](https://github.com/nurgeldiserikbay/services-back/actions/runs/42834020490).
+- The earlier reviewed `321bb1a523c5194d2d20cc9a34eaebacc4d2f32c` remains historical CI evidence, not the current workflow dependency.
+- Extend live API checks to ensure guest status is not anonymously accessible and seller accept/decline refuse missing authorization or missing mutation preconditions.
+- This is a negative authorization and public discovery acceptance gate, **not** evidence that the full verified guest → seller decision → notification journey works in a deployed environment.
