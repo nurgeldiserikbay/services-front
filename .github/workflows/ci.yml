@@ -48,7 +48,7 @@ jobs:
         with:
           node-version: '22'
       - run: corepack enable
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile
       - name: Verify frontend dependency lockfile is reproducible
         run: git diff --exit-code -- pnpm-lock.yaml
       - name: Audit production dependencies for high-severity vulnerabilities
