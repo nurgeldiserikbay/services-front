@@ -15,6 +15,8 @@ const checks=[
  {label:'accept with forged bearer',url:`${api}/requests/${id}/accept`,init:{method:'POST',headers:{Authorization:forgedBearer,'If-Match':'"1"','Idempotency-Key':randomBytes(16).toString('hex')}},allowed:[401]},
  {label:'accept with weak version precondition',url:`${api}/requests/${id}/accept`,init:{method:'POST',headers:{Authorization:forgedBearer,'If-Match':'W/"1"','Idempotency-Key':randomBytes(16).toString('hex')}},allowed:[400]},
  {label:'decline with missing idempotency key',url:`${api}/requests/${id}/decline`,init:{method:'POST',headers:{Authorization:forgedBearer,'If-Match':'"1"'}},allowed:[400]},
+ {label:'accept with malformed version',url:`${api}/requests/${id}/accept`,init:{method:'POST',headers:{Authorization:forgedBearer,'If-Match':'not-a-version','Idempotency-Key':randomBytes(16).toString('hex')}},allowed:[400]},
+ {label:'decline with malformed idempotency key',url:`${api}/requests/${id}/decline`,init:{method:'POST',headers:{Authorization:forgedBearer,'If-Match':'"1"','Idempotency-Key':'invalid key with spaces'}},allowed:[400]},
  {label:'decline with forged bearer',url:`${api}/requests/${id}/decline`,init:{method:'POST',headers:{Authorization:forgedBearer,'If-Match':'"1"','Idempotency-Key':randomBytes(16).toString('hex')}},allowed:[401]},
 ];
 for(const check of checks){
