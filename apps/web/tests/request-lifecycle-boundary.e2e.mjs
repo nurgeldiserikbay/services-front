@@ -29,6 +29,8 @@ for(const check of checks){
   `${check.label}: private request response may not be cached`);
  const body=await response.text();
  assert.ok(!body.includes('platform_admin_sessions'),'private admin schema must not leak');
+ assert.ok(!/secret_not_configured|DATABASE_URL|ACCOUNT_SESSION_HMAC_KEY|node_modules\\/|\\bat [A-Za-z_$][\\w.$]* \\(/.test(body),
+  `${check.label}: internal configuration or stack trace must not leak`);
  assert.ok(!body.includes(forgedBearer.slice(7)),'forged bearer must never be echoed');
 }
 console.log('Pinned backend guest and seller HTTP boundaries deny anonymous requests');
