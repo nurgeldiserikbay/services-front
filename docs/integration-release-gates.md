@@ -82,6 +82,12 @@ F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ing
 
 ## Seller cross-account negative-side-effect baseline — 2026-11-10
 
-- Frontend CI now pins backend `0e49d5bcc4ef541cf52df193157cfa079f80977b`, independently verified by [Backend CI #42848147427](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848147427).
+- Frontend CI now pins backend `cee0b6421cf87fae07da540adae3b3cfc1000c57`, independently verified by [Backend CI #42848147427](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848147427).
 - PostgreSQL seller authorization tests verify an unrelated verified account cannot accept or decline an organization's request; rejected decisions preserve the pending request and emit no acceptance/decline outbox or corresponding notification intents.
 - Cross-repository Frontend CI must pass with this pin before integration compatibility is confirmed. This remains separate from full authenticated HTTP journey and staging release sign-off.
+
+## Canonical seller mutation HTTP header baseline — 2026-11-10
+
+- CI pins backend `cee0b6421cf87fae07da540adae3b3cfc1000c57` (green [Backend run #42848990121](https://github.com/nurgeldiserikbay/services-back/actions/runs/42848990121)).
+- The backend contract tests require a canonical bearer token, normalize valid uppercase UUID request identifiers, and reject ambiguous bearer formatting before seller decisions.
+- This pin update is a compatibility check only; authenticated HTTP lifecycle and staging sign-off remain separate release gates.
