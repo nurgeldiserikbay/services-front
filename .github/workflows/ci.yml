@@ -54,6 +54,8 @@ jobs:
         working-directory: services-back
         run: |
           npm install --no-audit --no-fund
+          npm run typecheck
+          npm run db:validate
           npm run db:migrate
           npm run db:seed:geo
           npm run build
