@@ -88,7 +88,10 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
       );
       // A deadline may expire while the response body is being decoded,
       // even if fetch already returned its headers.
-      if(signal.aborted||active.current!==controller)return;
+      if(active.current!==controller||controller.signal.aborted)return;
+      // A timeout after headers/body parsing is still a failed verification.
+      // Do not silently retain an older status as if refresh succeeded.
+      if(signal.aborted)throw new Error('guest_status_timeout');
       // Never regress the displayed status when out-of-order responses arrive.
       if(shouldReplaceGuestStatus(currentVersion.current,result.version)){
         currentVersion.current=result.version;
