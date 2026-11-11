@@ -66,3 +66,25 @@ test('guest status transport denies non-JSON, bad HTTP status and oversized decl
       /guest_status_unavailable/);
   }
 });
+
+test('guest status transport accepts a valid bounded streamed JSON response',async()=>{
+  const {readPrivateGuestStatusResponse}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  const response=new Response(JSON.stringify(status(7,'accepted')),{
+    status:200,headers:{'content-type':'application/json; charset=utf-8'},
+  });
+  assert.deepEqual(await readPrivateGuestStatusResponse(response,requestId,offerId),{
+    id:requestId,state:'accepted',version:7,createdAt:'2026-11-11T10:00:00.000Z',
+  });
+});
+
+test('guest status transport rejects malformed UTF-8 and invalid JSON',async()=>{
+  const {readPrivateGuestStatusResponse}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  for(const bytes of [new Uint8Array([0xc3,0x28]),
+    new TextEncoder().encode('{"state":')]){
+    const response=new Response(bytes,{headers:{'content-type':'application/json'}});
+    await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+      /guest_status_unavailable/);
+  }
+});
