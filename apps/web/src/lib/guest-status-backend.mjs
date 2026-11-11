@@ -66,13 +66,21 @@ export async function readGuestRequestStatus({
       headers:{Accept:'application/json','Guest-Capability':requestCapability},
       signal:AbortSignal.timeout(5000),
     });
-    if(response.status!==200)throw new GuestStatusUnavailable();
+    // Denied upstream responses may still carry a streaming body. Cancel it
+    // without waiting for an uncooperative server to finish cancellation.
+    const rejectResponse=()=>{
+      if(response.body){
+        try{void response.body.cancel().catch(()=>{});}catch{}
+      }
+      throw new GuestStatusUnavailable();
+    };
+    if(response.status!==200)rejectResponse();
     const contentType=response.headers.get('content-type')??'';
     if(!/^application\/json(?:\s*;|\s*$)/i.test(contentType))
-      throw new GuestStatusUnavailable();
+      rejectResponse();
     const length=response.headers.get('content-length');
     if(length!==null&&(!/^\d+$/.test(length)||
-      Number(length)>RESPONSE_LIMIT))throw new GuestStatusUnavailable();
+      Number(length)>RESPONSE_LIMIT))rejectResponse();
     // Content-Length can be absent or forged. Limit bytes while streaming,
     // before buffering or decoding a private upstream response.
     let text;
