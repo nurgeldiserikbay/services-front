@@ -96,9 +96,12 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
         setVersion(null);setState(null);setError(true);
       }
     }finally{
-      if(active.current===controller)active.current=null;
-      if(active.current===null)busy.current=false;
-      if(!controller.signal.aborted&&active.current===null)setPending(false);
+      // A stale request must not unlock or clear the loading state of a newer one.
+      if(active.current===controller){
+        active.current=null;
+        busy.current=false;
+        if(!controller.signal.aborted)setPending(false);
+      }
     }
   }
 
