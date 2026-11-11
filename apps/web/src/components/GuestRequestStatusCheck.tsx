@@ -70,6 +70,8 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
 
   async function refresh(){
     if(busy.current)return;
+    // Abort any request retained from a previous receipt before starting a new one.
+    active.current?.abort();
     busy.current=true;setPending(true);setError(false);
     const controller=new AbortController();
     active.current=controller;
