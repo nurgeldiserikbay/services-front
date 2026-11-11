@@ -90,6 +90,9 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm run typecheck
+          # Check the account/admin bearer contract of the exact backend revision
+          # used by this frontend integration run before database setup.
+          node --import tsx --test test/session-proof-canonical.test.ts test/admin-session-token.test.ts
           npm run db:validate
           npm run db:migrate
           npm run db:seed:geo
