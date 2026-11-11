@@ -45,6 +45,8 @@ test('reject invalid request identity, capability and insecure backend without I
   for(const o of [
     {requestId:'bad'},{requestCapability:'bad'},
     {baseUrl:'http://api.example/v1',production:true},
+    {baseUrl:'http://api.example/v1',production:false},
+    {baseUrl:'http://127.0.0.1:3000/v1',production:true},
     {baseUrl:'https://user:secret@api.example/v1'},
     {baseUrl:'https://api.example/v1?token=secret'},
     {baseUrl:'https://api.example/v1#fragment'},
@@ -156,4 +158,16 @@ test('BFF cancels rejected upstream bodies without awaiting a stalled cancellati
     await assert.rejects(call({transport}),GuestStatusUnavailable);
     assert.equal(canceled,true);
   }
+});
+
+test('development permits local HTTP but never forwards capabilities over remote plaintext',async()=>{
+ const local=await call({
+  baseUrl:'http://127.0.0.1:3000/v1',production:false,
+  transport:async(url,options)=>{
+   assert.equal(url,'http://127.0.0.1:3000/v1/requests/'+requestId);
+   assert.equal(options.headers['Guest-Capability'],proof);
+   return response(valid);
+  },
+ });
+ assert.equal(local.id,requestId);
 });
