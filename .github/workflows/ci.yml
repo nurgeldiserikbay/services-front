@@ -2,6 +2,13 @@ name: Frontend foundation CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      backend_sha:
+        description: 'Full 40-character backend commit SHA for compatibility test'
+        required: true
+        type: string
+        default: '73f77a7b85772b8f794ae8acd36c01290ac86537'
 permissions:
   contents: read
 concurrency:
