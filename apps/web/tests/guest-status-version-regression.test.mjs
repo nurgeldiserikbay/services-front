@@ -88,3 +88,18 @@ test('guest status transport rejects malformed UTF-8 and invalid JSON',async()=>
       /guest_status_unavailable/);
   }
 });
+
+test('guest status fallback normalizes failed and oversized text responses',async()=>{
+  const {readPrivateGuestStatusResponse,MAX_STATUS_BYTES}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  const headers=new Headers({'content-type':'application/json'});
+  const base={status:200,headers,body:null};
+  for(const text of [
+    async()=>{throw new Error('internal upstream detail');},
+    async()=>('x'.repeat(MAX_STATUS_BYTES+1)),
+    async()=>null,
+  ]){
+    await assert.rejects(readPrivateGuestStatusResponse({...base,text},requestId,offerId),
+      error=>error instanceof Error&&error.message==='guest_status_unavailable');
+  }
+});
