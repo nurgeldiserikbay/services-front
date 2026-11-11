@@ -44,6 +44,10 @@ jobs:
           ref: 73f77a7b85772b8f794ae8acd36c01290ac86537
           path: services-back
           persist-credentials: false
+      - name: Print integration commit versions
+        run: |
+          git rev-parse HEAD
+          git -C services-back rev-parse HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
