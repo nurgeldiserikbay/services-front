@@ -129,3 +129,18 @@ test('guest status transport normalizes stream acquisition failures',async()=>{
   await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
     error=>error instanceof Error&&error.message==='guest_status_unavailable');
 });
+
+test('guest status transport normalizes stream lock release failures',async()=>{
+ const {readPrivateGuestStatusResponse}=
+   await import('../src/lib/guest-status-ui-core.mjs');
+ const response={
+  status:200,
+  headers:new Headers({'content-type':'application/json'}),
+  body:{getReader(){return {
+   async read(){return {done:true};},
+   releaseLock(){throw new Error('private lock detail');},
+  };}},
+ };
+ await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+  error=>error instanceof Error&&error.message==='guest_status_unavailable');
+});
