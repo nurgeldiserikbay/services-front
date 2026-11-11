@@ -69,8 +69,38 @@ export async function readGuestRequestStatus({
     const length=response.headers.get('content-length');
     if(length!==null&&(!/^\d+$/.test(length)||
       Number(length)>RESPONSE_LIMIT))throw new GuestStatusUnavailable();
-    const text=await response.text();
-    if(Buffer.byteLength(text,'utf8')>RESPONSE_LIMIT)throw new GuestStatusUnavailable();
+    // Content-Length can be absent or forged. Limit bytes while streaming,
+    // before buffering or decoding a private upstream response.
+    let text;
+    if(response.body&&typeof response.body.getReader==='function'){
+      const reader=response.body.getReader();
+      const chunks=[];
+      let total=0;
+      let complete=false;
+      try{
+        while(true){
+          const {done,value}=await reader.read();
+          if(done){complete=true;break;}
+          if(!(value instanceof Uint8Array))throw new GuestStatusUnavailable();
+          total+=value.byteLength;
+          if(total>RESPONSE_LIMIT)throw new GuestStatusUnavailable();
+          chunks.push(value);
+        }
+      }finally{
+        if(!complete){
+          try{void reader.cancel().catch(()=>{});}catch{}
+        }
+        reader.releaseLock();
+      }
+      const bytes=new Uint8Array(total);
+      let offset=0;
+      for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+      text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+    }else{
+      // Compatibility with injected test transports without stream support.
+      text=await response.text();
+      if(Buffer.byteLength(text,'utf8')>RESPONSE_LIMIT)throw new GuestStatusUnavailable();
+    }
     return parseStatus(JSON.parse(text),requestId);
   }catch{throw new GuestStatusUnavailable();}
 }
