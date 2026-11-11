@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.backend_sha || 'baseline' }}
   cancel-in-progress: true
 jobs:
   web:
