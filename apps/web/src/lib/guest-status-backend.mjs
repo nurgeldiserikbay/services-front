@@ -16,6 +16,9 @@ function endpoint(base,requestId,production){
     if((url.protocol!=='https:'&&!(local&&!production&&url.protocol==='http:'))||
       url.username||url.password||url.search||url.hash||
       url.pathname.includes('..')||url.pathname.endsWith('//')||
+      // A trailing slash is fine, but an internal double slash or encoded
+      // separator can make upstream routing differ from our intended path.
+      /%2f|%5c/i.test(url.pathname)||url.pathname.includes('//')||
       !UUID.test(requestId))throw new GuestStatusUnavailable();
     url.pathname=url.pathname.replace(/\/$/,'')+
       '/requests/'+requestId.toLowerCase();
