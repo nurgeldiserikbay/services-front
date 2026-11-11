@@ -75,7 +75,10 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
       try{void reader.cancel().catch(()=>{});}catch{}
       throw new Error('guest_status_unavailable');
     }finally{
-      reader.releaseLock();
+      // A malformed stream implementation may also throw while releasing its
+      // lock. Never leak transport internals into the public guest-status UI.
+      try{reader.releaseLock();}
+      catch{throw new Error('guest_status_unavailable');}
     }
     const bytes=new Uint8Array(total);
     let offset=0;
