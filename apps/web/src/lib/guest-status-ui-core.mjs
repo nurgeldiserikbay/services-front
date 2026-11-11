@@ -60,7 +60,9 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
         chunks.push(value);
       }
     }catch{
-      await reader.cancel().catch(()=>{});
+      // Cancellation is best-effort: a hostile or stalled upstream must not
+      // keep an already-rejected response pending indefinitely.
+      try{void reader.cancel().catch(()=>{});}catch{}
       throw new Error('guest_status_unavailable');
     }finally{
       reader.releaseLock();
