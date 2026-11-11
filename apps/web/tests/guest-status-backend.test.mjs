@@ -94,3 +94,27 @@ test('BFF code remains server-only, request-cookie-bound and not publicly mounte
   const offer=read('app/[locale]/services/[id]/page.tsx');
   assert.doesNotMatch(offer,/getPrivateGuestStatus|guest-status-bff/);
 });
+
+test('streaming BFF rejects oversized chunks before EOF without awaiting cancellation',async()=>{
+  let cancelled=false;
+  let released=false;
+  const transport=async()=>({
+    status:200,
+    headers:new Headers({'content-type':'application/json'}),
+    body:{getReader:()=>({
+      read:async()=>({done:false,value:new Uint8Array(4097)}),
+      cancel:()=>{cancelled=true;return new Promise(()=>{});},
+      releaseLock:()=>{released=true;},
+    })},
+  });
+  await assert.rejects(call({transport}),GuestStatusUnavailable);
+  assert.equal(cancelled,true);
+  assert.equal(released,true);
+});
+
+test('streaming BFF rejects malformed UTF-8 without returning partial private data',async()=>{
+  const transport=async()=>new Response(new Uint8Array([0xff,0xfe]),{
+    headers:{'content-type':'application/json'},
+  });
+  await assert.rejects(call({transport}),GuestStatusUnavailable);
+});
