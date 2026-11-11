@@ -139,3 +139,21 @@ test('BFF and browser agree on canonical UTC timestamp requirements',async()=>{
     version:2,createdAt:valid.created_at,
   });
 });
+
+test('BFF cancels rejected upstream bodies without awaiting a stalled cancellation',async()=>{
+  for(const responseOptions of [
+    {status:403,contentType:'application/json',length:null},
+    {status:200,contentType:'text/html',length:null},
+    {status:200,contentType:'application/json',length:'5000'},
+  ]){
+    let canceled=false;
+    const headers=new Headers({'content-type':responseOptions.contentType});
+    if(responseOptions.length!==null)headers.set('content-length',responseOptions.length);
+    const transport=async()=>({
+      status:responseOptions.status,headers,
+      body:{cancel:()=>{canceled=true;return new Promise(()=>{});}},
+    });
+    await assert.rejects(call({transport}),GuestStatusUnavailable);
+    assert.equal(canceled,true);
+  }
+});
