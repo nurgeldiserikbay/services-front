@@ -55,7 +55,9 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
   // response.text() would buffer an arbitrarily large private backend reply.
   let data;
   if(response.body&&typeof response.body.getReader==='function'){
-    const reader=response.body.getReader();
+    let reader;
+    try{reader=response.body.getReader();}
+    catch{throw new Error('guest_status_unavailable');}
     const chunks=[];
     let total=0;
     try{
