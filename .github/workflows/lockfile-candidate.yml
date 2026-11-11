@@ -31,7 +31,9 @@ jobs:
       - name: Validate candidate with clean frozen installation
         run: |
           test -s pnpm-lock.yaml
+          sha256sum pnpm-lock.yaml > "$RUNNER_TEMP/lockfile.sha256"
           pnpm install --frozen-lockfile
+          sha256sum --check "$RUNNER_TEMP/lockfile.sha256"
       - name: Record candidate provenance and checksum
         run: |
           echo "### Frontend lockfile candidate" >> "$GITHUB_STEP_SUMMARY"
