@@ -68,6 +68,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Test guest status boundary before dependency installation
+        run: node --test apps/web/tests/guest-status-version-regression.test.mjs
       - run: corepack enable
       - name: Verify pinned pnpm version
         run: |
