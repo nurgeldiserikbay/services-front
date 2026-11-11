@@ -76,9 +76,12 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
     const controller=new AbortController();
     active.current=controller;
     try{
+      // A stalled status endpoint must not leave the refresh button disabled.
+      // Keep receipt-switch cancellation separate from the request deadline.
+      const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(10_000)]);
       const response=await fetch(privateGuestStatusUrl(requestId),{
         method:'GET',cache:'no-store',credentials:'same-origin',
-        redirect:'error',signal:controller.signal,
+        redirect:'error',signal,
       });
       const result=await readPrivateGuestStatusResponse(
         response,requestId,serviceOfferId,
