@@ -31,3 +31,9 @@ test('guest status rejects invalid versions and foreign receipts',()=>{
   assert.throws(()=>parsePrivateGuestStatus(status(1),requestId,'33333333-3333-4333-8333-333333333333'));
   assert.throws(()=>parsePrivateGuestStatus(status(1),'33333333-3333-4333-8333-333333333333',offerId));
 });
+
+test('guest status rejects a response containing private or unexpected fields',()=>{
+  assert.throws(()=>parsePrivateGuestStatus({...status(2),contact_phone:'+77000000000'},requestId,offerId));
+  assert.throws(()=>parsePrivateGuestStatus({...status(2),created_at:'2026-02-30T10:00:00.000Z'},requestId,offerId));
+  assert.throws(()=>parsePrivateGuestStatus({...status(2),version:1.5},requestId,offerId));
+});
