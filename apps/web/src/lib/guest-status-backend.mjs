@@ -34,8 +34,12 @@ function parseStatus(raw,expectedId){
     typeof raw.state!=='string'||!STATES.has(raw.state)||
     !Number.isSafeInteger(raw.version)||raw.version<1||
     typeof raw.created_at!=='string')throw new GuestStatusUnavailable();
-  const date=Date.parse(raw.created_at);
-  if(!Number.isFinite(date)||raw.created_at.length>40)
+  // Match the browser DTO contract exactly. Date.parse alone normalizes
+  // invalid calendar days and accepts ambiguous, non-UTC timestamps.
+  if(!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(raw.created_at))
+    throw new GuestStatusUnavailable();
+  const date=new Date(raw.created_at);
+  if(!Number.isFinite(date.getTime())||date.toISOString()!==raw.created_at)
     throw new GuestStatusUnavailable();
   return {id:raw.id.toLowerCase(),
     serviceOfferId:raw.service_offer_id.toLowerCase(),
