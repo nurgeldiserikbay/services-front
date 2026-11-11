@@ -118,3 +118,24 @@ test('streaming BFF rejects malformed UTF-8 without returning partial private da
   });
   await assert.rejects(call({transport}),GuestStatusUnavailable);
 });
+
+test('BFF and browser agree on canonical UTC timestamp requirements',async()=>{
+  for(const timestamp of [
+    '2026-02-30T08:00:00.000Z',
+    '2026-11-04T08:00:00Z',
+    '2026-11-04T08:00:00.000+00:00',
+    '2026-11-04 08:00:00',
+    '2026-11-04T08:00:00.000',
+    '2026-13-04T08:00:00.000Z',
+  ]){
+    await assert.rejects(
+      call({transport:async()=>response({...valid,created_at:timestamp})}),
+      GuestStatusUnavailable,
+      timestamp,
+    );
+  }
+  assert.deepEqual(await call({transport:async()=>response(valid)}),{
+    id:requestId,serviceOfferId:offerId,state:'accepted',
+    version:2,createdAt:valid.created_at,
+  });
+});
