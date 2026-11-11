@@ -37,3 +37,32 @@ test('guest status rejects a response containing private or unexpected fields',(
   assert.throws(()=>parsePrivateGuestStatus({...status(2),created_at:'2026-02-30T10:00:00.000Z'},requestId,offerId));
   assert.throws(()=>parsePrivateGuestStatus({...status(2),version:1.5},requestId,offerId));
 });
+
+test('guest status transport rejects oversized streams even when content-length is absent',async()=>{
+  const {readPrivateGuestStatusResponse,MAX_STATUS_BYTES}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  let canceled=false;
+  const response=new Response(new ReadableStream({
+    start(controller){controller.enqueue(new Uint8Array(MAX_STATUS_BYTES+1));},
+    cancel(){canceled=true;},
+  }),{headers:{'content-type':'application/json'}});
+  await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+    /guest_status_unavailable/);
+  assert.equal(canceled,true);
+});
+
+test('guest status transport denies non-JSON, bad HTTP status and oversized declared length',async()=>{
+  const {readPrivateGuestStatusResponse,MAX_STATUS_BYTES}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  const body=JSON.stringify(status(2));
+  for(const response of [
+    new Response(body,{status:403,headers:{'content-type':'application/json'}}),
+    new Response(body,{headers:{'content-type':'text/html'}}),
+    new Response(body,{headers:{'content-type':'application/json',
+      'content-length':String(MAX_STATUS_BYTES+1)}}),
+    new Response(body,{headers:{'content-type':'application/json','content-length':'NaN'}}),
+  ]){
+    await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+      /guest_status_unavailable/);
+  }
+});
