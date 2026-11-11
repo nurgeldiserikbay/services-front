@@ -23,6 +23,8 @@ jobs:
         run: |
           test -s pnpm-lock.yaml
           pnpm install --frozen-lockfile
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
       - name: Validate frontend source with candidate
         run: |
           pnpm typecheck
