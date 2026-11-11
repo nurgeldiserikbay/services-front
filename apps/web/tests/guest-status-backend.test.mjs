@@ -50,6 +50,9 @@ test('reject invalid request identity, capability and insecure backend without I
     {baseUrl:'https://user:secret@api.example/v1'},
     {baseUrl:'https://api.example/v1?token=secret'},
     {baseUrl:'https://api.example/v1#fragment'},
+    {baseUrl:'https://api.example/v1%2fprivate'},
+    {baseUrl:'https://api.example/v1%5cprivate'},
+    {baseUrl:'https://api.example/v1//private'},
   ]){
     await assert.rejects(call({...o,transport}),GuestStatusUnavailable);
   }
