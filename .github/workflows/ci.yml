@@ -59,6 +59,12 @@ jobs:
           echo "Frontend SHA: $(git rev-parse HEAD)"
           echo "Backend SHA: $(git -C services-back rev-parse HEAD)"
           test "$(git -C services-back rev-parse HEAD)" = "${EXPECTED_BACKEND_SHA,,}"
+          {
+            echo "### Tested integration revisions"
+            echo "Frontend: $(git rev-parse HEAD)"
+            echo "Backend: $(git -C services-back rev-parse HEAD)"
+            echo "Trigger: $GITHUB_EVENT_NAME"
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
