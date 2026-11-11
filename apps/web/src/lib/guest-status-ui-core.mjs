@@ -74,9 +74,15 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
     catch{throw new Error('guest_status_unavailable')}
   }else{
     // Test doubles without a ReadableStream still receive post-read bounds.
-    data=await response.text();
-    if(new TextEncoder().encode(data).byteLength>MAX_STATUS_BYTES)
+    // Normalize transport failures to the same non-sensitive public error.
+    try{
+      data=await response.text();
+      if(typeof data!=='string'||
+         new TextEncoder().encode(data).byteLength>MAX_STATUS_BYTES)
+        throw new Error('guest_status_unavailable');
+    }catch{
       throw new Error('guest_status_unavailable');
+    }
   }
   try{return parsePrivateGuestStatus(JSON.parse(data),expectedId,expectedOfferId);}
   catch{throw new Error('guest_status_unavailable');}
