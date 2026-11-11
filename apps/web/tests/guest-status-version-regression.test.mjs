@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {shouldReplaceGuestStatus,parsePrivateGuestStatus} from '../src/lib/guest-status-ui-core.mjs';
+
+const requestId='11111111-1111-4111-8111-111111111111';
+const offerId='22222222-2222-4222-8222-222222222222';
+const status=(version,state='pending')=>({
+  id:requestId,service_offer_id:offerId,state,version,
+  created_at:'2026-11-11T10:00:00.000Z',
+});
+
+test('guest status never regresses when a delayed response has an older version',()=>{
+  let current=null;
+  let displayed=null;
+  for(const reply of [status(3,'accepted'),status(2),status(3,'declined'),status(4,'completed')]){
+    const parsed=parsePrivateGuestStatus(reply,requestId,offerId);
+    if(shouldReplaceGuestStatus(current,parsed.version)){
+      current=parsed.version;
+      displayed=parsed.state;
+    }
+  }
+  assert.equal(current,4);
+  assert.equal(displayed,'completed');
+});
+
+test('guest status rejects invalid versions and foreign receipts',()=>{
+  assert.equal(shouldReplaceGuestStatus(null,0),false);
+  assert.equal(shouldReplaceGuestStatus(2,2),false);
+  assert.equal(shouldReplaceGuestStatus(2,1),false);
+  assert.equal(shouldReplaceGuestStatus(2,Number.MAX_SAFE_INTEGER+1),false);
+  assert.throws(()=>parsePrivateGuestStatus(status(1),requestId,'33333333-3333-4333-8333-333333333333'));
+  assert.throws(()=>parsePrivateGuestStatus(status(1),'33333333-3333-4333-8333-333333333333',offerId));
+});
