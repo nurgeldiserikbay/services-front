@@ -103,3 +103,17 @@ test('guest status fallback normalizes failed and oversized text responses',asyn
       error=>error instanceof Error&&error.message==='guest_status_unavailable');
   }
 });
+
+test('guest status transport normalizes missing or throwing response headers',async()=>{
+  const {readPrivateGuestStatusResponse}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  for(const headers of [
+    undefined,
+    {get(){throw new Error('private transport detail');}},
+    {get(){return 42;}},
+  ]){
+    const response={status:200,headers,body:null,text:async()=>JSON.stringify(status(1))};
+    await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+      error=>error instanceof Error&&error.message==='guest_status_unavailable');
+  }
+});
