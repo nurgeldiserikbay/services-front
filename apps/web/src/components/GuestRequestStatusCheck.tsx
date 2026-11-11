@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useRef,useState} from 'react';
+import {useLayoutEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import {
   privateGuestStatusUrl,readPrivateGuestStatusResponse,shouldReplaceGuestStatus,
@@ -52,7 +52,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
   const currentVersion=useRef<number|null>(null);
   // A receipt switch invalidates both the displayed result and in-flight
   // requests. Never show one customer's status for another receipt.
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     active.current?.abort();
     active.current=null;
     busy.current=false;
