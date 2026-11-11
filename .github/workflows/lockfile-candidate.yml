@@ -1,0 +1,32 @@
+name: Generate frontend lockfile candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: corepack enable
+      - name: Verify package manager
+        run: test "$(pnpm --version)" = "10.20.0"
+      - name: Generate candidate from committed manifests
+        run: pnpm install --lockfile-only --no-frozen-lockfile
+      - name: Validate candidate
+        run: |
+          test -s pnpm-lock.yaml
+          pnpm install --lockfile-only --frozen-lockfile
+      - name: Upload candidate for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-pnpm-lockfile-candidate
+          path: pnpm-lock.yaml
+          if-no-files-found: error
+          retention-days: 7
