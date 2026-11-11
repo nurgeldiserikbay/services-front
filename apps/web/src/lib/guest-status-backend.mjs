@@ -36,7 +36,7 @@ function parseStatus(raw,expectedId){
     typeof raw.created_at!=='string')throw new GuestStatusUnavailable();
   // Match the browser DTO contract exactly. Date.parse alone normalizes
   // invalid calendar days and accepts ambiguous, non-UTC timestamps.
-  if(!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(raw.created_at))
+  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(raw.created_at))
     throw new GuestStatusUnavailable();
   const date=new Date(raw.created_at);
   if(!Number.isFinite(date.getTime())||date.toISOString()!==raw.created_at)
