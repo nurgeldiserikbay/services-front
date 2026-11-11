@@ -53,6 +53,9 @@ jobs:
         with:
           node-version: '22'
       - run: corepack enable
+      - name: Verify pinned pnpm version
+        run: |
+          test "$(pnpm --version)" = "10.20.0"
       - run: pnpm install --no-frozen-lockfile
       - name: Report frontend dependency lockfile status
         run: |
