@@ -12,8 +12,8 @@ function endpoint(base,requestId,production){
   if(typeof base!=='string'||base.length>500)throw new GuestStatusUnavailable();
   try{
     const url=new URL(base);
-    if(!['https:','http:'].includes(url.protocol)||
-      (production&&url.protocol!=='https:')||
+    const local=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
+    if((url.protocol!=='https:'&&!(local&&!production&&url.protocol==='http:'))||
       url.username||url.password||url.search||url.hash||
       url.pathname.includes('..')||url.pathname.endsWith('//')||
       !UUID.test(requestId))throw new GuestStatusUnavailable();
