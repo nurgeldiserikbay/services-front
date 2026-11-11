@@ -96,7 +96,8 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
         setVersion(result.version);
       }
     }catch{
-      if(!controller.signal.aborted&&active.current===controller){
+      // A deadline abort is a failed refresh, unlike a receipt-switch abort.
+      if(active.current===controller&&!controller.signal.aborted){
         // An expired request capability or failed backend revalidation must
         // never leave a stale status looking like a fresh verified answer.
         currentVersion.current=null;
@@ -107,7 +108,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
       if(active.current===controller){
         active.current=null;
         busy.current=false;
-        if(!controller.signal.aborted)setPending(false);
+        setPending(false);
       }
     }
   }
