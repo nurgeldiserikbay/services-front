@@ -48,7 +48,7 @@ jobs:
           repository: nurgeldiserikbay/services-back
           # Tested backend baseline; update deliberately together with frontend API contracts.
           # Avoid a moving main branch changing frontend CI inputs between runs.
-          ref: 73f77a7b85772b8f794ae8acd36c01290ac86537
+          ref: ${{ inputs.backend_sha || '73f77a7b85772b8f794ae8acd36c01290ac86537' }}
           path: services-back
           persist-credentials: false
       - name: Print integration commit versions
