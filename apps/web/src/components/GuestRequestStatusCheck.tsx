@@ -86,7 +86,9 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
       const result=await readPrivateGuestStatusResponse(
         response,requestId,serviceOfferId,
       );
-      if(controller.signal.aborted||active.current!==controller)return;
+      // A deadline may expire while the response body is being decoded,
+      // even if fetch already returned its headers.
+      if(signal.aborted||active.current!==controller)return;
       // Never regress the displayed status when out-of-order responses arrive.
       if(shouldReplaceGuestStatus(currentVersion.current,result.version)){
         currentVersion.current=result.version;
