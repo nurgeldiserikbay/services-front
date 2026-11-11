@@ -37,10 +37,18 @@ export function privateGuestStatusUrl(id){
   return '/api/guest-requests/'+id.toLowerCase()+'/status';
 }
 export async function readPrivateGuestStatusResponse(response,expectedId,expectedOfferId){
-  if(!response||response.status!==200||
-     !/^application\/json(?:\s*;|\s*$)/i.test(response.headers.get('content-type')??''))
+  if(!response||response.status!==200)
     throw new Error('guest_status_unavailable');
-  const declared=response.headers.get('content-length');
+  let contentType,declared;
+  try{
+    contentType=response.headers.get('content-type');
+    declared=response.headers.get('content-length');
+  }catch{
+    throw new Error('guest_status_unavailable');
+  }
+  if(typeof contentType!=='string'||
+     !/^application\/json(?:\s*;|\s*$)/i.test(contentType))
+    throw new Error('guest_status_unavailable');
   if(declared!==null&&(!/^\d+$/.test(declared)||Number(declared)>MAX_STATUS_BYTES))
     throw new Error('guest_status_unavailable');
   // Bound the actual stream before decoding: Content-Length is untrusted and
