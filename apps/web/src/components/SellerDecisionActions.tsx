@@ -71,8 +71,10 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       setCommitted(true);
       setCommittedState(action);
       // A parent callback error must not be mistaken for a failed server decision.
-      try{onSuccess(verified);}catch(error){
-        console.error('Seller decision committed, but parent update failed',error);
+      try{onSuccess(verified);}catch{
+        // Callback exceptions may contain private request or account details.
+        // The server decision is already committed: do not expose the exception.
+        console.error('Seller decision committed, but parent update failed');
       }
     }catch{
       if(isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
