@@ -101,6 +101,9 @@ jobs:
           node --import tsx --test test/session-proof-canonical.test.ts test/admin-session-token.test.ts
           npm run db:validate
           npm run db:migrate
+          # Exercise authorization against the same migrated database used
+          # for the browser-to-API integration journey.
+          node --import tsx --test test/session-proof-db.test.ts test/seller-inbox-authority-parity-db.test.ts
           npm run db:seed:geo
           npm run build
       - name: Install PostgreSQL client and verify migrated schema
