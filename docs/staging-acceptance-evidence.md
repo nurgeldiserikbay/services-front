@@ -14,17 +14,17 @@ Record the exact SHA and successful GitHub Actions run URL for each repository. 
 
 ## Required acceptance gates
 
-Each gate requires a dated, reproducible artifact or test report. Do not mark PASS based only on source code, a green unit test, or a screenshot without an execution trace.
+Each gate requires its own dated, reproducible evidence URL (HTTPS). A shared evidence bundle is not sufficient by itself. Do not mark PASS based only on source code, a green unit test, or a screenshot without an execution trace.
 
-| Gate | Required evidence | Result |
-| --- | --- | --- |
-| Authentication | Browser login, MFA enrollment/challenge, session expiry, CSRF rejection; no secrets in logs | NOT RUN |
-| Guest-to-seller lifecycle | Authenticated request, seller decision, notification, cancellation and replay/concurrency checks | NOT RUN |
-| Isolation | Two accounts and two organizations; cross-account read/write attempts rejected | NOT RUN |
-| Admin moderation | Approved rollout flags, scoped permissions, audit event, logout invalidation, private no-store responses | NOT RUN |
-| PWA and mobile | Offline fallback, cache invalidation, installability, accessibility, kk/ru and Capacitor device tests | NOT RUN |
-| Data safety | Clean staging migration, repeat migration, backup restore, rollback rehearsal, KZ residency review | NOT RUN |
-| Operations | Health/readiness, monitoring alerts, secret rotation, incident response and deployment rollback | NOT RUN |
+| Gate | Required evidence | Result | Evidence URL |
+| --- | --- | --- | --- |
+| Authentication | Browser login, MFA enrollment/challenge, session expiry, CSRF rejection; no secrets in logs | NOT RUN | TODO |
+| Guest-to-seller lifecycle | Authenticated request, seller decision, notification, cancellation and replay/concurrency checks | NOT RUN | TODO |
+| Isolation | Two accounts and two organizations; cross-account read/write attempts rejected | NOT RUN | TODO |
+| Admin moderation | Approved rollout flags, scoped permissions, audit event, logout invalidation, private no-store responses | NOT RUN | TODO |
+| PWA and mobile | Offline fallback, cache invalidation, installability, accessibility, kk/ru and Capacitor device tests | NOT RUN | TODO |
+| Data safety | Clean staging migration, repeat migration, backup restore, rollback rehearsal, KZ residency review | NOT RUN | TODO |
+| Operations | Health/readiness, monitoring alerts, secret rotation, incident response and deployment rollback | NOT RUN | TODO |
 
 ## Execution procedure
 
@@ -52,6 +52,12 @@ Each gate requires a dated, reproducible artifact or test report. Do not mark PA
 - PASS / FAIL / BLOCKED:
 - Defect/issue URL:
 - Retest SHA and date:
+
+## Signed release evidence
+
+- Evidence bundle: TODO
+- Approved by: TODO
+- Approved at (UTC): TODO
 
 ## Release decision
 
