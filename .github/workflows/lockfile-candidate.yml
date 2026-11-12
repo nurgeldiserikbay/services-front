@@ -44,7 +44,7 @@ jobs:
           echo "Source commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
           echo "pnpm version: $(pnpm --version)" >> "$GITHUB_STEP_SUMMARY"
           echo "Lockfile SHA-256: $(sha256sum pnpm-lock.yaml | cut -d ' ' -f 1)" >> "$GITHUB_STEP_SUMMARY"
-          echo "Candidate only: not committed to the repository" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit policy: push to main only after audit, tests and build pass" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload candidate for review
         uses: actions/upload-artifact@v4
         with:
@@ -74,3 +74,14 @@ jobs:
           git add -- pnpm-lock.yaml
           git commit -m 'build(front): commit validated pnpm lockfile'
           git push origin HEAD:main
+      - name: Explain lockfile generation failure
+        if: ${{ failure() }}
+        run: |
+          {
+            echo '### Lockfile workflow failed'
+            echo 'Review the first failing step above; no lockfile was pushed.'
+            echo "Source revision: $(git rev-parse HEAD)"
+            echo "Lockfile exists: $([ -s pnpm-lock.yaml ] && echo yes || echo no)"
+            echo 'Working tree:'
+            git status --short
+          } >> "$GITHUB_STEP_SUMMARY"
