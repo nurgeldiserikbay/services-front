@@ -175,3 +175,15 @@ test('guest status transport normalizes throwing body accessors',async()=>{
   await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
     error=>error instanceof Error&&error.message==='guest_status_unavailable');
 });
+
+test('guest status transport normalizes throwing stream reader accessors',async()=>{
+  const {readPrivateGuestStatusResponse}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  const response={
+    status:200,
+    headers:new Headers({'content-type':'application/json'}),
+    body:{get getReader(){throw new Error('private reader accessor detail');}},
+  };
+  await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+    error=>error instanceof Error&&error.message==='guest_status_unavailable');
+});
