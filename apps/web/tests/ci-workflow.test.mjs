@@ -7,7 +7,7 @@ test('frontend CI protects the cross-repository integration journey',()=>{
  assert.match(workflow,/^permissions:\n  contents: read$/m);
  assert.equal((workflow.match(/persist-credentials: false/g) ?? []).length,2,'both checkouts must avoid persisted credentials');
  assert.match(workflow,/^    timeout-minutes: 30$/m);
- assert.match(workflow,/^concurrency:\n  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}\n  cancel-in-progress: true$/m);
+ assert.match(workflow,/^concurrency:\n  group: .*github\.workflow.*github\.ref.*github\.event_name.*inputs\.backend_sha.*\n  cancel-in-progress: true$/m);
  // The full immutable checkout SHA is validated in backend-ci-pin.test.mjs.
  assert.match(workflow,/repository: nurgeldiserikbay\/services-back/);
  assert.match(workflow,/\s+path: services-back\n\s+persist-credentials: false/);
