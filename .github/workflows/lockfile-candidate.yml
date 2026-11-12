@@ -1,4 +1,4 @@
-name: Generate frontend lockfile candidate
+name: Generate and commit verified frontend lockfile
 on:
   push:
     branches:
@@ -11,9 +11,10 @@ on:
       - 'packages/*/package.json'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   lockfile:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -55,3 +56,18 @@ jobs:
           pnpm typecheck
           pnpm test
           pnpm build
+      - name: Commit verified lockfile to main
+        # The generated file is committed only after frozen install, audit,
+        # typecheck, tests and production build succeed.
+        run: |
+          test -s pnpm-lock.yaml
+          if git ls-files --error-unmatch pnpm-lock.yaml >/dev/null 2>&1 &&
+             git diff --quiet -- pnpm-lock.yaml; then
+            echo 'Verified lockfile already committed'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- pnpm-lock.yaml
+          git commit -m 'build(front): commit validated pnpm lockfile'
+          git push origin HEAD:main
