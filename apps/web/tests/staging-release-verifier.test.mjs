@@ -38,3 +38,24 @@ test('missing evidence, stale gate and unreviewed revisions fail closed', () => 
   assert.ok(validateStagingRelease(valid.replace(sha, 'main')).some(p => p.includes('immutable SHA')));
   assert.ok(validateStagingRelease(valid.replace('- Approved by: Release owner', '- Approved by: TODO')).some(p => p.includes('owner approval')));
 });
+
+test('duplicate gate rows cannot approve release', () => {
+  const valid = approvedDocument();
+  const row = valid.split('\n').find(line => line.startsWith('| Authentication |'));
+  assert.ok(row);
+  const tampered = valid.replace(row, row + '\n' + row);
+  assert.ok(validateStagingRelease(tampered).some(p => p.includes('duplicate gate')));
+});
+
+test('missing release status cannot approve release', () => {
+  const valid = approvedDocument();
+  assert.ok(validateStagingRelease(valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**')).some(p => p.includes('status')));
+});
+
+test('release verifier CLI fails closed for the committed staging draft', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const script = new URL('../../../scripts/verify-staging-release.mjs', import.meta.url);
+  const result = spawnSync(process.execPath, [script.pathname], { encoding: 'utf8' });
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /NO-GO/);
+});
