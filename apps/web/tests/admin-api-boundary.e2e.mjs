@@ -30,9 +30,9 @@ for(const authorization of [undefined,'Bearer '+proof,'Basic '+proof]){
   signal:AbortSignal.timeout(5000),
  });
  assert.equal(response.status,401,'admin logout must remain disabled in public integration environment');
- assert.match(response.headers.get('cache-control')??'',/\\bno-store\\b/i);
+ assert.match(response.headers.get('cache-control')??'',/\bno-store\b/i);
  assert.equal(response.headers.get('pragma'),'no-cache');
- assert.match(response.headers.get('x-robots-tag')??'',/\\bnoindex\\b/i);
+ assert.match(response.headers.get('x-robots-tag')??'',/\bnoindex\b/i);
  const body=await response.text();
  assert.ok(!body.includes(proof),'logout response must not echo bearer proof');
  assert.ok(!body.includes('platform_admin_sessions'),'logout must not disclose private schema');
