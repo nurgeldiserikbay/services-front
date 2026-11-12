@@ -115,3 +115,22 @@ F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ing
 - Frontend CI now defaults to immutable backend commit `60ad786189834b2b2958202a68ac61e0cf551b26`, independently verified by [Backend CI #43185879567](https://github.com/nurgeldiserikbay/services-back/actions/runs/43185879567) (audit and build-and-test successful).
 - A manual workflow dispatch may select another 40-character SHA, and CI verifies the exact checked-out revision before integration tests. This does not authorize deployment or change runtime feature flags.
 - [Frontend CI #43186523463](https://github.com/nurgeldiserikbay/services-front/actions/runs/43186523463) reached frontend tests after backend migration; three frontend test assertions failed and are being updated. Compatibility is **not yet verified** until a subsequent complete frontend CI run succeeds.
+
+## Verified cross-repository CI pair — 2026-11-12
+
+| Component | Immutable commit | CI result |
+| --- | --- | --- |
+| Backend | `60ad786189834b2b2958202a68ac61e0cf551b26` | [passed — #43185879567](https://github.com/nurgeldiserikbay/services-back/actions/runs/43185879567) |
+| Frontend | `60b71770a5d3305334a800ca9fdddb5da7c8b7ec` | [passed — #43197678529](https://github.com/nurgeldiserikbay/services-front/actions/runs/43197678529) |
+| Admin | `893d2640618c0621fd3377871016767f40b449c1` | [passed — #43185274621](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43185274621) |
+
+The frontend run completed the pinned-backend PostgreSQL migration, private admin and guest/seller authorization boundary checks, 249/249 frontend tests, TypeScript checking, production Next.js build, and live public search-to-profile journey. The backend and admin passed their independent CI workflows. **No staging deployment or authenticated end-to-end acceptance is claimed.**
+
+### Remaining release gates (not yet verified)
+
+- [ ] Trusted account login and MFA provisioning, session and CSRF behavior tested through browser and backend.
+- [ ] Authenticated guest request → seller decision → notification → cancellation journey, including concurrency and cross-account isolation.
+- [ ] Admin onboarding, role-scoped moderation, audited write operations and verified logout, with default-off flags kept closed until approval.
+- [ ] PWA offline/installability and Capacitor device acceptance, including accessibility, performance, and kk/ru usability.
+- [ ] Staging migration rehearsal, backup/restore, monitoring/alerts, rollback, secret management and data-residency review.
+- [ ] Production deployment approval based on signed staging evidence and a repeatable release/rollback procedure.
