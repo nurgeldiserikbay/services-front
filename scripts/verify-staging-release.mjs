@@ -24,7 +24,7 @@ function rows(text, heading) {
 
 export function validateStagingRelease(text) {
   const problems = [];
-  if (!text.includes('Status: **VERIFIED**')) problems.push('Staging status must be VERIFIED');
+  if (!/^Status: \*\*VERIFIED\*\*/m.test(text)) problems.push('Staging status must be VERIFIED');
   const revisions = rows(text, 'Immutable revision record');
   for (const repo of EXPECTED_REPOS) {
     const matching = revisions.filter(c => c[0] === repo);
@@ -40,11 +40,12 @@ export function validateStagingRelease(text) {
     const matching = gates.filter(c => c[0] === gate);
     if (matching.length !== 1) { problems.push(gate + ': missing or duplicate gate'); continue; }
     if (matching[0][2] !== 'PASS') problems.push(gate + ': not PASS');
+    if (!/^https:\/\/[^\s|]+$/i.test(matching[0][3] ?? '')) problems.push(gate + ': missing HTTPS evidence URL');
   }
   // A PASS table alone is insufficient: a reviewer must link a sanitized evidence bundle.
   const evidence = text.match(/^## Signed release evidence\s*\n([\s\S]*?)(?=^## |$(?![\s\S]))/m)?.[1] ?? '';
   const evidenceUrl = evidence.match(/^- Evidence bundle:\s*(https:\/\/\S+)/m)?.[1];
-  if (!evidenceUrl) problems.push('Missing signed evidence bundle URL');
+  if (!evidenceUrl || evidenceUrl === 'https://TODO') problems.push('Missing signed evidence bundle URL');
   if (!/^- Approved by:\s*(?!TODO\s*$)\S.+/m.test(evidence)) problems.push('Missing owner approval');
   if (!/^- Approved at \(UTC\):\s*\d{4}-\d{2}-\d{2}/m.test(evidence)) problems.push('Missing approval timestamp');
   return problems;
