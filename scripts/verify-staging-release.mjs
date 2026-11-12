@@ -24,7 +24,7 @@ function rows(text, heading) {
 
 export function validateStagingRelease(text) {
   const problems = [];
-  if (!/^Status: \*\*VERIFIED\*\*/m.test(text)) problems.push('Staging status must be VERIFIED');
+  if (!/^Status: \*\*VERIFIED\*\*(?:\\s|$)/m.test(text)) problems.push('Staging status must be VERIFIED');
   const revisions = rows(text, 'Immutable revision record');
   for (const repo of EXPECTED_REPOS) {
     const matching = revisions.filter(c => c[0] === repo);
@@ -46,8 +46,10 @@ export function validateStagingRelease(text) {
   const evidence = text.match(/^## Signed release evidence\s*\n([\s\S]*?)(?=^## |$(?![\s\S]))/m)?.[1] ?? '';
   const evidenceUrl = evidence.match(/^- Evidence bundle:\s*(https:\/\/\S+)/m)?.[1];
   if (!evidenceUrl || evidenceUrl === 'https://TODO') problems.push('Missing signed evidence bundle URL');
-  if (!/^- Approved by:\s*(?!TODO\s*$)\S.+/m.test(evidence)) problems.push('Missing owner approval');
-  if (!/^- Approved at \(UTC\):\s*\d{4}-\d{2}-\d{2}/m.test(evidence)) problems.push('Missing approval timestamp');
+  const approver = evidence.match(/^- Approved by:[ \\t]*(.*)$/m)?.[1]?.trim();
+  if (!approver || approver === 'TODO') problems.push('Missing owner approval');
+  const approvedAt = evidence.match(/^- Approved at \\(UTC\\):[ \\t]*(.*)$/m)?.[1]?.trim();
+  if (!approvedAt || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$/.test(approvedAt) || Number.isNaN(Date.parse(approvedAt))) problems.push('Missing valid UTC approval timestamp');
   return problems;
 }
 
