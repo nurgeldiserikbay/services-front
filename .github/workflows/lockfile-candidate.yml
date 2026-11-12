@@ -39,6 +39,11 @@ jobs:
           path: pnpm-lock.yaml
           if-no-files-found: error
           retention-days: 7
+      - name: Verify generated lockfile matches workspace manifests
+        run: |
+          test -s pnpm-lock.yaml
+          pnpm install --lockfile-only --frozen-lockfile
+          git diff --exit-code -- package.json pnpm-workspace.yaml apps packages
       - name: Validate candidate with clean frozen installation
         run: |
           test -s pnpm-lock.yaml
