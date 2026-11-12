@@ -141,3 +141,9 @@ The frontend run completed the pinned-backend PostgreSQL migration, private admi
 - Frontend workflow pins this immutable revision for PostgreSQL migrations, backend tests, API startup and public search-to-profile HTTP integration.
 - Admin enabled-flag negative-access HTTP smoke tests passed [admin CI #43226148133](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43226148133).
 - This does **not** prove authenticated admin MFA/login, positive moderation permission paths, or staging acceptance. Keep feature flags disabled pending those gates.
+
+## Live admin logout HTTP compatibility — 2026-11-12
+
+- Backend `79819828f7d7783e9ae577e0b06654e17c445477` passed [backend CI #43229603248](https://github.com/nurgeldiserikbay/services-back/actions/runs/43229603248), including a real Nest HTTP test of admin logout status 200, no-store, bearer rejection and redacted response.
+- Frontend CI now pins this immutable backend revision and re-runs the migrated PostgreSQL API/public browser journey. A green frontend run is still required for this new pin.
+- This is a contract and negative authorization check; real admin login/MFA, successful permissioned moderation, and staging release approval remain open.
