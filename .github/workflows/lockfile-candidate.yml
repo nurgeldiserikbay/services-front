@@ -76,6 +76,12 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # A stale candidate must never be pushed after manifests changed.
+          git fetch --no-tags origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo '::error title=Stale lockfile candidate::main advanced during validation; rerun against the new revision.'
+            exit 1
+          fi
           git add -- pnpm-lock.yaml
           git commit -m 'build(front): commit validated pnpm lockfile'
           git push origin HEAD:main
