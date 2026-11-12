@@ -54,9 +54,11 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
   // Bound the actual stream before decoding: Content-Length is untrusted and
   // response.text() would buffer an arbitrarily large private backend reply.
   let data;
-  if(response.body&&typeof response.body.getReader==='function'){
+  let body;
+  try{body=response.body;}catch{throw new Error('guest_status_unavailable');}
+  if(body&&typeof body.getReader==='function'){
     let reader;
-    try{reader=response.body.getReader();}
+    try{reader=body.getReader();}
     catch{throw new Error('guest_status_unavailable');}
     const chunks=[];
     let total=0;
