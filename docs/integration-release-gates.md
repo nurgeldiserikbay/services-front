@@ -147,3 +147,10 @@ The frontend run completed the pinned-backend PostgreSQL migration, private admi
 - Backend `79819828f7d7783e9ae577e0b06654e17c445477` passed [backend CI #43229603248](https://github.com/nurgeldiserikbay/services-back/actions/runs/43229603248), including a real Nest HTTP test of admin logout status 200, no-store, bearer rejection and redacted response.
 - Frontend CI now pins this immutable backend revision and re-runs the migrated PostgreSQL API/public browser journey. A green frontend run is still required for this new pin.
 - This is a contract and negative authorization check; real admin login/MFA, successful permissioned moderation, and staging release approval remain open.
+
+## Backend default-off admin logout refresh — 2026-11-12
+
+- Backend `651bed63f41fe29613ff6cde90bb6a8c15c01446` passed [CI #43230423041](https://github.com/nurgeldiserikbay/services-back/actions/runs/43230423041), including HTTP regression verifying that disabled admin logout cannot query the database.
+- Previous Frontend [CI #43230228890](https://github.com/nurgeldiserikbay/services-front/actions/runs/43230228890) passed against backend `79819828f7d7783e9ae577e0b06654e17c445477`; new pinned baseline requires a separate frontend CI pass.
+- Admin [CI #43228571347](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43228571347) passed the raw/parsed cookie consistency security regression.
+- Authenticated end-to-end admin onboarding/MFA and staging approval are **not** satisfied by these CI runs.
