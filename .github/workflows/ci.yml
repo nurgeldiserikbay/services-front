@@ -13,7 +13,7 @@ on:
         description: 'Full 40-character backend commit SHA for compatibility test'
         required: true
         type: string
-        default: 'b83c7c8612bd28d7d192ed85058b17b85e58bf3b'
+        default: '710d9e7c5c1f32247e5092be205c59828b3cbd9f'
 permissions:
   contents: read
 concurrency:
@@ -54,12 +54,12 @@ jobs:
           repository: nurgeldiserikbay/services-back
           # Tested backend baseline; update deliberately together with frontend API contracts.
           # Avoid a moving main branch changing frontend CI inputs between runs.
-          ref: ${{ inputs.backend_sha || 'b83c7c8612bd28d7d192ed85058b17b85e58bf3b' }}
+          ref: ${{ inputs.backend_sha || '710d9e7c5c1f32247e5092be205c59828b3cbd9f' }}
           path: services-back
           persist-credentials: false
       - name: Verify selected backend commit SHA
         env:
-          EXPECTED_BACKEND_SHA: ${{ inputs.backend_sha || 'b83c7c8612bd28d7d192ed85058b17b85e58bf3b' }}
+          EXPECTED_BACKEND_SHA: ${{ inputs.backend_sha || '710d9e7c5c1f32247e5092be205c59828b3cbd9f' }}
         run: |
           [[ "$EXPECTED_BACKEND_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
           echo "Frontend SHA: $(git rev-parse HEAD)"
