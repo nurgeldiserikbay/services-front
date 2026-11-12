@@ -69,3 +69,15 @@ test('gate PASS without its own HTTPS evidence remains NO-GO', () => {
   assert.ok(validateStagingRelease(valid.replace('| PASS | https://example.com/gate-evidence |', '| PASS | http://example.com/evidence |'))
     .some(p => p.includes('missing HTTPS evidence URL')));
 });
+
+test('approval cannot be forged with placeholder reviewer or malformed UTC time', () => {
+  const valid = approvedDocument();
+  for (const bad of ['TODO', ' ', '']) {
+    assert.ok(validateStagingRelease(valid.replace('- Approved by: Release owner', '- Approved by: ' + bad))
+      .some(p => p.includes('owner approval')));
+  }
+  for (const bad of ['TODO', '2026-11-12', '2026-11-12T18:00:00+05:00', '2026-99-99T18:00:00Z']) {
+    assert.ok(validateStagingRelease(valid.replace('2026-11-12T18:00:00Z', bad))
+      .some(p => p.includes('UTC approval timestamp')), bad);
+  }
+});
