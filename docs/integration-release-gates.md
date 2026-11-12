@@ -134,3 +134,10 @@ The frontend run completed the pinned-backend PostgreSQL migration, private admi
 - [ ] PWA offline/installability and Capacitor device acceptance, including accessibility, performance, and kk/ru usability.
 - [ ] Staging migration rehearsal, backup/restore, monitoring/alerts, rollback, secret management and data-residency review.
 - [ ] Production deployment approval based on signed staging evidence and a repeatable release/rollback procedure.
+
+## Backend logout compatibility refresh — 2026-11-12
+
+- Backend commit `20c0372ace9d45eca2a2b7d49ce9a2e23a737f12` passed [backend CI #43226445173](https://github.com/nurgeldiserikbay/services-back/actions/runs/43226445173), including the explicit admin logout HTTP 200 response contract.
+- Frontend workflow pins this immutable revision for PostgreSQL migrations, backend tests, API startup and public search-to-profile HTTP integration.
+- Admin enabled-flag negative-access HTTP smoke tests passed [admin CI #43226148133](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43226148133).
+- This does **not** prove authenticated admin MFA/login, positive moderation permission paths, or staging acceptance. Keep feature flags disabled pending those gates.
