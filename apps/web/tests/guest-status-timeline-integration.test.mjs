@@ -29,7 +29,9 @@ test('shared timeline uses bounded known states and never declares accepted time
 
 test('guest status ignores superseded in-flight replies and errors',()=>{
  const component=src('components/GuestRequestStatusCheck.tsx');
- assert.match(component,/controller\.signal\.aborted\|\|active\.current!==controller/);
- assert.match(component,/!controller\.signal\.aborted&&active\.current===controller/);
- assert.match(component,/!controller\.signal\.aborted&&active\.current===null\)setPending\(false\)/);
+ assert.match(component,/active\.current!==controller\|\|controller\.signal\.aborted/);
+ assert.match(component,/active\.current===controller&&!controller\.signal\.aborted/);
+ assert.match(component,/if\(active\.current===controller\)\{/);
+ assert.match(component,/active\.current=null;\s*busy\.current=false;\s*setPending\(false\)/);
+ assert.match(component,/AbortSignal\.any\(\[controller\.signal,AbortSignal\.timeout\(10_000\)\]\)/);
 });
