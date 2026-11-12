@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { validateStagingRelease } from '../../../scripts/verify-staging-release.mjs';
 
 const draft = readFileSync(new URL('../../../docs/staging-acceptance-evidence.md', import.meta.url), 'utf8');
@@ -57,7 +58,7 @@ test('missing release status cannot approve release', () => {
 test('release verifier CLI fails closed for the committed staging draft', async () => {
   const { spawnSync } = await import('node:child_process');
   const script = new URL('../../../scripts/verify-staging-release.mjs', import.meta.url);
-  const result = spawnSync(process.execPath, [script.pathname], { encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [fileURLToPath(script)], { encoding: 'utf8' });
   assert.equal(result.status, 1, result.stderr);
   assert.match(result.stderr, /NO-GO/);
 });
