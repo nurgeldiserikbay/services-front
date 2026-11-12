@@ -10,6 +10,7 @@
     "dev": "pnpm --filter @services/web dev",
     "build": "pnpm --filter @services/web build",
     "typecheck": "pnpm --filter @services/web typecheck",
-    "test": "pnpm --filter @services/web test"
+    "test": "pnpm --filter @services/web test",
+    "release:verify": "node scripts/verify-staging-release.mjs"
   }
 }
