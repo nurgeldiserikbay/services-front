@@ -15,8 +15,10 @@ function approvedDocument() {
       '| ' + repo + ' | ' + sha + ' | ' + ci + ' | Reviewer | 2026-11-12 |',
     );
   }
-  text = text.replaceAll('| NOT RUN |', '| PASS |');
-  text += '\n## Signed release evidence\n\n- Evidence bundle: https://example.com/release-evidence\n- Approved by: Release owner\n- Approved at (UTC): 2026-11-12T18:00:00Z\n';
+  text = text.replaceAll('| NOT RUN | TODO |', '| PASS | https://example.com/gate-evidence |');
+  text = text.replace('- Evidence bundle: TODO', '- Evidence bundle: https://example.com/release-evidence')
+    .replace('- Approved by: TODO', '- Approved by: Release owner')
+    .replace('- Approved at (UTC): TODO', '- Approved at (UTC): 2026-11-12T18:00:00Z');
   return text;
 }
 
@@ -58,4 +60,12 @@ test('release verifier CLI fails closed for the committed staging draft', async 
   const result = spawnSync(process.execPath, [script.pathname], { encoding: 'utf8' });
   assert.equal(result.status, 1, result.stderr);
   assert.match(result.stderr, /NO-GO/);
+});
+
+test('gate PASS without its own HTTPS evidence remains NO-GO', () => {
+  const valid = approvedDocument();
+  assert.ok(validateStagingRelease(valid.replace('| PASS | https://example.com/gate-evidence |', '| PASS | TODO |'))
+    .some(p => p.includes('missing HTTPS evidence URL')));
+  assert.ok(validateStagingRelease(valid.replace('| PASS | https://example.com/gate-evidence |', '| PASS | http://example.com/evidence |'))
+    .some(p => p.includes('missing HTTPS evidence URL')));
 });
