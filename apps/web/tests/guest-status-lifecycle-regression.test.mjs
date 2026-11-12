@@ -60,3 +60,26 @@ test('unknown decision and cancellation state is denied rather than displayed',(
       /guest_status_unavailable/);
   }
 });
+
+test('receipt versions cannot be reused to overwrite seller decisions or cancellations',()=>{
+  for(const state of states){
+    assert.equal(shouldReplaceGuestStatus(5,5),false,state);
+    assert.equal(shouldReplaceGuestStatus(5,4),false,state);
+    assert.equal(shouldReplaceGuestStatus(5,6),true,state);
+  }
+});
+
+test('private status payload rejects extra nested metadata and unsafe version values',()=>{
+  for(const state of states){
+    for(const payload of [
+      {...receipt(state,2),customer:{phone:'+77000000000'}},
+      {...receipt(state,2),seller_note:'internal decision note'},
+      {...receipt(state,2),version:0},
+      {...receipt(state,2),version:Number.MAX_SAFE_INTEGER+1},
+      {...receipt(state,2),created_at:'2026-02-30T10:00:00.000Z'},
+    ]){
+      assert.throws(()=>parsePrivateGuestStatus(payload,requestId,offerId),
+        /guest_status_unavailable/);
+    }
+  }
+});
