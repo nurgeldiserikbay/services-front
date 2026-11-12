@@ -46,10 +46,10 @@ export function validateStagingRelease(text) {
   const evidence = text.match(/^## Signed release evidence\s*\n([\s\S]*?)(?=^## |$(?![\s\S]))/m)?.[1] ?? '';
   const evidenceUrl = evidence.match(/^- Evidence bundle:\s*(https:\/\/\S+)/m)?.[1];
   if (!evidenceUrl || evidenceUrl === 'https://TODO') problems.push('Missing signed evidence bundle URL');
-  const approver = evidence.match(/^- Approved by:[ \\t]*(.*)$/m)?.[1]?.trim();
+  const approver = evidence.match(/^- Approved by:[ \t]*(.*)$/m)?.[1]?.trim();
   if (!approver || approver === 'TODO') problems.push('Missing owner approval');
-  const approvedAt = evidence.match(/^- Approved at \\(UTC\\):[ \\t]*(.*)$/m)?.[1]?.trim();
-  if (!approvedAt || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$/.test(approvedAt) || Number.isNaN(Date.parse(approvedAt))) problems.push('Missing valid UTC approval timestamp');
+  const approvedAt = evidence.match(/^- Approved at \(UTC\):[ \t]*(.*)$/m)?.[1]?.trim();
+  if (!approvedAt || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(approvedAt) || Number.isNaN(Date.parse(approvedAt))) problems.push('Missing valid UTC approval timestamp');
   return problems;
 }
 
