@@ -144,3 +144,21 @@ test('guest status transport normalizes stream lock release failures',async()=>{
  await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
   error=>error instanceof Error&&error.message==='guest_status_unavailable');
 });
+
+test('guest status transport rejects a stream returning a non-byte chunk',async()=>{
+  const {readPrivateGuestStatusResponse}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  let canceled=false;
+  const response={
+    status:200,
+    headers:new Headers({'content-type':'application/json'}),
+    body:{getReader(){return {
+      async read(){return {done:false,value:'private upstream payload'};},
+      cancel(){canceled=true;return Promise.resolve();},
+      releaseLock(){},
+    };}},
+  };
+  await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+    error=>error instanceof Error&&error.message==='guest_status_unavailable');
+  assert.equal(canceled,true);
+});
