@@ -32,6 +32,13 @@ jobs:
         run: test "$(pnpm --version)" = "10.20.0"
       - name: Generate candidate from committed manifests
         run: pnpm install --lockfile-only --no-frozen-lockfile
+      - name: Upload candidate for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-pnpm-lockfile-candidate
+          path: pnpm-lock.yaml
+          if-no-files-found: error
+          retention-days: 7
       - name: Validate candidate with clean frozen installation
         run: |
           test -s pnpm-lock.yaml
@@ -45,13 +52,6 @@ jobs:
           echo "pnpm version: $(pnpm --version)" >> "$GITHUB_STEP_SUMMARY"
           echo "Lockfile SHA-256: $(sha256sum pnpm-lock.yaml | cut -d ' ' -f 1)" >> "$GITHUB_STEP_SUMMARY"
           echo "Commit policy: push to main only after audit, tests and build pass" >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload candidate for review
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-pnpm-lockfile-candidate
-          path: pnpm-lock.yaml
-          if-no-files-found: error
-          retention-days: 7
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level high
       - name: Validate frontend source with candidate
