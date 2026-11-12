@@ -162,3 +162,16 @@ test('guest status transport rejects a stream returning a non-byte chunk',async(
     error=>error instanceof Error&&error.message==='guest_status_unavailable');
   assert.equal(canceled,true);
 });
+
+test('guest status transport normalizes throwing body accessors',async()=>{
+  const {readPrivateGuestStatusResponse}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  const response={
+    status:200,
+    headers:new Headers({'content-type':'application/json'}),
+    get body(){throw new Error('sensitive response transport detail');},
+    text:async()=>JSON.stringify(status(1)),
+  };
+  await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+    error=>error instanceof Error&&error.message==='guest_status_unavailable');
+});
