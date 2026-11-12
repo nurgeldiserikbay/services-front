@@ -52,7 +52,7 @@ test('duplicate gate rows cannot approve release', () => {
 
 test('missing release status cannot approve release', () => {
   const valid = approvedDocument();
-  assert.ok(validateStagingRelease(valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**')).some(p => p.includes('Status')));
+  assert.ok(validateStagingRelease(valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**')).some(p => p.includes('status')));
 });
 
 test('release verifier CLI fails closed for the committed staging draft', async () => {
