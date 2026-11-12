@@ -2,6 +2,11 @@ name: Frontend foundation CI
 on:
   push:
   pull_request:
+  # Commits made with GITHUB_TOKEN do not start push-triggered workflows.
+  # Run full CI after the verified lockfile workflow has finished pushing.
+  workflow_run:
+    workflows: ['Generate and commit verified frontend lockfile']
+    types: [completed]
   workflow_dispatch:
     inputs:
       backend_sha:
@@ -16,6 +21,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   web:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
