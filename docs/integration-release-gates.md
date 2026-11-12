@@ -109,3 +109,9 @@ F1 depends on backend OTP provider, pre-auth CSRF, rate limiting and trusted ing
 - Frontend CI pins backend `73f77a7b85772b8f794ae8acd36c01290ac86537` (green [Backend CI #42879267010](https://github.com/nurgeldiserikbay/services-back/actions/runs/42879267010)).
 - PostgreSQL-backed OTP sign-in test verifies replay of a consumed challenge is rejected and counted as an additional verification attempt, without issuing another session or invalidating the original active session.
 - Cross-repository integration CI and a full authenticated customer/seller HTTP E2E remain separate gates.
+
+## Backend compatibility refresh — 2026-11-12
+
+- Frontend CI now defaults to immutable backend commit `60ad786189834b2b2958202a68ac61e0cf551b26`, independently verified by [Backend CI #43185879567](https://github.com/nurgeldiserikbay/services-back/actions/runs/43185879567) (audit and build-and-test successful).
+- A manual workflow dispatch may select another 40-character SHA, and CI verifies the exact checked-out revision before integration tests. This does not authorize deployment or change runtime feature flags.
+- [Frontend CI #43186523463](https://github.com/nurgeldiserikbay/services-front/actions/runs/43186523463) reached frontend tests after backend migration; three frontend test assertions failed and are being updated. Compatibility is **not yet verified** until a subsequent complete frontend CI run succeeds.
