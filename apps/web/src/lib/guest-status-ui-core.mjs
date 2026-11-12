@@ -56,9 +56,12 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
   let data;
   let body;
   try{body=response.body;}catch{throw new Error('guest_status_unavailable');}
-  if(body&&typeof body.getReader==='function'){
+  let getReader;
+  try{getReader=body?.getReader;}
+  catch{throw new Error('guest_status_unavailable');}
+  if(body&&typeof getReader==='function'){
     let reader;
-    try{reader=body.getReader();}
+    try{reader=getReader.call(body);}
     catch{throw new Error('guest_status_unavailable');}
     const chunks=[];
     let total=0;
