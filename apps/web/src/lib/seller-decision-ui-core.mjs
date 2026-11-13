@@ -38,8 +38,10 @@ export function nextSellerDecisionAttempt(previous,requestId,version,action,newK
      !['accept','decline'].includes(action)||
      typeof newKey!=='string'||!UUID.test(newKey))
     throw new Error('invalid_seller_decision');
-  if(previous?.requestId===requestId&&previous.version===version&&
-     previous.action===action&&typeof previous.key==='string'&&UUID.test(previous.key))
+  if(typeof previous?.requestId==='string'&&UUID.test(previous.requestId)&&
+     previous.requestId.toLowerCase()===requestId.toLowerCase()&&
+     previous.version===version&&previous.action===action&&
+     typeof previous.key==='string'&&UUID.test(previous.key))
     return previous;
   return {requestId,version,action,key:newKey};
 }
