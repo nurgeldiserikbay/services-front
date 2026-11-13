@@ -28,7 +28,7 @@ export function parseSellerDecisionReceipt(value,requestId,action,expectedVersio
      !Number.isSafeInteger(value.version)||value.version!==expectedVersion+1||
      typeof value.replayed!=='boolean')
     throw new Error('invalid_seller_decision_receipt');
-  return {id:value.id,state:value.state,version:value.version,replayed:value.replayed};
+  return {id:value.id.toLowerCase(),state:value.state,version:value.version,replayed:value.replayed};
 }
 
 /** Reuse a retry key only for the exact same decision context. */
