@@ -50,6 +50,16 @@ test('seller receipt rejects malformed expected request context before UI update
 
 const otherId='33333333-3333-4333-8333-333333333333';
 const otherKey='44444444-4444-4444-8444-444444444444';
+test('verified seller receipt IDs are canonical for parent state updates',()=>{
+ const mixed='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const upper=mixed.toUpperCase();
+ assert.deepEqual(parseSellerDecisionReceipt({
+   id:upper,state:'accepted',version:2,replayed:false,
+ },mixed,'accept',1),{
+   id:mixed,state:'accepted',version:2,replayed:false,
+ });
+});
+
 test('decision retries reuse keys only for identical request version and action',()=>{
  const first=nextSellerDecisionAttempt(null,id,1,'accept',key);
  assert.equal(nextSellerDecisionAttempt(first,id,1,'accept',otherKey),first);
