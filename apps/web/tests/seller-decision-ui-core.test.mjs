@@ -100,7 +100,7 @@ test('invalid prior idempotency keys are never reused',()=>{
  }
 });
 
-test('request metadata canonicalizes UUIDs without weakening receipt identity',()=>{
+test('request metadata and receipts canonicalize UUIDs without accepting another request',()=>{
  // Alphabetic hex digits are required: numeric-only UUIDs have identical upper/lowercase forms.
  const mixedId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
  const mixedKey='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -109,9 +109,12 @@ test('request metadata canonicalizes UUIDs without weakening receipt identity',(
  const request=buildSellerDecisionRequest(upperId,'accept',1,upperKey);
  assert.equal(request.path,`/v1/requests/${mixedId}/accept`);
  assert.equal(request.headers['Idempotency-Key'],mixedKey);
- // The response must match the exact expected request context, not merely a UUID ignoring case.
- assert.throws(()=>parseSellerDecisionReceipt({
+ // PostgreSQL UUIDs are canonical lowercase, even if the caller used uppercase.
+ assert.deepEqual(parseSellerDecisionReceipt({
    id:mixedId,state:'accepted',version:2,replayed:false,
+ },upperId,'accept',1),{id:mixedId,state:'accepted',version:2,replayed:false});
+ assert.throws(()=>parseSellerDecisionReceipt({
+   id:otherId,state:'accepted',version:2,replayed:false,
  },upperId,'accept',1),/invalid_seller_decision_receipt/);
  assert.deepEqual(parseSellerDecisionReceipt({
    id:mixedId,state:'accepted',version:2,replayed:false,
