@@ -76,6 +76,15 @@ test('decision retries reuse keys only for identical request version and action'
  assert.throws(()=>nextSellerDecisionAttempt(first,'bad',1,'accept',otherKey));
 });
 
+test('seller decision retries preserve the idempotency key across UUID casing',()=>{
+ const lower='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const upper=lower.toUpperCase();
+ const first=nextSellerDecisionAttempt(null,upper,3,'accept',key);
+ assert.equal(nextSellerDecisionAttempt(first,lower,3,'accept',otherKey),first);
+ assert.equal(nextSellerDecisionAttempt(first,lower,3,'decline',otherKey).key,otherKey);
+ assert.equal(nextSellerDecisionAttempt(first,otherId,3,'accept',otherKey).key,otherKey);
+});
+
 test('stale seller responses never match a changed request or version',()=>{
  assert.equal(isCurrentSellerDecisionResponse(2,2,id,id,3,3),true);
  assert.equal(isCurrentSellerDecisionResponse(2,3,id,id,3,3),false);
