@@ -22,7 +22,8 @@ export function parseSellerDecisionReceipt(value,requestId,action,expectedVersio
      !value||typeof value!=='object'||Array.isArray(value)||
      Object.keys(value).length!==4||
      Object.keys(value).some(k=>!['id','state','version','replayed'].includes(k))||
-     value.id!==requestId||
+     typeof value.id!=='string'||!UUID.test(value.id)||
+     value.id.toLowerCase()!==requestId.toLowerCase()||
      value.state!==(action==='accept'?'accepted':'declined')||
      !Number.isSafeInteger(value.version)||value.version!==expectedVersion+1||
      typeof value.replayed!=='boolean')
