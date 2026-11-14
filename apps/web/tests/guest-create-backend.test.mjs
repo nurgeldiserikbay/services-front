@@ -226,3 +226,31 @@ test('guest backend transport failure stays generic when its abort signal fires'
   }}),error=>error instanceof GuestCreateUnavailable&&
     !error.message.includes('secret upstream failure'));
 });
+
+test('backend URL normalization does not depend on a request deadline',async()=>{
+  for(const baseUrl of [
+    'https://backend.example/v1',
+    'https://backend.example/v1/',
+  ]){
+    const actual=await call({baseUrl,transport:async(url)=>{
+      assert.equal(url,'https://backend.example/v1/guest-requests');
+      return json(result);
+    }});
+    assert.equal(actual.id,id);
+  }
+});
+
+test('backend URL rejects credentials, query, fragment and unsupported protocols before transport',async()=>{
+  let calls=0;
+  const transport=async()=>{calls++;return json(result);};
+  for(const baseUrl of [
+    'https://user:password@backend.example/v1',
+    'https://backend.example/v1?debug=1',
+    'https://backend.example/v1#fragment',
+    'ftp://backend.example/v1',
+    'https://backend.example/v1//',
+  ]){
+    await assert.rejects(call({baseUrl,transport}),GuestCreateUnavailable);
+  }
+  assert.equal(calls,0);
+});
