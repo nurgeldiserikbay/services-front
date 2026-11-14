@@ -118,7 +118,7 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
 
   return <section aria-label={t.heading} className={styles.panel}>
     <h3>{t.heading}</h3>
-    <p role="status" aria-live="polite">{pending?t.loading:error?t.error:version!==null&&state!==null?t.statuses[state]:t.idle}</p>
+    {!error&&<p role="status" aria-live="polite">{pending?t.loading:version!==null&&state!==null?t.statuses[state]:t.idle}</p>}
     {version!==null&&state!==null&&<>
       <small>{t.version}: {version}</small>
       <RequestTimeline state={state} locale={locale}/>
