@@ -66,10 +66,14 @@ jobs:
           echo "Frontend SHA: $(git rev-parse HEAD)"
           echo "Backend SHA: $(git -C services-back rev-parse HEAD)"
           test "$(git -C services-back rev-parse HEAD)" = "${EXPECTED_BACKEND_SHA,,}"
+          # A pinned backend SHA without a committed lockfile cannot be
+          # reproduced by npm ci. Fail before any lengthy database setup.
+          git -C services-back ls-files --error-unmatch package-lock.json
           {
             echo "### Tested integration revisions"
             echo "Frontend: $(git rev-parse HEAD)"
             echo "Backend: $(git -C services-back rev-parse HEAD)"
+            echo "Backend lockfile SHA-256: $(sha256sum services-back/package-lock.json | cut -d' ' -f1)"
             echo "Trigger: $GITHUB_EVENT_NAME"
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-node@v4
