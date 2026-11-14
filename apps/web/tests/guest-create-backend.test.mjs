@@ -100,3 +100,47 @@ test('server wrapper returns only safe receipt and sealed-cookie instructions',(
   const page=readFileSync(new URL('../src/app/[locale]/services/[id]/page.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(page,/submitVerifiedGuestRequest|GuestInquiryDraft/);
 });
+
+test('backend guest receipt rejects oversized streamed bodies without reading the rest',async()=>{
+  let cancelled=false;
+  let reads=0;
+  const stream=new ReadableStream({
+    pull(controller){
+      reads++;
+      controller.enqueue(new Uint8Array(8193));
+    },
+    cancel(){cancelled=true;},
+  });
+  await assert.rejects(call({transport:async()=>({
+    status:201,
+    headers:new Headers({'content-type':'application/json'}),
+    body:stream,
+  })}),GuestCreateUnavailable);
+  assert.equal(cancelled,true,'oversized upstream stream must be cancelled');
+  assert.equal(reads,1,'oversized upstream stream must not be fully consumed');
+});
+
+test('backend guest receipt rejects malformed UTF-8 in a streamed response',async()=>{
+  const stream=new ReadableStream({
+    start(controller){
+      controller.enqueue(Uint8Array.from([0xc3,0x28]));
+      controller.close();
+    },
+  });
+  await assert.rejects(call({transport:async()=>({
+    status:201,
+    headers:new Headers({'content-type':'application/json'}),
+    body:stream,
+  })}),GuestCreateUnavailable);
+});
+
+test('backend guest receipt refuses an unusable stream rather than unbounded text fallback',async()=>{
+  let textCalls=0;
+  await assert.rejects(call({transport:async()=>({
+    status:201,
+    headers:new Headers({'content-type':'application/json'}),
+    body:{},
+    async text(){textCalls++;return JSON.stringify(result);},
+  })}),GuestCreateUnavailable);
+  assert.equal(textCalls,0);
+});
