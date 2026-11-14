@@ -6,7 +6,7 @@ export const dynamic='force-dynamic';
 export const revalidate=0;
 export const runtime='nodejs';
 
-import {parseGuestCreateRequestBytes,readBoundedGuestCreateBody,GUEST_CREATE_MAX_BODY_BYTES}
+import {parseGuestCreateRequestBytes,readBoundedGuestCreateBody,GUEST_CREATE_MAX_BODY_BYTES,isGuestCreateJsonContentType}
   from '@/lib/guest-create-route-core.mjs';
 const RESPONSE_HEADERS={
   'Cache-Control':'private, no-store, max-age=0',
@@ -33,9 +33,8 @@ export async function POST(request:NextRequest):Promise<NextResponse>{
   if(process.env.SERVICES_WEB_ENABLE_GUEST_CREATE_HTTP!=='enabled')
     return unavailable(404);
   try{
-    if(!/^application\/json(?:\s*;|\s*$)/i.test(
-      request.headers.get('content-type')??'',
-    ))return unavailable(503);
+    if(!isGuestCreateJsonContentType(request.headers.get('content-type')))
+      return unavailable(503);
     const declared=request.headers.get('content-length');
     if(declared!==null&&(!/^\d+$/.test(declared)||
       Number(declared)>GUEST_CREATE_MAX_BODY_BYTES))return unavailable(503);
