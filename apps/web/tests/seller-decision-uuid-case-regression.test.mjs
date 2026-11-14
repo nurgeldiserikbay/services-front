@@ -32,9 +32,12 @@ test('response identity rejects malformed or non-string UUIDs',()=>{
   }
 });
 
-test('a retry key is not reused for a changed action or version',()=>{
+test('an uncertain decision blocks opposite action on the same version',()=>{
   const previous=nextSellerDecisionAttempt(null,lower,4,'accept',key);
   const replacement='123e4567-e89b-42d3-a456-426614174003';
-  assert.equal(nextSellerDecisionAttempt(previous,upper,4,'decline',replacement).key,replacement);
-  assert.equal(nextSellerDecisionAttempt(previous,upper,5,'accept',replacement).key,replacement);
+  assert.throws(
+    ()=>nextSellerDecisionAttempt(previous,upper,4,'decline',replacement),
+    /seller_decision_outcome_unknown/,
+  );
+  assert.equal(nextSellerDecisionAttempt(previous,upper,5,'decline',replacement).key,replacement);
 });
