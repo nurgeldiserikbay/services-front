@@ -33,6 +33,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   const pendingKey=useRef<{requestId:string;version:number;action:Decision;key:string}|null>(null);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState(false);
+  const [uncertainAction,setUncertainAction]=useState<Decision|null>(null);
   const [committed,setCommitted]=useState(false);
   const [committedState,setCommittedState]=useState<Decision|null>(null);
   const committedRef=useRef(false);
@@ -49,6 +50,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       locked.current=false;
       setBusy(false);
       setError(false);
+      setUncertainAction(null);
       committedRef.current=false;
       setCommitted(false);
       setCommittedState(null);
@@ -76,6 +78,7 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
         requestId,context.current.requestId,version,context.current.version))return;
       const verified=parseSellerDecisionReceipt(result,requestId,action,version);
       pendingKey.current=null;
+      setUncertainAction(null);
       // A committed decision cannot be submitted again before parent context refreshes.
       committedRef.current=true;
       setCommitted(true);
@@ -88,7 +91,12 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       }
     }catch{
       if(isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
-        requestId,context.current.requestId,version,context.current.version))setError(true);
+        requestId,context.current.requestId,version,context.current.version)){
+        setError(true);
+        // The server may have committed even when the response was lost.
+        // Only the original action may be retried with its idempotency key.
+        setUncertainAction(pendingKey.current?.action??null);
+      }
     }finally{
       if(isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
         requestId,context.current.requestId,version,context.current.version)){
@@ -98,10 +106,10 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   }
   return <div>
     <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:12}}>
-      <button type="button" aria-busy={busy} disabled={busy||committed||!validContext} onClick={()=>void submit('accept')}>
+      <button type="button" aria-busy={busy} disabled={busy||committed||!validContext||uncertainAction==='decline'} onClick={()=>void submit('accept')}>
         {busy?t.working:t.accept}
       </button>
-      <button type="button" aria-busy={busy} disabled={busy||committed||!validContext} onClick={()=>void submit('decline')}>
+      <button type="button" aria-busy={busy} disabled={busy||committed||!validContext||uncertainAction==='accept'} onClick={()=>void submit('decline')}>
         {busy?t.working:t.decline}
       </button>
     </div>
