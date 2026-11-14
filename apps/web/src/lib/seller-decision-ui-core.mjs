@@ -63,3 +63,20 @@ export function isCurrentSellerDecisionResponse(attemptGeneration,currentGenerat
     Number.isSafeInteger(attemptedVersion)&&attemptedVersion>=1&&
     attemptedVersion<Number.MAX_SAFE_INTEGER&&attemptedVersion===currentVersion;
 }
+
+/** Block opposite actions while the previous server outcome is unknown.
+ * Consult the synchronous attempt ref, not only React's rendered state.
+ */
+export function canStartSellerDecision(previous,requestId,version,action){
+  if(typeof requestId!=='string'||!UUID.test(requestId)||
+     !Number.isSafeInteger(version)||version<1||version>=Number.MAX_SAFE_INTEGER||
+     (action!=='accept'&&action!=='decline'))return false;
+  if(previous===null||previous===undefined)return true;
+  if(typeof previous.requestId!=='string'||!UUID.test(previous.requestId)||
+     !Number.isSafeInteger(previous.version)||
+     (previous.action!=='accept'&&previous.action!=='decline')||
+     typeof previous.key!=='string'||!UUID.test(previous.key))return false;
+  if(previous.requestId.toLowerCase()!==requestId.toLowerCase()||
+     previous.version!==version)return true;
+  return previous.action===action;
+}
