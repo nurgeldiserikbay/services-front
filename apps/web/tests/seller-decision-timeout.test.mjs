@@ -71,3 +71,28 @@ test('a late mutation rejection after deadline is handled',async()=>{
   rejectOperation(new Error('late_network_error'));
   await new Promise(resolve=>setImmediate(resolve));
 });
+
+test('receipt switch before queued mutation prevents stale server action',async()=>{
+  let generation=0;
+  let calls=0;
+  const request=withSellerDecisionDeadline(()=>{
+    if(generation!==0)throw new Error('seller_decision_context_changed');
+    calls++;
+    return 'accepted';
+  },100);
+  generation=1;
+  await assert.rejects(request,/seller_decision_context_changed/);
+  assert.equal(calls,0);
+});
+
+test('unchanged receipt allows queued mutation to start once',async()=>{
+  let generation=0;
+  let calls=0;
+  const request=withSellerDecisionDeadline(()=>{
+    if(generation!==0)throw new Error('seller_decision_context_changed');
+    calls++;
+    return 'accepted';
+  },100);
+  assert.equal(await request,'accepted');
+  assert.equal(calls,1);
+});
