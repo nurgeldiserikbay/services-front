@@ -84,15 +84,11 @@ jobs:
       - name: Verify pinned pnpm version
         run: |
           test "$(pnpm --version)" = "10.20.0"
-      - name: Install frontend dependencies (frozen when committed lockfile exists)
+      - name: Install frontend dependencies from committed lockfile
         run: |
-          if git ls-files --error-unmatch pnpm-lock.yaml >/dev/null 2>&1; then
-            pnpm install --frozen-lockfile
-            git diff --exit-code -- pnpm-lock.yaml
-          else
-            echo '::warning title=Frontend lockfile missing::pnpm-lock.yaml is not committed; dependency resolution is not reproducible. Track in issue #65.'
-            pnpm install --no-frozen-lockfile
-          fi
+          git ls-files --error-unmatch pnpm-lock.yaml
+          pnpm install --frozen-lockfile
+          git diff --exit-code -- pnpm-lock.yaml
       - name: Audit production dependencies for high-severity vulnerabilities
         run: pnpm audit --prod --audit-level high
       - name: Install and migrate backend test API
