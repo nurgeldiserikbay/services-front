@@ -90,6 +90,9 @@ test('synchronous retry guard rejects invalid and malformed contexts',async()=>{
   const {canStartSellerDecision}=await import('../src/lib/seller-decision-ui-core.mjs');
   for(const invalid of [
     {requestId:id,version:3,action:'accept',key:'bad'},
+    {requestId:id,version:0,action:'accept',key},
+    {requestId:id,version:Number.MAX_SAFE_INTEGER,action:'accept',key},
+    {requestId:id,version:1.5,action:'accept',key},
     {requestId:id,version:3,action:'other',key},
     {requestId:id,version:3,action:'accept',key,extra:true,requestId:'bad'},
   ])assert.equal(canStartSellerDecision(invalid,id,3,'decline'),false);
