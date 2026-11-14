@@ -14,7 +14,7 @@ async function fetchPage(url, description) {
   }
   const body = await response.text();
   assert.equal(response.status, 200,
-    `${description} should render at ${url}; received ${response.status}; body: ${body.slice(0, 500)}`);
+    `${description} should render at ${url}; received ${response.status}`);
   assert.match(response.headers.get('content-type') ?? '', /text\/html/i,
     `${description} should return HTML at ${url}`);
   console.log(`[journey] OK ${description} (${response.status})`);
@@ -33,12 +33,12 @@ if (apiBase) {
     const response = await fetch(url, {signal: AbortSignal.timeout(requestTimeoutMs)});
     const body = await response.text();
     assert.equal(response.status, 200,
-      `API ${url.pathname} returned ${response.status}: ${body.slice(0, 500)}`);
+      `API ${url.pathname} returned HTTP ${response.status}`);
     let payload;
     try { payload = JSON.parse(body); }
     catch { throw new Error(`API ${url.pathname} returned invalid JSON`); }
     assert.ok(payload && typeof payload === 'object' && expected in payload,
-      `API ${url.pathname} missing ${expected}; body: ${body.slice(0, 500)}`);
+      `API ${url.pathname} missing required ${expected} field`);
     console.log(`[journey] API OK: ${url.pathname}`);
   }
 }
