@@ -43,3 +43,31 @@ test('seller action retains captured idempotency key after context reset',async(
   pending.current=null;
   assert.equal(await decision,key);
 });
+
+test('deadline invokes the mutation exactly once',async()=>{
+  let calls=0;
+  const result=await withSellerDecisionDeadline(()=>{
+    calls++;
+    return {state:'accepted'};
+  },100);
+  assert.equal(calls,1);
+  assert.deepEqual(result,{state:'accepted'});
+});
+
+test('synchronous mutation errors are propagated without hanging',async()=>{
+  await assert.rejects(
+    withSellerDecisionDeadline(()=>{throw new Error('request_failed');},100),
+    /request_failed/,
+  );
+});
+
+test('a late mutation rejection after deadline is handled',async()=>{
+  let rejectOperation;
+  const operation=new Promise((_,reject)=>{rejectOperation=reject;});
+  await assert.rejects(
+    withSellerDecisionDeadline(()=>operation,5),
+    /seller_decision_timeout/,
+  );
+  rejectOperation(new Error('late_network_error'));
+  await new Promise(resolve=>setImmediate(resolve));
+});
