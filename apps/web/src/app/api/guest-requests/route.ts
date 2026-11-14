@@ -6,7 +6,7 @@ export const dynamic='force-dynamic';
 export const revalidate=0;
 export const runtime='nodejs';
 
-import {parseGuestCreateRequestBytes,readBoundedGuestCreateBody,GUEST_CREATE_MAX_BODY_BYTES,isGuestCreateJsonContentType}
+import {parseGuestCreateRequestBytes,readBoundedGuestCreateBody,GUEST_CREATE_MAX_BODY_BYTES,isGuestCreateJsonContentType,isGuestCreateContentLengthAllowed}
   from '@/lib/guest-create-route-core.mjs';
 const RESPONSE_HEADERS={
   'Cache-Control':'private, no-store, max-age=0',
@@ -36,8 +36,7 @@ export async function POST(request:NextRequest):Promise<NextResponse>{
     if(!isGuestCreateJsonContentType(request.headers.get('content-type')))
       return unavailable(503);
     const declared=request.headers.get('content-length');
-    if(declared!==null&&(!/^\d+$/.test(declared)||
-      Number(declared)>GUEST_CREATE_MAX_BODY_BYTES))return unavailable(503);
+    if(!isGuestCreateContentLengthAllowed(declared))return unavailable(503);
     // Byte limit applies even to chunked requests without Content-Length.
     const bytes=await readBoundedGuestCreateBody(request.body);
     if(bytes.byteLength>GUEST_CREATE_MAX_BODY_BYTES)return unavailable(503);
