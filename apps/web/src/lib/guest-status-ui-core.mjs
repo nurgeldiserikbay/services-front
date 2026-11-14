@@ -49,7 +49,7 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
   if(typeof contentType!=='string'||
      !/^application\/json(?:\s*;|\s*$)/i.test(contentType))
     throw new Error('guest_status_unavailable');
-  // Reject malformed or contradictory lengths before reading private data.
+  // Reject malformed or excessive declared lengths before reading private data.
   // Number.isSafeInteger also rejects oversized decimal values that cannot
   // be represented exactly in JavaScript.
   if(declared!==null&&(!/^\d+$/.test(declared)||
@@ -63,6 +63,10 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
   let getReader;
   try{getReader=body?.getReader;}
   catch{throw new Error('guest_status_unavailable');}
+  // A non-null body without a stream reader must not fall back to
+  // response.text(), which could buffer an unbounded private payload.
+  if(body&&typeof getReader!=='function')
+    throw new Error('guest_status_unavailable');
   if(body&&typeof getReader==='function'){
     let reader;
     try{reader=getReader.call(body);}
