@@ -19,7 +19,6 @@ function normalizeBackendUrl(base,production){
     url.pathname=url.pathname.replace(/\/$/,'')+'/guest-requests';
     return url.toString();
   }catch{throw new GuestCreateUnavailable();}
-  finally{deadline.removeEventListener('abort',onAbort);}
 }
 
 function validateBody(raw){
