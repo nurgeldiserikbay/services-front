@@ -48,3 +48,18 @@ test('invalid guest request stream fails without waiting for stalled cancellatio
   assert.equal(cancelled,true);
   assert.equal(released,true);
 });
+
+test('guest creation stops a stalled body read when the request is aborted',async()=>{
+  const {readBoundedGuestCreateBody}=await import('../src/lib/guest-create-route-core.mjs');
+  const controller=new AbortController();
+  let cancelled=false;
+  const stream={getReader(){return {
+    read(){return new Promise(()=>{});},
+    cancel(){cancelled=true;return Promise.resolve();},
+    releaseLock(){},
+  };}};
+  const pending=readBoundedGuestCreateBody(stream,controller.signal);
+  controller.abort();
+  await assert.rejects(pending,/invalid_create_payload/);
+  assert.equal(cancelled,true,'aborted body read should request stream cancellation');
+});
