@@ -110,7 +110,7 @@ test('backend guest receipt rejects oversized streamed bodies without reading th
       controller.enqueue(new Uint8Array(8193));
     },
     cancel(){cancelled=true;},
-  });
+  },{highWaterMark:0});
   await assert.rejects(call({transport:async()=>({
     status:201,
     headers:new Headers({'content-type':'application/json'}),
