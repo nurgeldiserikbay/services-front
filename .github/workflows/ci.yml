@@ -201,13 +201,21 @@ jobs:
             const upstream = http.request({
               hostname: '127.0.0.1', port: 3101, path: request.url,
               method: request.method, headers: {...request.headers, host: '127.0.0.1:3101'},
+              timeout: 10000,
             }, (upstreamResponse) => {
               response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
               upstreamResponse.pipe(response);
             });
+            upstream.on('timeout', () => upstream.destroy(new Error('test API timeout')));
             upstream.on('error', () => {
-              response.writeHead(502);
-              response.end('test API unavailable');
+              // An upstream can fail after response headers were forwarded.
+              // Never write a second header block or crash the CI bridge.
+              if (response.headersSent) {
+                response.destroy();
+              } else {
+                response.writeHead(502);
+                response.end('test API unavailable');
+              }
             });
             request.pipe(upstream);
           });
