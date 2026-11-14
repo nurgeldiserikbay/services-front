@@ -79,6 +79,7 @@ jobs:
           node --test apps/web/tests/guest-status-version-regression.test.mjs
           node --test apps/web/tests/seller-decision-uuid-case-regression.test.mjs
           node --test apps/web/tests/seller-decision-contract-regression.test.mjs
+          node --test apps/web/tests/seller-decision-timeout.test.mjs
       - run: corepack enable
       - name: Verify pinned pnpm version
         run: |
