@@ -39,7 +39,9 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   const generation=useRef(0);
   // Invalidate only committed context changes; rendering must remain pure.
   useLayoutEffect(()=>{
-    if(context.current.requestId.toLowerCase()!==requestId.toLowerCase()||context.current.version!==version){
+    if(typeof context.current.requestId!=='string'||typeof requestId!=='string'||
+      context.current.requestId.toLowerCase()!==requestId.toLowerCase()||
+      context.current.version!==version){
       context.current={requestId,version};
       generation.current++;
       pendingKey.current=null;
