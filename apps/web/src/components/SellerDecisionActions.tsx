@@ -61,6 +61,10 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   useEffect(()=>()=>{generation.current++;},[]);
   async function submit(action:Decision){
     if(locked.current||committedRef.current||!validContext)return;
+    // An uncertain earlier mutation may already have committed on the server.
+    // Never allow switching to the opposite action until the parent supplies
+    // a refreshed request version, even if a disabled button is invoked directly.
+    if(uncertainAction!==null&&uncertainAction!==action)return;
     if(action==='decline'&&!window.confirm(t.confirm))return;
     const attemptGeneration=generation.current;
     locked.current=true;setBusy(true);setError(false);
