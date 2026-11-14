@@ -63,7 +63,15 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       pendingKey.current=nextSellerDecisionAttempt(
         pendingKey.current,requestId,version,action,crypto.randomUUID(),
       );
-      const result=await onDecision(requestId,action,version,pendingKey.current.key);
+      // A stalled action must not lock both buttons forever. Retrying uses the
+      // same idempotency key, so an uncertain server outcome is not duplicated.
+      let deadline:ReturnType<typeof setTimeout>|undefined;
+      const result=await Promise.race([
+        onDecision(requestId,action,version,pendingKey.current.key),
+        new Promise<never>((_,reject)=>{
+          deadline=setTimeout(()=>reject(new Error('seller_decision_timeout')),15_000);
+        }),
+      ]).finally(()=>{if(deadline!==undefined)clearTimeout(deadline);});
       if(!isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
         requestId,context.current.requestId,version,context.current.version))return;
       const verified=parseSellerDecisionReceipt(result,requestId,action,version);
