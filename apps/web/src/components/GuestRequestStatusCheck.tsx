@@ -3,7 +3,7 @@
 import {useLayoutEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import {
-  privateGuestStatusUrl,readPrivateGuestStatusResponse,shouldReplaceGuestStatus,
+  privateGuestStatusUrl,readPrivateGuestStatusResponse,shouldReplaceGuestStatus,withGuestStatusAbort,
   type PrivateGuestStatusState,
 } from '@/lib/guest-status-ui-core.mjs';
 import styles from './GuestRequestStatusCheck.module.css';
@@ -85,22 +85,9 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
       });
       // The request deadline must also cover a stalled body reader, not just
       // fetch headers. Always remove the abort listener after settling.
-      let removeAbortListener=()=>{};
-      const deadline=new Promise<never>((_,reject)=>{
-        const onAbort=()=>reject(new Error('guest_status_timeout'));
-        signal.addEventListener('abort',onAbort,{once:true});
-        removeAbortListener=()=>signal.removeEventListener('abort',onAbort);
-        if(signal.aborted)onAbort();
-      });
-      let result:Awaited<ReturnType<typeof readPrivateGuestStatusResponse>>;
-      try{
-        result=await Promise.race([
-          readPrivateGuestStatusResponse(response,requestId,serviceOfferId),
-          deadline,
-        ]);
-      }finally{
-        removeAbortListener();
-      }
+      const result=await withGuestStatusAbort(
+        ()=>readPrivateGuestStatusResponse(response,requestId,serviceOfferId),signal,
+      );
       // A deadline may expire while the response body is being decoded,
       // even if fetch already returned its headers.
       if(active.current!==controller||controller.signal.aborted)return;
