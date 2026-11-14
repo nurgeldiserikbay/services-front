@@ -40,9 +40,13 @@ export function nextSellerDecisionAttempt(previous,requestId,version,action,newK
     throw new Error('invalid_seller_decision');
   if(typeof previous?.requestId==='string'&&UUID.test(previous.requestId)&&
      previous.requestId.toLowerCase()===requestId.toLowerCase()&&
-     previous.version===version&&previous.action===action&&
-     typeof previous.key==='string'&&UUID.test(previous.key))
+     previous.version===version&&
+     typeof previous.key==='string'&&UUID.test(previous.key)){
+    // After a timeout, the original mutation may still commit. Never submit
+    // the opposite action against the same stale version with a new key.
+    if(previous.action!==action)throw new Error('seller_decision_outcome_unknown');
     return previous;
+  }
   return {requestId,version,action,key:newKey};
 }
 
