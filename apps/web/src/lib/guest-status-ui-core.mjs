@@ -135,6 +135,9 @@ export async function withGuestStatusAbort(operation,signal){
     signal.addEventListener('abort',onAbort,{once:true});
     if(signal.aborted)onAbort();
   });
-  try{return await Promise.race([Promise.resolve().then(operation),deadline]);}
+  try{return await Promise.race([Promise.resolve().then(()=>{
+    if(signal.aborted)throw new Error('guest_status_timeout');
+    return operation();
+  }),deadline]);}
   finally{signal.removeEventListener('abort',onAbort);}
 }
