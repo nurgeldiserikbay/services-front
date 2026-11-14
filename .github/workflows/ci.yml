@@ -244,6 +244,7 @@ jobs:
             echo '### Integration gate outcomes'
             echo '| Gate | Outcome |'
             echo '| --- | --- |'
+            echo "| Guest and seller boundary regression tests | $BOUNDARY_TESTS |"
             echo "| Frontend lockfile install | $FRONTEND_INSTALL |"
             echo "| Dependency security audit | $DEPENDENCY_AUDIT |"
             echo "| Backend migration and integration | $BACKEND_INTEGRATION |"
