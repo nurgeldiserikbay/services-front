@@ -65,3 +65,13 @@ test('new version or different request may start a new seller decision',()=>{
   assert.equal(nextSellerDecisionAttempt(previous,id,4,'decline',newKey).key,newKey);
   assert.equal(nextSellerDecisionAttempt(previous,'123e4567-e89b-42d3-a456-426614174003',3,'decline',newKey).key,newKey);
 });
+
+
+test('malformed prior action never reuses a stale idempotency key',()=>{
+  const nextKey='123e4567-e89b-42d3-a456-426614174002';
+  const malformed={requestId:id,version:3,action:'unknown',key};
+  const attempt=nextSellerDecisionAttempt(malformed,id,3,'accept',nextKey);
+  assert.equal(attempt.key,nextKey);
+  assert.equal(attempt.action,'accept');
+  assert.notEqual(attempt,malformed);
+});
