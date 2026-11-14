@@ -38,7 +38,7 @@ export async function POST(request:NextRequest):Promise<NextResponse>{
     const declared=request.headers.get('content-length');
     if(!isGuestCreateContentLengthAllowed(declared))return unavailable(503);
     // Byte limit applies even to chunked requests without Content-Length.
-    const bytes=await readBoundedGuestCreateBody(request.body);
+    const bytes=await readBoundedGuestCreateBody(request.body,request.signal);
     if(bytes.byteLength>GUEST_CREATE_MAX_BODY_BYTES)return unavailable(503);
     const parsed=parseGuestCreateRequestBytes(bytes);
     const created=await submitVerifiedGuestRequest({
