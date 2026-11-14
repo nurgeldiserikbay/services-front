@@ -66,8 +66,11 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       );
       // A stalled action must not lock both buttons forever. Retrying uses the
       // same idempotency key, so an uncertain server outcome is not duplicated.
+      // Snapshot the key before the deadline helper schedules its callback.
+      // A receipt switch can clear pendingKey.current in the meantime.
+      const attemptKey=pendingKey.current.key;
       const result=await withSellerDecisionDeadline(
-        ()=>onDecision(requestId,action,version,pendingKey.current!.key),
+        ()=>onDecision(requestId,action,version,attemptKey),
       );
       if(!isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
         requestId,context.current.requestId,version,context.current.version))return;
