@@ -240,3 +240,24 @@ test('guest status never buffers a non-streaming private response body',async()=
     error=>error instanceof Error&&error.message==='guest_status_unavailable');
   assert.equal(textCalled,false,'unbounded response.text must never be invoked');
 });
+
+
+test('guest status abort deadline releases stalled body and permits a retry',async()=>{
+  const {withGuestStatusAbort}=await import('../src/lib/guest-status-ui-core.mjs');
+  const controller=new AbortController();
+  const pending=withGuestStatusAbort(()=>new Promise(()=>{}),controller.signal);
+  controller.abort();
+  await assert.rejects(pending,/guest_status_timeout/);
+  const retry=new AbortController();
+  assert.equal(await withGuestStatusAbort(()=>Promise.resolve('fresh'),retry.signal),'fresh');
+});
+
+test('guest status abort deadline does not execute work after cancellation',async()=>{
+  const {withGuestStatusAbort}=await import('../src/lib/guest-status-ui-core.mjs');
+  const controller=new AbortController();
+  controller.abort();
+  let called=false;
+  await assert.rejects(withGuestStatusAbort(()=>{called=true;},controller.signal),
+    /guest_status_timeout/);
+  assert.equal(called,false);
+});
