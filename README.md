@@ -48,3 +48,18 @@ Passing local commands alone does not replace CI, integration or staging verific
 ## Ownership boundaries
 
 Backend enforces identity, seller ownership, authorization, transactional request transitions and data protection. Frontend handles presentation, localization, accessibility and SEO, without trusting browser-provided role claims. Capacitor must use a static mobile shell rather than running Next.js SSR inside a WebView.
+
+## Verify compatibility against current backend main
+
+The frontend CI intentionally uses a pinned backend commit for reproducible default runs. A green default run therefore does **not** establish compatibility with the latest backend `main`.
+
+Before each release, resolve the backend's current full commit SHA and manually dispatch the frontend CI with that SHA:
+
+```bash
+BACKEND_SHA="$(git ls-remote https://github.com/nurgeldiserikbay/services-back.git refs/heads/main | cut -f1)"
+test "${#BACKEND_SHA}" -eq 40
+printf 'Backend main SHA: %s\n' "$BACKEND_SHA"
+gh workflow run ci.yml --repo nurgeldiserikbay/services-front --ref main -f backend_sha="$BACKEND_SHA"
+```
+
+Wait for the dispatched run to complete and verify its **Tested integration revisions** summary shows the intended frontend release SHA and backend SHA. Record the run URL and both SHAs in the release evidence. Do not treat a queued, missing, cancelled or failed run as proof of compatibility. The workflow exercises database migrations, backend authorization regression tests, API boundaries and a live public search-to-profile journey; separately verify the full authenticated guest/seller lifecycle, admin MFA and staging before production rollout.
