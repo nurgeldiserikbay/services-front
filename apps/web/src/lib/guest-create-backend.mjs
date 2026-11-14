@@ -79,7 +79,7 @@ export async function sendVerifiedGuestCreate({
     });
     if(response.status!==201)throw new GuestCreateUnavailable();
     const contentType=response.headers.get('content-type')??'';
-    if(!/^application\/json(?:\s*;|\s*$)/i.test(contentType))
+    if(!/^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8")\s*)?\s*$/i.test(contentType))
       throw new GuestCreateUnavailable();
     const contentLength=response.headers.get('content-length');
     if(contentLength!==null&&(!/^\d+$/.test(contentLength)||Number(contentLength)>LIMIT))
@@ -88,16 +88,22 @@ export async function sendVerifiedGuestCreate({
     // absent or dishonest, and response.text() otherwise allocates unboundedly.
     let bytes;
     if(response.body==null){
-      // Test doubles without a stream retain the same bounded fallback.
-      const text=await response.text();
-      bytes=new TextEncoder().encode(text);
+      // Empty real responses are invalid; avoid unbounded response.text().
+      throw new GuestCreateUnavailable();
     }else if(response.body&&typeof response.body.getReader==='function'){
       const reader=response.body.getReader();
       const chunks=[];
       let size=0,complete=false;
+      const deadline=AbortSignal.timeout(5000);
+      let onAbort;
+      const aborted=new Promise((_,reject)=>{
+        onAbort=()=>reject(new GuestCreateUnavailable());
+        deadline.addEventListener('abort',onAbort,{once:true});
+        if(deadline.aborted)onAbort();
+      });
       try{
         while(true){
-          const {done,value}=await reader.read();
+          const {done,value}=await Promise.race([reader.read(),aborted]);
           if(done){complete=true;break;}
           if(!(value instanceof Uint8Array)||size+value.byteLength>LIMIT)
             throw new GuestCreateUnavailable();
@@ -105,6 +111,7 @@ export async function sendVerifiedGuestCreate({
           chunks.push(value);
         }
       }finally{
+        deadline.removeEventListener('abort',onAbort);
         if(!complete){
           try{void Promise.resolve(reader.cancel()).catch(()=>{});}catch{}
         }
