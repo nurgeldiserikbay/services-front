@@ -84,8 +84,37 @@ export async function sendVerifiedGuestCreate({
     const contentLength=response.headers.get('content-length');
     if(contentLength!==null&&(!/^\d+$/.test(contentLength)||Number(contentLength)>LIMIT))
       throw new GuestCreateUnavailable();
-    const text=await response.text();
-    if(text.length>LIMIT)throw new GuestCreateUnavailable();
-    return parseCommitted(JSON.parse(text),now);
+    // Bound response bytes before buffering: an upstream Content-Length can be
+    // absent or dishonest, and response.text() otherwise allocates unboundedly.
+    let bytes;
+    if(response.body===null){
+      // Test doubles without a stream retain the same bounded fallback.
+      const text=await response.text();
+      bytes=new TextEncoder().encode(text);
+    }else if(response.body&&typeof response.body.getReader==='function'){
+      const reader=response.body.getReader();
+      const chunks=[];
+      let size=0,complete=false;
+      try{
+        while(true){
+          const {done,value}=await reader.read();
+          if(done){complete=true;break;}
+          if(!(value instanceof Uint8Array)||size+value.byteLength>LIMIT)
+            throw new GuestCreateUnavailable();
+          size+=value.byteLength;
+          chunks.push(value);
+        }
+      }finally{
+        if(!complete){
+          try{void Promise.resolve(reader.cancel()).catch(()=>{});}catch{}
+        }
+        try{reader.releaseLock();}catch{}
+      }
+      bytes=new Uint8Array(size);
+      let offset=0;
+      for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+    }else throw new GuestCreateUnavailable();
+    if(bytes.byteLength>LIMIT)throw new GuestCreateUnavailable();
+    return parseCommitted(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)),now);
   }catch{throw new GuestCreateUnavailable();}
 }
