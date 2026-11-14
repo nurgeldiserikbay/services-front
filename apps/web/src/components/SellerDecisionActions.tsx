@@ -3,6 +3,7 @@
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import {isCurrentSellerDecisionResponse,nextSellerDecisionAttempt,parseSellerDecisionReceipt} from '@/lib/seller-decision-ui-core.mjs';
+import {withSellerDecisionDeadline} from '@/lib/seller-decision-timeout.mjs';
 
 type Decision='accept'|'decline';
 type Result={id:string;state:'accepted'|'declined';version:number;replayed:boolean};
@@ -65,13 +66,9 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       );
       // A stalled action must not lock both buttons forever. Retrying uses the
       // same idempotency key, so an uncertain server outcome is not duplicated.
-      let deadline:ReturnType<typeof setTimeout>|undefined;
-      const result=await Promise.race([
-        onDecision(requestId,action,version,pendingKey.current.key),
-        new Promise<never>((_,reject)=>{
-          deadline=setTimeout(()=>reject(new Error('seller_decision_timeout')),15_000);
-        }),
-      ]).finally(()=>{if(deadline!==undefined)clearTimeout(deadline);});
+      const result=await withSellerDecisionDeadline(
+        ()=>onDecision(requestId,action,version,pendingKey.current!.key),
+      );
       if(!isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
         requestId,context.current.requestId,version,context.current.version))return;
       const verified=parseSellerDecisionReceipt(result,requestId,action,version);
