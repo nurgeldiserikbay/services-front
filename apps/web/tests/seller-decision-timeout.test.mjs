@@ -23,6 +23,8 @@ test('seller decision deadline propagates original operation failures',async()=>
 test('seller decision deadline validates timing and callback',async()=>{
   await assert.rejects(withSellerDecisionDeadline(()=>true,0),/invalid_seller_decision_deadline/);
   await assert.rejects(withSellerDecisionDeadline(null,100),/invalid_seller_decision_deadline/);
+  await assert.rejects(withSellerDecisionDeadline(()=>true,2_147_483_648),/invalid_seller_decision_deadline/);
+  await assert.rejects(withSellerDecisionDeadline(()=>true,Number.MAX_SAFE_INTEGER),/invalid_seller_decision_deadline/);
 });
 
 test('late completion after timeout cannot turn timeout into success',async()=>{
