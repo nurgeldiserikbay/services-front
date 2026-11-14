@@ -73,7 +73,8 @@ export function canStartSellerDecision(previous,requestId,version,action){
      (action!=='accept'&&action!=='decline'))return false;
   if(previous===null||previous===undefined)return true;
   if(typeof previous.requestId!=='string'||!UUID.test(previous.requestId)||
-     !Number.isSafeInteger(previous.version)||
+     !Number.isSafeInteger(previous.version)||previous.version<1||
+     previous.version>=Number.MAX_SAFE_INTEGER||
      (previous.action!=='accept'&&previous.action!=='decline')||
      typeof previous.key!=='string'||!UUID.test(previous.key))return false;
   if(previous.requestId.toLowerCase()!==requestId.toLowerCase()||
