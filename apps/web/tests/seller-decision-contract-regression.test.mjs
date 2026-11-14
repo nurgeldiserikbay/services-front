@@ -75,3 +75,25 @@ test('malformed prior action never reuses a stale idempotency key',()=>{
   assert.equal(attempt.action,'accept');
   assert.notEqual(attempt,malformed);
 });
+
+test('synchronous retry guard allows only original uncertain action',async()=>{
+  const {canStartSellerDecision}=await import('../src/lib/seller-decision-ui-core.mjs');
+  const previous=nextSellerDecisionAttempt(null,id,3,'accept',key);
+  assert.equal(canStartSellerDecision(previous,id,3,'accept'),true);
+  assert.equal(canStartSellerDecision(previous,id,3,'decline'),false);
+  assert.equal(canStartSellerDecision(previous,id.toUpperCase(),3,'decline'),false);
+  assert.equal(canStartSellerDecision(previous,id,4,'decline'),true);
+  assert.equal(canStartSellerDecision(null,id,3,'decline'),true);
+});
+
+test('synchronous retry guard rejects invalid and malformed contexts',async()=>{
+  const {canStartSellerDecision}=await import('../src/lib/seller-decision-ui-core.mjs');
+  for(const invalid of [
+    {requestId:id,version:3,action:'accept',key:'bad'},
+    {requestId:id,version:3,action:'other',key},
+    {requestId:id,version:3,action:'accept',key,extra:true,requestId:'bad'},
+  ])assert.equal(canStartSellerDecision(invalid,id,3,'decline'),false);
+  assert.equal(canStartSellerDecision(null,'../bad',3,'accept'),false);
+  assert.equal(canStartSellerDecision(null,id,0,'accept'),false);
+  assert.equal(canStartSellerDecision(null,id,3,'delete'),false);
+});
