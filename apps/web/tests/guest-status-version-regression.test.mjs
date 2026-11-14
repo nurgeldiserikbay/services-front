@@ -261,3 +261,38 @@ test('guest status abort deadline does not execute work after cancellation',asyn
     /guest_status_timeout/);
   assert.equal(called,false);
 });
+
+
+test('guest status deadline settles once when body completes after abort',async()=>{
+  const {withGuestStatusAbort}=await import('../src/lib/guest-status-ui-core.mjs');
+  const controller=new AbortController();
+  let finish;
+  const body=new Promise(resolve=>{finish=resolve;});
+  const result=withGuestStatusAbort(()=>body,controller.signal);
+  controller.abort();
+  await assert.rejects(result,/guest_status_timeout/);
+  finish('late private status');
+  await body;
+  await assert.rejects(result,/guest_status_timeout/);
+});
+
+test('guest status deadline removes abort listener after success and failure',async()=>{
+  const {withGuestStatusAbort}=await import('../src/lib/guest-status-ui-core.mjs');
+  const controller=new AbortController();
+  let listeners=0;
+  const signal={
+    get aborted(){return controller.signal.aborted;},
+    addEventListener(type,listener,options){
+      listeners++;
+      controller.signal.addEventListener(type,listener,options);
+    },
+    removeEventListener(type,listener){
+      listeners--;
+      controller.signal.removeEventListener(type,listener);
+    },
+  };
+  assert.equal(await withGuestStatusAbort(()=>42,signal),42);
+  assert.equal(listeners,0);
+  await assert.rejects(withGuestStatusAbort(()=>Promise.reject(new Error('failed')),signal),/failed/);
+  assert.equal(listeners,0);
+});
