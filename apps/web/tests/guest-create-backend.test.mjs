@@ -170,3 +170,39 @@ test('backend guest receipt refuses a missing body without calling text()',async
   })}),GuestCreateUnavailable);
   assert.equal(textCalls,0);
 });
+
+test('backend guest receipt accepts a valid JSON response split across byte chunks',async()=>{
+  const encoded=new TextEncoder().encode(JSON.stringify(result));
+  const midpoint=Math.floor(encoded.length/2);
+  const stream=new ReadableStream({
+    start(controller){
+      controller.enqueue(encoded.subarray(0,midpoint));
+      controller.enqueue(encoded.subarray(midpoint));
+      controller.close();
+    },
+  });
+  const actual=await call({transport:async()=>({
+    status:201,
+    headers:new Headers({'content-type':'application/json'}),
+    body:stream,
+  })});
+  assert.deepEqual(actual,{id,state:'pending',
+    requestCapability,expiresAt:result.expires_at});
+});
+
+test('backend guest receipt rejects forged small Content-Length with oversized stream',async()=>{
+  let cancelled=false;
+  const stream=new ReadableStream({
+    start(controller){controller.enqueue(new Uint8Array(8193));},
+    cancel(){cancelled=true;},
+  });
+  await assert.rejects(call({transport:async()=>({
+    status:201,
+    headers:new Headers({
+      'content-type':'application/json',
+      'content-length':'10',
+    }),
+    body:stream,
+  })}),GuestCreateUnavailable);
+  assert.equal(cancelled,true);
+});
