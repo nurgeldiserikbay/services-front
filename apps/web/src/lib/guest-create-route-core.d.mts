@@ -11,3 +11,8 @@ export type GuestCreateRouteInput=Readonly<{
 export function validateGuestCreateRouteBody(raw:unknown):GuestCreateRouteInput;
 export function parseGuestCreateRequestBytes(bytes:ArrayBuffer):GuestCreateRouteInput;
 export function readBoundedGuestCreateBody(stream:ReadableStream<Uint8Array>|null):Promise<ArrayBuffer>;
+
+/** Accept application/json with an optional UTF-8 charset only. */
+export function isGuestCreateJsonContentType(value:unknown):boolean;
+/** Validate an absent or canonical bounded Content-Length header. */
+export function isGuestCreateContentLengthAllowed(value:unknown):boolean;
