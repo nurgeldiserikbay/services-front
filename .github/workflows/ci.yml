@@ -80,6 +80,7 @@ jobs:
         with:
           node-version: '22'
       - name: Test guest and seller concurrency boundaries before dependency installation
+        id: boundary_tests
         run: |
           node --test apps/web/tests/guest-status-version-regression.test.mjs
           node --test apps/web/tests/seller-decision-uuid-case-regression.test.mjs
@@ -230,6 +231,7 @@ jobs:
       - name: Summarize integration gate results
         if: always()
         env:
+          BOUNDARY_TESTS: ${{ steps.boundary_tests.outcome }}
           FRONTEND_INSTALL: ${{ steps.frontend_install.outcome }}
           DEPENDENCY_AUDIT: ${{ steps.dependency_audit.outcome }}
           BACKEND_INTEGRATION: ${{ steps.backend_integration.outcome }}
