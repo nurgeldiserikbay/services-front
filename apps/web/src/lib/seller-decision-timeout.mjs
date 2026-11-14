@@ -2,7 +2,7 @@
  * The caller must retain its idempotency key for any retry.
  */
 export async function withSellerDecisionDeadline(operation,timeoutMs=15_000){
-  if(typeof operation!=='function'||!Number.isSafeInteger(timeoutMs)||timeoutMs<1)
+  if(typeof operation!=='function'||!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>2_147_483_647)
     throw new Error('invalid_seller_decision_deadline');
   let deadline;
   try{
