@@ -78,7 +78,15 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
       // A receipt switch can clear pendingKey.current in the meantime.
       const attemptKey=pendingKey.current.key;
       const result=await withSellerDecisionDeadline(
-        ()=>onDecision(requestId,action,version,attemptKey),
+        ()=>{
+          // The deadline helper schedules the mutation in a microtask. A
+          // receipt switch or unmount before that microtask must prevent the
+          // old receipt's action from reaching the backend at all.
+          if(!isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
+            requestId,context.current.requestId,version,context.current.version))
+            throw new Error('seller_decision_context_changed');
+          return onDecision(requestId,action,version,attemptKey);
+        },
       );
       if(!isCurrentSellerDecisionResponse(attemptGeneration,generation.current,
         requestId,context.current.requestId,version,context.current.version))return;
