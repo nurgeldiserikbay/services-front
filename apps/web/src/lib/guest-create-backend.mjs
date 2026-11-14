@@ -87,7 +87,7 @@ export async function sendVerifiedGuestCreate({
     // Bound response bytes before buffering: an upstream Content-Length can be
     // absent or dishonest, and response.text() otherwise allocates unboundedly.
     let bytes;
-    if(response.body===null){
+    if(response.body==null){
       // Test doubles without a stream retain the same bounded fallback.
       const text=await response.text();
       bytes=new TextEncoder().encode(text);
