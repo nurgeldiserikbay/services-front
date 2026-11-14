@@ -19,6 +19,7 @@ function normalizeBackendUrl(base,production){
     url.pathname=url.pathname.replace(/\/$/,'')+'/guest-requests';
     return url.toString();
   }catch{throw new GuestCreateUnavailable();}
+  finally{deadline.removeEventListener('abort',onAbort);}
 }
 
 function validateBody(raw){
@@ -62,8 +63,15 @@ export async function sendVerifiedGuestCreate({
     !Number.isSafeInteger(now))throw new GuestCreateUnavailable();
   const url=normalizeBackendUrl(baseUrl,production);
   const validated=validateBody(body);
+  const deadline=AbortSignal.timeout(5000);
+  let onAbort;
+  const timedOut=new Promise((_,reject)=>{
+    onAbort=()=>reject(new GuestCreateUnavailable());
+    deadline.addEventListener('abort',onAbort,{once:true});
+    if(deadline.aborted)onAbort();
+  });
   try{
-    const response=await transport(url,{
+    const response=await Promise.race([transport(url,{
       method:'POST',
       cache:'no-store',
       redirect:'manual',
@@ -75,8 +83,8 @@ export async function sendVerifiedGuestCreate({
         'Idempotency-Key':idempotencyKey,
       },
       body:JSON.stringify(validated),
-      signal:AbortSignal.timeout(5000),
-    });
+      signal:deadline,
+    }),timedOut]);
     if(response.status!==201)throw new GuestCreateUnavailable();
     const contentType=response.headers.get('content-type')??'';
     if(!/^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8")\s*)?\s*$/i.test(contentType))
@@ -94,16 +102,9 @@ export async function sendVerifiedGuestCreate({
       const reader=response.body.getReader();
       const chunks=[];
       let size=0,complete=false;
-      const deadline=AbortSignal.timeout(5000);
-      let onAbort;
-      const aborted=new Promise((_,reject)=>{
-        onAbort=()=>reject(new GuestCreateUnavailable());
-        deadline.addEventListener('abort',onAbort,{once:true});
-        if(deadline.aborted)onAbort();
-      });
       try{
         while(true){
-          const {done,value}=await Promise.race([reader.read(),aborted]);
+          const {done,value}=await Promise.race([reader.read(),timedOut]);
           if(done){complete=true;break;}
           if(!(value instanceof Uint8Array)||size+value.byteLength>LIMIT)
             throw new GuestCreateUnavailable();
@@ -111,7 +112,6 @@ export async function sendVerifiedGuestCreate({
           chunks.push(value);
         }
       }finally{
-        deadline.removeEventListener('abort',onAbort);
         if(!complete){
           try{void Promise.resolve(reader.cancel()).catch(()=>{});}catch{}
         }
