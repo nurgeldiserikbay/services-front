@@ -32,3 +32,12 @@ test('late completion after timeout cannot turn timeout into success',async()=>{
   complete('accepted');
   await operation;
 });
+
+test('seller action retains captured idempotency key after context reset',async()=>{
+  const key='123e4567-e89b-42d3-a456-426614174001';
+  const pending={current:{key}};
+  const capturedKey=pending.current.key;
+  const decision=withSellerDecisionDeadline(()=>capturedKey,100);
+  pending.current=null;
+  assert.equal(await decision,key);
+});
