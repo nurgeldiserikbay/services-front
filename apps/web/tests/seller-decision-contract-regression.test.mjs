@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildSellerDecisionRequest,parseSellerDecisionReceipt} from '../src/lib/seller-decision-ui-core.mjs';
+import {buildSellerDecisionRequest,nextSellerDecisionAttempt,parseSellerDecisionReceipt} from '../src/lib/seller-decision-ui-core.mjs';
 
 const id='123e4567-e89b-42d3-a456-426614174000';
 const key='123e4567-e89b-42d3-a456-426614174001';
@@ -48,4 +48,20 @@ test('request rejects non-finite, fractional and negative concurrency versions',
   for(const version of [NaN,Infinity,-Infinity,-1,1.5,'2',null]){
     assert.throws(()=>buildSellerDecisionRequest(id,'accept',version,key),/invalid_seller_decision/);
   }
+});
+
+test('unknown seller decision outcome forbids switching to opposite action',()=>{
+  const previous=nextSellerDecisionAttempt(null,id,3,'accept',key);
+  assert.throws(
+    ()=>nextSellerDecisionAttempt(previous,id,3,'decline','123e4567-e89b-42d3-a456-426614174002'),
+    /seller_decision_outcome_unknown/,
+  );
+  assert.equal(nextSellerDecisionAttempt(previous,id.toUpperCase(),3,'accept','123e4567-e89b-42d3-a456-426614174002'),previous);
+});
+
+test('new version or different request may start a new seller decision',()=>{
+  const previous=nextSellerDecisionAttempt(null,id,3,'accept',key);
+  const newKey='123e4567-e89b-42d3-a456-426614174002';
+  assert.equal(nextSellerDecisionAttempt(previous,id,4,'decline',newKey).key,newKey);
+  assert.equal(nextSellerDecisionAttempt(previous,'123e4567-e89b-42d3-a456-426614174003',3,'decline',newKey).key,newKey);
 });
