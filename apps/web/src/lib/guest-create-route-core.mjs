@@ -69,3 +69,11 @@ export function isGuestCreateJsonContentType(value){
   return typeof value==='string'&&
     /^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8")\s*)?\s*$/i.test(value);
 }
+
+/** Reject noncanonical, unsafe or oversized declared request lengths. */
+export function isGuestCreateContentLengthAllowed(value){
+  if(value===null)return true;
+  if(typeof value!=='string'||!/^\d+$/.test(value))return false;
+  const length=Number(value);
+  return Number.isSafeInteger(length)&&length<=GUEST_CREATE_MAX_BODY_BYTES;
+}
