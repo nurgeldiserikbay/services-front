@@ -64,6 +64,11 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
     // An uncertain earlier mutation may already have committed on the server.
     // Never allow switching to the opposite action until the parent supplies
     // a refreshed request version, even if a disabled button is invoked directly.
+    // The ref is authoritative even before React commits the error state.
+    // A failed mutation must never be followed by an opposite action with a
+    // fresh key for the same request version.
+    if(pendingKey.current?.requestId?.toLowerCase()===requestId.toLowerCase()&&
+      pendingKey.current.version===version&&pendingKey.current.action!==action)return;
     if(uncertainAction!==null&&uncertainAction!==action)return;
     if(action==='decline'&&!window.confirm(t.confirm))return;
     const attemptGeneration=generation.current;
