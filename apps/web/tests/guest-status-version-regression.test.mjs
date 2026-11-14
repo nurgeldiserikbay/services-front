@@ -307,3 +307,25 @@ test('guest status abort before the queued operation prevents body parsing',asyn
   await assert.rejects(pending,/guest_status_timeout/);
   assert.equal(called,false,'aborted refresh must not begin parsing response data');
 });
+
+
+test('guest status abort deadline removes its listener after cancellation',async()=>{
+  const {withGuestStatusAbort}=await import('../src/lib/guest-status-ui-core.mjs');
+  const controller=new AbortController();
+  let attached=0;
+  const signal={
+    get aborted(){return controller.signal.aborted;},
+    addEventListener(type,listener,options){
+      attached++;
+      controller.signal.addEventListener(type,listener,options);
+    },
+    removeEventListener(type,listener){
+      attached--;
+      controller.signal.removeEventListener(type,listener);
+    },
+  };
+  const pending=withGuestStatusAbort(()=>new Promise(()=>{}),signal);
+  controller.abort();
+  await assert.rejects(pending,/guest_status_timeout/);
+  assert.equal(attached,0,'aborted refresh must release its abort listener');
+});
