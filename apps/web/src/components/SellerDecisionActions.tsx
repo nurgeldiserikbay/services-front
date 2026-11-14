@@ -10,9 +10,11 @@ type Result={id:string;state:'accepted'|'declined';version:number;replayed:boole
 const copy={
   kk:{accept:'Қабылдау',decline:'Бас тарту',working:'Өңделуде…',
     failed:'Әрекет орындалмады. Өтінім мәртебесін жаңартыңыз.',
+    uncertain:'Сервер жауабы белгісіз. Басқа шешім қабылдамас бұрын өтінім мәртебесін жаңартыңыз.',
     confirm:'Бұл өтінімді қабылдаудан бас тартасыз ба?'},
   ru:{accept:'Принять',decline:'Отклонить',working:'Обработка…',
     failed:'Не удалось выполнить действие. Обновите статус заявки.',
+    uncertain:'Ответ сервера неизвестен. Обновите статус заявки перед выбором другого решения.',
     confirm:'Вы уверены, что хотите отклонить заявку?'},
 } as const;
 
@@ -120,6 +122,6 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
     {!validContext&&<p role="alert">{locale==='kk'?
       'Өтінім деректері жарамсыз. Бетті жаңартыңыз.':
       'Данные заявки недействительны. Обновите страницу.'}</p>}
-    {error&&<p role="alert">{t.failed}</p>}
+    {error&&<p role="alert">{uncertainAction?t.uncertain:t.failed}</p>}
   </div>;
 }
