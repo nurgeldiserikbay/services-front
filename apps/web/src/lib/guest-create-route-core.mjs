@@ -63,3 +63,9 @@ export async function readBoundedGuestCreateBody(stream){
   for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
   return bytes.buffer;
 }
+
+/** Only accept JSON encoded as UTF-8; reject unknown media parameters. */
+export function isGuestCreateJsonContentType(value){
+  return typeof value==='string'&&
+    /^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8")\s*)?\s*$/i.test(value);
+}
