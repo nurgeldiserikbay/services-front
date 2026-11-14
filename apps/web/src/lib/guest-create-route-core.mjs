@@ -55,8 +55,13 @@ export async function readBoundedGuestCreateBody(stream){
       chunks.push(value);
     }
   }finally{
-    if(!complete)await reader.cancel().catch(()=>{});
-    reader.releaseLock();
+    // A hostile stream may never settle cancellation. Do not wait for it
+    // before returning a bounded-body validation failure.
+    if(!complete){
+      try{void Promise.resolve(reader.cancel()).catch(()=>{});}catch{}
+    }
+    // Release errors must not expose stream internals to callers.
+    try{reader.releaseLock();}catch{}
   }
   const bytes=new Uint8Array(length);
   let offset=0;
