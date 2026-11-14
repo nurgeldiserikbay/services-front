@@ -38,15 +38,29 @@ export function parseGuestCreateRequestBytes(bytes){
 }
 
 /** Read request streaming chunks with a hard bound BEFORE allocation. */
-export async function readBoundedGuestCreateBody(stream){
-  if(!stream||typeof stream.getReader!=='function')
+export async function readBoundedGuestCreateBody(stream,signal){
+  if(!stream||typeof stream.getReader!=='function'||
+    (signal!==undefined&&(!signal||
+      typeof signal.addEventListener!=='function'||
+      typeof signal.removeEventListener!=='function'||
+      typeof signal.aborted!=='boolean')))
     throw new Error('invalid_create_payload');
   const reader=stream.getReader();
   const chunks=[];
   let length=0,complete=false;
+  // A peer may send headers and then never finish the body.
+  const deadline=AbortSignal.any([
+    ...(signal?[signal]:[]),AbortSignal.timeout(10_000),
+  ]);
+  let onAbort;
+  const aborted=new Promise((_,reject)=>{
+    onAbort=()=>reject(new Error('invalid_create_payload'));
+    deadline.addEventListener('abort',onAbort,{once:true});
+    if(deadline.aborted)onAbort();
+  });
   try{
     while(true){
-      const {done,value}=await reader.read();
+      const {done,value}=await Promise.race([reader.read(),aborted]);
       if(done){complete=true;break;}
       if(!(value instanceof Uint8Array)||
         length+value.byteLength>GUEST_CREATE_MAX_BODY_BYTES)
@@ -55,6 +69,7 @@ export async function readBoundedGuestCreateBody(stream){
       chunks.push(value);
     }
   }finally{
+    deadline.removeEventListener('abort',onAbort);
     // A hostile stream may never settle cancellation. Do not wait for it
     // before returning a bounded-body validation failure.
     if(!complete){
