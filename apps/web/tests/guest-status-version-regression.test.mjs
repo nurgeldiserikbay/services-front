@@ -207,3 +207,20 @@ test('guest status rejects invalid UTF-8 even when the byte count is within limi
   await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
     /guest_status_unavailable/);
 });
+
+test('guest status rejects unsafe and misleading declared byte lengths',async()=>{
+  const {readPrivateGuestStatusResponse,MAX_STATUS_BYTES}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  const body=JSON.stringify(status(2));
+  for(const declared of [
+    '9007199254740993','999999999999999999999999999999999',
+    '-1','1.5','Infinity','0x10',String(MAX_STATUS_BYTES+1),
+  ]){
+    const response=new Response(body,{
+      headers:{'content-type':'application/json','content-length':declared},
+    });
+    await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+      error=>error instanceof Error&&error.message==='guest_status_unavailable',
+      'invalid content-length '+declared);
+  }
+});
