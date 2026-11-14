@@ -224,3 +224,19 @@ test('guest status rejects unsafe and misleading declared byte lengths',async()=
       'invalid content-length '+declared);
   }
 });
+
+
+test('guest status never buffers a non-streaming private response body',async()=>{
+  const {readPrivateGuestStatusResponse}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  let textCalled=false;
+  const response={
+    status:200,
+    headers:new Headers({'content-type':'application/json'}),
+    body:{},
+    async text(){textCalled=true;return JSON.stringify(status(1));},
+  };
+  await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+    error=>error instanceof Error&&error.message==='guest_status_unavailable');
+  assert.equal(textCalled,false,'unbounded response.text must never be invoked');
+});
