@@ -49,7 +49,11 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
   if(typeof contentType!=='string'||
      !/^application\/json(?:\s*;|\s*$)/i.test(contentType))
     throw new Error('guest_status_unavailable');
-  if(declared!==null&&(!/^\d+$/.test(declared)||Number(declared)>MAX_STATUS_BYTES))
+  // Reject malformed or contradictory lengths before reading private data.
+  // Number.isSafeInteger also rejects oversized decimal values that cannot
+  // be represented exactly in JavaScript.
+  if(declared!==null&&(!/^\d+$/.test(declared)||
+     !Number.isSafeInteger(Number(declared))||Number(declared)>MAX_STATUS_BYTES))
     throw new Error('guest_status_unavailable');
   // Bound the actual stream before decoding: Content-Length is untrusted and
   // response.text() would buffer an arbitrarily large private backend reply.
@@ -85,6 +89,8 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
       try{reader.releaseLock();}
       catch{throw new Error('guest_status_unavailable');}
     }
+    if(declared!==null&&total!==Number(declared))
+      throw new Error('guest_status_unavailable');
     const bytes=new Uint8Array(total);
     let offset=0;
     for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
