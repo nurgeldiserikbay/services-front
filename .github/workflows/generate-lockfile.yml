@@ -1,0 +1,51 @@
+name: Generate and commit verified frontend lockfile
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - 'apps/*/package.json'
+      - 'packages/*/package.json'
+      - '.github/workflows/generate-lockfile.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: frontend-lockfile-main
+  cancel-in-progress: false
+
+jobs:
+  lockfile:
+    if: github.ref == 'refs/heads/main' && github.repository == 'nurgeldiserikbay/services-front'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: corepack enable
+      - name: Verify pinned package manager
+        run: test "$(pnpm --version)" = "10.20.0"
+      - name: Generate deterministic lockfile
+        run: pnpm install --lockfile-only --ignore-scripts
+      - name: Verify lockfile is valid and sufficient for frozen installation
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Commit verified lockfile when changed
+        run: |
+          git add -- pnpm-lock.yaml
+          if git diff --cached --quiet; then
+            echo 'Lockfile already up to date'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(front): update verified pnpm lockfile'
+          git push origin HEAD:main
