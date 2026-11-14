@@ -17,3 +17,6 @@ export function readPrivateGuestStatusResponse(
 export function shouldReplaceGuestStatus(
   currentVersion:number|null,nextVersion:number,
 ):boolean;
+
+/** Enforce cancellation even if response body parsing does not settle. */
+export function withGuestStatusAbort<T>(operation:()=>Promise<T>|T,signal:AbortSignal):Promise<T>;
