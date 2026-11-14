@@ -169,8 +169,10 @@ jobs:
           cat "$RUNNER_TEMP/services-back.log"
           exit 1
       - name: Verify pinned backend admin HTTP boundary stays private
+        id: admin_http_boundary
         run: node apps/web/tests/admin-api-boundary.e2e.mjs
       - name: Verify guest and seller lifecycle HTTP boundaries deny anonymous calls
+        id: lifecycle_http_boundary
         run: node apps/web/tests/request-lifecycle-boundary.e2e.mjs
       - name: Frontend typecheck
         id: frontend_typecheck
@@ -232,6 +234,8 @@ jobs:
         if: always()
         env:
           BOUNDARY_TESTS: ${{ steps.boundary_tests.outcome }}
+          ADMIN_HTTP_BOUNDARY: ${{ steps.admin_http_boundary.outcome }}
+          LIFECYCLE_HTTP_BOUNDARY: ${{ steps.lifecycle_http_boundary.outcome }}
           FRONTEND_INSTALL: ${{ steps.frontend_install.outcome }}
           DEPENDENCY_AUDIT: ${{ steps.dependency_audit.outcome }}
           BACKEND_INTEGRATION: ${{ steps.backend_integration.outcome }}
@@ -245,6 +249,8 @@ jobs:
             echo '| Gate | Outcome |'
             echo '| --- | --- |'
             echo "| Guest and seller boundary regression tests | $BOUNDARY_TESTS |"
+            echo "| Admin HTTP authentication boundary | $ADMIN_HTTP_BOUNDARY |"
+            echo "| Guest and seller lifecycle HTTP boundary | $LIFECYCLE_HTTP_BOUNDARY |"
             echo "| Frontend lockfile install | $FRONTEND_INSTALL |"
             echo "| Dependency security audit | $DEPENDENCY_AUDIT |"
             echo "| Backend migration and integration | $BACKEND_INTEGRATION |"
