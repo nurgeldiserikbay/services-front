@@ -329,3 +329,28 @@ test('guest status abort deadline removes its listener after cancellation',async
   await assert.rejects(pending,/guest_status_timeout/);
   assert.equal(attached,0,'aborted refresh must release its abort listener');
 });
+
+test('guest status rejects malformed JSON content-type parameters',async()=>{
+  const {readPrivateGuestStatusResponse}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  const payload=JSON.stringify(status(2));
+  for(const contentType of [
+    'application/json;evil',
+    'application/json; charset=iso-8859-1',
+    'application/json; charset=utf-8; private=true',
+    'application/json; charset=',
+    'application/json; charset=utf-8 garbage',
+  ]){
+    await assert.rejects(
+      readPrivateGuestStatusResponse(
+        new Response(payload,{headers:{'content-type':contentType}}),
+        requestId,offerId),
+      /guest_status_unavailable/,
+      contentType,
+    );
+  }
+  const valid=new Response(payload,{
+    headers:{'content-type':'application/json; charset="utf-8"'},
+  });
+  assert.equal((await readPrivateGuestStatusResponse(valid,requestId,offerId)).version,2);
+});
