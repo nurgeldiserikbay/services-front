@@ -27,3 +27,24 @@ test('guest creation rejects invalid and oversized declared body lengths',()=>{
     undefined, 42,
   ])assert.equal(isGuestCreateContentLengthAllowed(value),false,String(value));
 });
+
+test('invalid guest request stream fails without waiting for stalled cancellation',async()=>{
+  const {readBoundedGuestCreateBody,GUEST_CREATE_MAX_BODY_BYTES}=
+    await import('../src/lib/guest-create-route-core.mjs');
+  let cancelled=false;
+  let released=false;
+  const stream={getReader(){return {
+    async read(){return {done:false,value:new Uint8Array(GUEST_CREATE_MAX_BODY_BYTES+1)};},
+    cancel(){cancelled=true;return new Promise(()=>{});},
+    releaseLock(){released=true;},
+  };}};
+  await assert.rejects(
+    Promise.race([
+      readBoundedGuestCreateBody(stream),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('cancellation stalled')),200)),
+    ]),
+    error=>error instanceof Error&&error.message==='invalid_create_payload',
+  );
+  assert.equal(cancelled,true);
+  assert.equal(released,true);
+});
