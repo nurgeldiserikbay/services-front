@@ -53,7 +53,8 @@ export function isCurrentSellerDecisionResponse(attemptGeneration,currentGenerat
     Number.isSafeInteger(currentGeneration)&&currentGeneration>=0&&
     typeof attemptedRequestId==='string'&&UUID.test(attemptedRequestId)&&
     attemptGeneration===currentGeneration&&
-    attemptedRequestId===currentRequestId&&
+    typeof currentRequestId==='string'&&UUID.test(currentRequestId)&&
+    attemptedRequestId.toLowerCase()===currentRequestId.toLowerCase()&&
     Number.isSafeInteger(attemptedVersion)&&attemptedVersion>=1&&
     attemptedVersion<Number.MAX_SAFE_INTEGER&&attemptedVersion===currentVersion;
 }
