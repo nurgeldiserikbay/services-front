@@ -206,3 +206,23 @@ test('backend guest receipt rejects forged small Content-Length with oversized s
   })}),GuestCreateUnavailable);
   assert.equal(cancelled,true);
 });
+
+test('guest backend transport receives the same deadline used for the whole operation',async()=>{
+  let signal;
+  const actual=await call({transport:async(_url,options)=>{
+    signal=options.signal;
+    assert.equal(signal.aborted,false);
+    return json(result);
+  }});
+  assert.equal(actual.id,id);
+  assert.ok(signal instanceof AbortSignal);
+});
+
+test('guest backend transport failure stays generic when its abort signal fires',async()=>{
+  await assert.rejects(call({transport:async(_url,options)=>{
+    const error=new Error('secret upstream failure');
+    options.signal.throwIfAborted();
+    throw error;
+  }}),error=>error instanceof GuestCreateUnavailable&&
+    !error.message.includes('secret upstream failure'));
+});
