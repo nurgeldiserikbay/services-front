@@ -94,7 +94,7 @@ jobs:
       - name: Install and migrate backend test API
         working-directory: services-back
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run typecheck
           # Check the account/admin bearer contract of the exact backend revision
           # used by this frontend integration run before database setup.
