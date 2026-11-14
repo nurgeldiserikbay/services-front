@@ -36,3 +36,7 @@ export function isCurrentSellerDecisionResponse(
   attemptedRequestId:string,currentRequestId:string,
   attemptedVersion:number,currentVersion:number,
 ):boolean;
+
+export function canStartSellerDecision(
+  previous:SellerDecisionAttempt|null,requestId:string,version:number,action:SellerDecisionAction,
+):boolean;
