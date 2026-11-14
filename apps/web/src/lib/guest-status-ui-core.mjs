@@ -47,7 +47,7 @@ export async function readPrivateGuestStatusResponse(response,expectedId,expecte
     throw new Error('guest_status_unavailable');
   }
   if(typeof contentType!=='string'||
-     !/^application\/json(?:\s*;|\s*$)/i.test(contentType))
+     !/^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8")\s*)?\s*$/i.test(contentType))
     throw new Error('guest_status_unavailable');
   // Reject malformed or excessive declared lengths before reading private data.
   // Number.isSafeInteger also rejects oversized decimal values that cannot
