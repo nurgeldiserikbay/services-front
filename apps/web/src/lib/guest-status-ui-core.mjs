@@ -120,3 +120,21 @@ export function shouldReplaceGuestStatus(currentVersion,nextVersion){
     (currentVersion===null||
       (Number.isSafeInteger(currentVersion)&&currentVersion>=1&&nextVersion>currentVersion));
 }
+
+/** Enforce the request deadline even when an upstream body reader stalls.
+ * The underlying fetch signal remains responsible for cancelling network IO.
+ */
+export async function withGuestStatusAbort(operation,signal){
+  if(typeof operation!=='function'||!signal||typeof signal.addEventListener!=='function'||
+     typeof signal.removeEventListener!=='function'||typeof signal.aborted!=='boolean')
+    throw new Error('guest_status_unavailable');
+  if(signal.aborted)throw new Error('guest_status_timeout');
+  let onAbort;
+  const deadline=new Promise((_,reject)=>{
+    onAbort=()=>reject(new Error('guest_status_timeout'));
+    signal.addEventListener('abort',onAbort,{once:true});
+    if(signal.aborted)onAbort();
+  });
+  try{return await Promise.race([Promise.resolve().then(operation),deadline]);}
+  finally{signal.removeEventListener('abort',onAbort);}
+}
