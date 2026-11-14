@@ -41,6 +41,7 @@ export function nextSellerDecisionAttempt(previous,requestId,version,action,newK
   if(typeof previous?.requestId==='string'&&UUID.test(previous.requestId)&&
      previous.requestId.toLowerCase()===requestId.toLowerCase()&&
      previous.version===version&&
+     (previous.action==='accept'||previous.action==='decline')&&
      typeof previous.key==='string'&&UUID.test(previous.key)){
     // After a timeout, the original mutation may still commit. Never submit
     // the opposite action against the same stale version with a new key.
