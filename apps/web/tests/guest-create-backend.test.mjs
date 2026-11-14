@@ -144,3 +144,29 @@ test('backend guest receipt refuses an unusable stream rather than unbounded tex
   })}),GuestCreateUnavailable);
   assert.equal(textCalls,0);
 });
+
+test('backend guest receipt rejects extra JSON media parameters and non-UTF-8 charset',async()=>{
+  for(const contentType of [
+    'application/json; debug=true',
+    'application/json; charset=iso-8859-1',
+    'application/json; charset=utf-8; extra=1',
+  ]){
+    await assert.rejects(call({transport:async()=>json(result,201,{
+      'content-type':contentType,
+    })}),GuestCreateUnavailable);
+  }
+  assert.deepEqual(await call({transport:async()=>json(result,201,{
+    'content-type':'application/json; charset="utf-8"',
+  })}),{id,state:'pending',requestCapability,expiresAt:result.expires_at});
+});
+
+test('backend guest receipt refuses a missing body without calling text()',async()=>{
+  let textCalls=0;
+  await assert.rejects(call({transport:async()=>({
+    status:201,
+    headers:new Headers({'content-type':'application/json'}),
+    body:null,
+    async text(){textCalls++;return JSON.stringify(result);},
+  })}),GuestCreateUnavailable);
+  assert.equal(textCalls,0);
+});
