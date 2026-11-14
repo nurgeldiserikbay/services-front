@@ -36,3 +36,16 @@ test('receipt must match action, identity and next version',()=>{
     null,
   ])assert.throws(()=>parseSellerDecisionReceipt(invalid,id,'accept',3),/invalid_seller_decision_receipt/);
 });
+
+test('decline receipt accepts replay only with exact committed transition',()=>{
+  const valid={id,state:'declined',version:8,replayed:true};
+  assert.deepEqual(parseSellerDecisionReceipt(valid,id,'decline',7),valid);
+  assert.throws(()=>parseSellerDecisionReceipt({...valid,state:'accepted'},id,'decline',7),/invalid_seller_decision_receipt/);
+  assert.throws(()=>parseSellerDecisionReceipt({...valid,version:9},id,'decline',7),/invalid_seller_decision_receipt/);
+});
+
+test('request rejects non-finite, fractional and negative concurrency versions',()=>{
+  for(const version of [NaN,Infinity,-Infinity,-1,1.5,'2',null]){
+    assert.throws(()=>buildSellerDecisionRequest(id,'accept',version,key),/invalid_seller_decision/);
+  }
+});
