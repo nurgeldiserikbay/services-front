@@ -10,7 +10,7 @@ export type GuestCreateRouteInput=Readonly<{
 }>;
 export function validateGuestCreateRouteBody(raw:unknown):GuestCreateRouteInput;
 export function parseGuestCreateRequestBytes(bytes:ArrayBuffer):GuestCreateRouteInput;
-export function readBoundedGuestCreateBody(stream:ReadableStream<Uint8Array>|null):Promise<ArrayBuffer>;
+export function readBoundedGuestCreateBody(stream:ReadableStream<Uint8Array>|null,signal?:AbortSignal):Promise<ArrayBuffer>;
 
 /** Accept application/json with an optional UTF-8 charset only. */
 export function isGuestCreateJsonContentType(value:unknown):boolean;
