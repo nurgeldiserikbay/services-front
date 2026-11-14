@@ -187,3 +187,23 @@ test('guest status transport normalizes throwing stream reader accessors',async(
   await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
     error=>error instanceof Error&&error.message==='guest_status_unavailable');
 });
+
+test('guest status transport rejects a body larger than its claimed content-length',async()=>{
+  const {readPrivateGuestStatusResponse,MAX_STATUS_BYTES}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  const response=new Response('x'.repeat(MAX_STATUS_BYTES+1),{
+    headers:{'content-type':'application/json','content-length':'1'},
+  });
+  await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+    /guest_status_unavailable/);
+});
+
+test('guest status rejects invalid UTF-8 even when the byte count is within limit',async()=>{
+  const {readPrivateGuestStatusResponse}=
+    await import('../src/lib/guest-status-ui-core.mjs');
+  const response=new Response(new Uint8Array([0xff]),{
+    headers:{'content-type':'application/json','content-length':'1'},
+  });
+  await assert.rejects(readPrivateGuestStatusResponse(response,requestId,offerId),
+    /guest_status_unavailable/);
+});
