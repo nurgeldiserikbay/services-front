@@ -24,7 +24,7 @@ function rows(text, heading) {
 
 export function validateStagingRelease(text) {
   const problems = [];
-  if (!/^Status: \*\*VERIFIED\*\*(?:\\s|$)/m.test(text)) problems.push('Staging status must be VERIFIED');
+  if (!/^Status: \*\*VERIFIED\*\*(?=\\s|[.!?]|$)/m.test(text)) problems.push('Staging status must be VERIFIED');
   const revisions = rows(text, 'Immutable revision record');
   for (const repo of EXPECTED_REPOS) {
     const matching = revisions.filter(c => c[0] === repo);

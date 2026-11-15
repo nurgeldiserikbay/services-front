@@ -66,9 +66,16 @@ test('decision retries reuse keys only for identical request version and action'
  for(const [requestId,version,action] of [
    [otherId,1,'accept'],[id,2,'accept'],[id,1,'decline'],
  ]){
-   const next=nextSellerDecisionAttempt(first,requestId,version,action,otherKey);
-   assert.equal(next.key,otherKey);
-   assert.notEqual(next,first);
+   if(requestId===id&&version===1&&action==='decline'){
+     // An ambiguous accept may already have committed. A new decline key
+     // against the same version must fail closed until context refresh.
+     assert.throws(()=>nextSellerDecisionAttempt(first,requestId,version,action,otherKey),
+       /seller_decision_outcome_unknown/);
+   }else{
+     const next=nextSellerDecisionAttempt(first,requestId,version,action,otherKey);
+     assert.equal(next.key,otherKey);
+     assert.notEqual(next,first);
+   }
  }
  for(const invalidVersion of [0,-1,1.5,NaN,Number.MAX_SAFE_INTEGER]){
    assert.throws(()=>nextSellerDecisionAttempt(first,id,invalidVersion,'accept',otherKey),/invalid_seller_decision/);
@@ -81,7 +88,8 @@ test('seller decision retries preserve the idempotency key across UUID casing',(
  const upper=lower.toUpperCase();
  const first=nextSellerDecisionAttempt(null,upper,3,'accept',key);
  assert.equal(nextSellerDecisionAttempt(first,lower,3,'accept',otherKey),first);
- assert.equal(nextSellerDecisionAttempt(first,lower,3,'decline',otherKey).key,otherKey);
+ assert.throws(()=>nextSellerDecisionAttempt(first,lower,3,'decline',otherKey),
+   /seller_decision_outcome_unknown/);
  assert.equal(nextSellerDecisionAttempt(first,otherId,3,'accept',otherKey).key,otherKey);
 });
 

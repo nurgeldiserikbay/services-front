@@ -154,3 +154,10 @@ The frontend run completed the pinned-backend PostgreSQL migration, private admi
 - Previous Frontend [CI #43230228890](https://github.com/nurgeldiserikbay/services-front/actions/runs/43230228890) passed against backend `79819828f7d7783e9ae577e0b06654e17c445477`; new pinned baseline requires a separate frontend CI pass.
 - Admin [CI #43228571347](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43228571347) passed the raw/parsed cookie consistency security regression.
 - Authenticated end-to-end admin onboarding/MFA and staging approval are **not** satisfied by these CI runs.
+
+## Current immutable integration default — 2026-11-15
+
+- The frontend CI currently checks out backend `69861edc670b731145dab861436b76e45f40f356` (as specified in `.github/workflows/ci.yml`). This entry records the **actual default**, not a claim of backend CI approval.
+- [Frontend CI #43710794087](https://github.com/nurgeldiserikbay/services-front/actions/runs/43710794087) failed on an expiry test fixture that exceeded the allowed 24-hour guest capability TTL by 123 ms. Frontend [commit `1fdd457`](https://github.com/nurgeldiserikbay/services-front/commit/1fdd457a08333f41e1a9af11df98832a346d79f3) corrected that fixture.
+- A subsequent unit-test run revealed out-of-date expectations for CI ordering and fail-closed seller-decision retries, plus release status punctuation handling. Changes to those tests must keep the actual cross-repository CI and staging security gates intact.
+- Do not enable any rollout flags or mark the cross-repository compatibility/staging gate complete until the full workflow succeeds and independent acceptance evidence is recorded.
