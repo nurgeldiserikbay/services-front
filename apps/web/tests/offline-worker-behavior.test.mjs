@@ -1,0 +1,73 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {test} from 'node:test';
+import vm from 'node:vm';
+
+const source=readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
+const origin='https://services.example.test';
+function harness({offline=false}={}){
+  const listeners=new Map();
+  const calls=[];
+  const fallback={status:200,body:'generic offline shell'};
+  const cache={
+    add:async path=>{calls.push(['cache.add',path]);},
+    match:async path=>{calls.push(['cache.match',path]);return path==='/offline.html'?fallback:undefined;},
+  };
+  const caches={
+    open:async name=>{calls.push(['caches.open',name]);return cache;},
+    keys:async()=>[],
+    delete:async name=>{calls.push(['caches.delete',name]);return true;},
+  };
+  const self={location:{origin},clients:{claim:async()=>{}},skipWaiting:()=>{},addEventListener:(type,fn)=>listeners.set(type,fn)};
+  const fetch=async request=>{
+    calls.push(['fetch',request.url]);
+    if(offline)throw new Error('offline');
+    return {status:200,body:'network'};
+  };
+  vm.runInNewContext(source,{self,caches,fetch,URL,Response,Promise},{timeout:1000});
+  return {listeners,calls,fallback};
+}
+function dispatch(h,url,{mode='navigate',method='GET'}={}){
+  let response;
+  const request={url:new URL(url,origin).href,mode,method};
+  h.listeners.get('fetch')({request,respondWith:promise=>{response=promise;}});
+  return response;
+}
+
+test('only public navigations receive the generic offline shell',async()=>{
+  const h=harness({offline:true});
+  for(const path of ['/kk','/ru','/kk/professionals/abc','/ru/organizations/123','/kk/services/456']){
+    assert.equal(await dispatch(h,path),h.fallback,path);
+  }
+  assert.equal(h.calls.filter(([name])=>name==='cache.match').length,5);
+  assert.ok(h.calls.filter(([name])=>name==='cache.match').every(([,path])=>path==='/offline.html'));
+});
+
+test('account, seller, API, mutations and cross-origin traffic bypass worker',()=>{
+  const h=harness({offline:true});
+  for(const path of ['/kk/account/requests','/ru/seller/requests','/api/account/sessions','/api/guest-requests','/kk/professionals/abc/extra','/en','https://elsewhere.test/kk']){
+    assert.equal(dispatch(h,path),undefined,path);
+  }
+  assert.equal(dispatch(h,'/kk',{method:'POST'}),undefined);
+  assert.equal(dispatch(h,'/kk',{mode:'cors'}),undefined);
+  assert.deepEqual(h.calls,[]);
+});
+
+test('successful public navigations always use fresh network responses',async()=>{
+  const h=harness();
+  const result=await dispatch(h,'/kk/professionals/abc');
+  assert.equal(result.status,200);
+  assert.equal(result.body,'network');
+  assert.equal(h.calls.filter(([name])=>name==='cache.match').length,0);
+});
+
+test('install pre-caches only the static offline shell',async()=>{
+  const h=harness();
+  let install;
+  h.listeners.get('install')({waitUntil:promise=>{install=promise;}});
+  await install;
+  assert.deepEqual(h.calls.map(([action,value])=>[action,value]),[
+    ['caches.open','services-offline-shell-v1'],
+    ['cache.add','/offline.html'],
+  ]);
+});
