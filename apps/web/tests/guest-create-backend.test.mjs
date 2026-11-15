@@ -273,3 +273,19 @@ test('backend guest receipt requires explicit timezone in expiration timestamp',
   })});
   assert.equal(actual.expiresAt,offsetExpiry);
 });
+
+test('backend guest receipt rejects normalized impossible calendar dates',async()=>{
+  for(const expires_at of [
+    '2026-11-31T11:00:00Z',
+    '2026-11-05T24:00:00Z',
+    '2026-11-05T11:00:00+24:00',
+    '2026-11-05T11:00:00.999+25:00',
+  ]){
+    await assert.rejects(call({transport:async()=>json({...result,expires_at})}),
+      GuestCreateUnavailable);
+  }
+  const precise='2026-11-05T11:00:00.123Z';
+  assert.equal((await call({transport:async()=>json({
+    ...result,expires_at:precise,
+  })})).expiresAt,precise);
+});
