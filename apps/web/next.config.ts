@@ -28,15 +28,33 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   async headers() {
-    return [{
-      source: '/:path*',
-      headers: [
-        ...securityHeaders,
-        ...(process.env.NODE_ENV === 'production'
-          ? [{key: 'Content-Security-Policy', value: productionCsp}]
-          : []),
-      ],
-    }];
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          ...securityHeaders,
+          ...(process.env.NODE_ENV === 'production'
+            ? [{key: 'Content-Security-Policy', value: productionCsp}]
+            : []),
+        ],
+      },
+      {
+        // A stale worker could keep serving obsolete navigation logic.
+        // Browsers must revalidate the worker script on every check.
+        source: '/sw.js',
+        headers: [
+          {key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate'},
+          {key: 'Service-Worker-Allowed', value: '/'},
+          {key: 'X-Content-Type-Options', value: 'nosniff'},
+        ],
+      },
+      {
+        // Never let a CDN accidentally turn the generic offline page into
+        // a long-lived public response. The SW owns its explicit offline cache.
+        source: '/offline.html',
+        headers: [{key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate'}],
+      },
+    ];
   },
 };
 
