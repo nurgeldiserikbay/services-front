@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
 const origin='https://services.example.test';
-function harness({offline=false,networkStatus=200,cacheNames=[],cacheAddFails=false,missingFallback=false,cacheOpenFails=false}={}){
+function harness({offline=false,networkStatus=200,cacheNames=[],cacheAddFails=false,missingFallback=false,cacheOpenFails=false,cacheDeleteFails=false}={}){
   const listeners=new Map();
   const calls=[];
   const fallback={status:200,body:'generic offline shell'};
@@ -16,7 +16,7 @@ function harness({offline=false,networkStatus=200,cacheNames=[],cacheAddFails=fa
   const caches={
     open:async name=>{calls.push(['caches.open',name]);if(cacheOpenFails)throw new Error('storage unavailable');return cache;},
     keys:async()=>cacheNames,
-    delete:async name=>{calls.push(['caches.delete',name]);return true;},
+    delete:async name=>{calls.push(['caches.delete',name]);if(cacheDeleteFails)throw new Error('cache deletion failed');return true;},
   };
   const self={location:{origin},clients:{claim:async()=>{calls.push(['clients.claim']);}},skipWaiting:()=>{calls.push(['skipWaiting']);},addEventListener:(type,fn)=>listeners.set(type,fn)};
   const fetch=async request=>{
@@ -207,4 +207,13 @@ test('noncanonical repeated and trailing slash URLs bypass the offline worker',(
     assert.equal(dispatch(h,path),undefined,path);
   }
   assert.deepEqual(h.calls,[]);
+});
+
+
+test('worker does not claim clients when obsolete offline cache cleanup fails',async()=>{
+  const h=harness({cacheNames:['services-offline-shell-v0'],cacheDeleteFails:true});
+  let activation;
+  h.listeners.get('activate')({waitUntil:promise=>{activation=promise;}});
+  await assert.rejects(activation,/cache deletion failed/);
+  assert.equal(h.calls.some(([name])=>name==='clients.claim'),false);
 });
