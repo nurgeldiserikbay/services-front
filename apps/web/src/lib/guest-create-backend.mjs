@@ -46,7 +46,7 @@ function parseCommitted(raw,now){
   // Date.parse normalizes impossible calendar dates (e.g. February 30).
   // Reconstruct the wall-clock time from the parsed instant and the explicit
   // offset, then require exact agreement with the supplied calendar fields.
-  const match=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,3}))?(Z|([+-])(\\d{2}):(\\d{2}))$/.exec(raw.expires_at);
+  const match=/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,3}))?(Z|([+-])(\d{2}):(\d{2}))$/.exec(raw.expires_at);
   if(!match||!Number.isFinite(expiresAt))throw new GuestCreateUnavailable();
   const offsetMinutes=match[3]==='Z'?0:
     (match[4]==='+'?1:-1)*(Number(match[5])*60+Number(match[6]));
