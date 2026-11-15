@@ -28,3 +28,11 @@ test('production CSP restricts framing, forms, resources and mixed content',()=>
   assert.match(config,/process\.env\.NODE_ENV === 'production'/);
   assert.doesNotMatch(config,/unsafe-eval|default-src \*|connect-src \*/);
 });
+
+
+test('private account and seller workspaces have route-scoped no-store and noindex',()=>{
+  assert.match(config,/\['kk','ru'\]\.flatMap\(locale=>\['account','seller'\]/);
+  assert.match(config,/source: '\/'\+locale\+'\/'\+section\+'\/:path\*'/);
+  assert.match(config,/Cache-Control', value: 'private, no-store, max-age=0'/);
+  assert.match(config,/X-Robots-Tag', value: 'noindex, nofollow, noarchive'/);
+});
