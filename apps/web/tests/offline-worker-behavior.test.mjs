@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
 const origin='https://services.example.test';
-function harness({offline=false}={}){
+function harness({offline=false,cacheNames=[]}={}){
   const listeners=new Map();
   const calls=[];
   const fallback={status:200,body:'generic offline shell'};
@@ -15,7 +15,7 @@ function harness({offline=false}={}){
   };
   const caches={
     open:async name=>{calls.push(['caches.open',name]);return cache;},
-    keys:async()=>[],
+    keys:async()=>cacheNames,
     delete:async name=>{calls.push(['caches.delete',name]);return true;},
   };
   const self={location:{origin},clients:{claim:async()=>{}},skipWaiting:()=>{},addEventListener:(type,fn)=>listeners.set(type,fn)};
@@ -70,4 +70,18 @@ test('install pre-caches only the static offline shell',async()=>{
     ['caches.open','services-offline-shell-v1'],
     ['cache.add','/offline.html'],
   ]);
+});
+
+
+test('activation deletes only obsolete Services offline shell caches',async()=>{
+  const h=harness({cacheNames:[
+    'services-offline-shell-v0',
+    'services-offline-shell-v1',
+    'another-app-cache',
+  ]});
+  let activation;
+  h.listeners.get('activate')({waitUntil:promise=>{activation=promise;}});
+  await activation;
+  const deleted=h.calls.filter(([name])=>name==='caches.delete').map(([,name])=>name);
+  assert.deepEqual(deleted,['services-offline-shell-v0']);
 });
