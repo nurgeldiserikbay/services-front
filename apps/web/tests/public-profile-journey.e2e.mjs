@@ -129,8 +129,9 @@ const robotsResponse=await fetch(new URL('/robots.txt',webBase),{
 assert.equal(robotsResponse.status,200,'robots.txt must be served');
 assert.match(robotsResponse.headers.get('content-type')??'',/text\/plain/i);
 const robotsBody=await robotsResponse.text();
-for(const route of ['/kk/account/','/ru/account/','/kk/seller/','/ru/seller/',
-  '/api/','/offline.html','/sw.js']){
+for(const route of ['/kk/account','/kk/account/','/ru/account','/ru/account/',
+  '/kk/seller','/kk/seller/','/ru/seller','/ru/seller/',
+  '/api','/api/','/offline.html','/sw.js']){
   assert.ok(robotsBody.includes('Disallow: '+route),'robots must exclude '+route);
 }
 assert.match(robotsBody,/Allow: \/kk\/professionals\//);
