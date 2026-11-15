@@ -9,7 +9,7 @@ export default async function SellerRequestsPage({
 }:{params:Promise<{locale:string}>}){
  const {locale}=await params;
  if(!isLocale(locale))notFound();
- return <main className="shell">
+ return <main id="main-content" className="shell">
    <h1>{locale==='kk'?'Менің өтінімдерім':'Мои заявки'}</h1>
    <SellerWorkspace locale={locale}/>
  </main>;
