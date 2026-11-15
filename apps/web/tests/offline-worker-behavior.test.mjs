@@ -5,13 +5,13 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
 const origin='https://services.example.test';
-function harness({offline=false,networkStatus=200,cacheNames=[],cacheAddFails=false}={}){
+function harness({offline=false,networkStatus=200,cacheNames=[],cacheAddFails=false,missingFallback=false}={}){
   const listeners=new Map();
   const calls=[];
   const fallback={status:200,body:'generic offline shell'};
   const cache={
     add:async path=>{calls.push(['cache.add',path]);if(cacheAddFails)throw new Error('cache unavailable');},
-    match:async path=>{calls.push(['cache.match',path]);return path==='/offline.html'?fallback:undefined;},
+    match:async path=>{calls.push(['cache.match',path]);return path==='/offline.html'&&!missingFallback?fallback:undefined;},
   };
   const caches={
     open:async name=>{calls.push(['caches.open',name]);return cache;},
@@ -122,4 +122,13 @@ test('application 401/403/404/429/500 responses remain unmodified and uncached',
     assert.equal(response.status,networkStatus);
     assert.equal(h.calls.filter(([name])=>name==='cache.match').length,0);
   }
+});
+
+
+test('missing cached offline shell fails closed instead of returning private data',async()=>{
+  const h=harness({offline:true,missingFallback:true});
+  const response=await dispatch(h,'/kk');
+  assert.equal(response.type,'error');
+  assert.equal(h.calls.filter(([name])=>name==='cache.match').length,1);
+  assert.equal(dispatch(h,'/kk/account/requests'),undefined);
 });
