@@ -105,6 +105,9 @@ for(const [path,expectedType,bodyPattern] of [
   const response=await fetch(new URL(path,webBase),{signal:AbortSignal.timeout(requestTimeoutMs)});
   assert.equal(response.status,200,path+' must be served by production frontend');
   assert.match(response.headers.get('content-type')??'',expectedType);
+  assert.match(response.headers.get('cache-control')??'',/no-store/,
+    path+' must be revalidated instead of served as stale HTTP cache');
+  if(path==='/sw.js')assert.equal(response.headers.get('service-worker-allowed'),'/');
   assert.match(await response.text(),bodyPattern);
 }
 console.log('[journey] offline shell assets available');
