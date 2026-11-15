@@ -80,7 +80,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
         <form className="searchForm" action={'/' + locale} method="get">
           <label htmlFor="query">{t.searchLabel}</label>
           <div className="searchRow">
-            <input autoComplete="off" id="query" name="q" placeholder={t.searchPlaceholder} maxLength={180} defaultValue={q} />
+            <input type="search" enterKeyHint="search" autoComplete="off" id="query" name="q" placeholder={t.searchPlaceholder} maxLength={180} defaultValue={q} />
             <button type="submit">{t.search}</button>
           </div>
           {professionOptions.length > 0 ? (
@@ -116,7 +116,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
         <h2 id="results-title">{t.results}</h2>
         {!q && <p className="message">{t.waiting}</p>}
         {q && error && <p role="status" className="message">{t.unavailable}</p>}
-        {q && !error && items.length === 0 && <p className="message">{t.empty}</p>}
+        {q && !error && items.length === 0 && <p role="status" className="message">{t.empty}</p>}
         {q && !error && items.length > 0 &&
           <ul className="resultList">{items.map(item => (
             <li key={item.kind + ':' + item.id} className="resultItem">
