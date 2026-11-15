@@ -217,3 +217,25 @@ test('worker does not claim clients when obsolete offline cache cleanup fails',a
   await assert.rejects(activation,/cache deletion failed/);
   assert.equal(h.calls.some(([name])=>name==='clients.claim'),false);
 });
+
+
+test('public navigation preserves redirects and auth challenges without using offline fallback',async()=>{
+  for(const networkStatus of [301,302,303,307,308,401,407]){
+    const h=harness({networkStatus});
+    const response=await dispatch(h,'/ru/organizations/123');
+    assert.equal(response.status,networkStatus);
+    assert.equal(response.body,'network');
+    assert.equal(h.calls.filter(([name])=>name==='cache.match').length,0);
+  }
+});
+
+test('public navigation does not intercept HEAD, prefetch or CORS requests',()=>{
+  const h=harness({offline:true});
+  for(const method of ['HEAD','POST','PUT','PATCH','DELETE']){
+    assert.equal(dispatch(h,'/kk',{method}),undefined);
+  }
+  for(const mode of ['cors','no-cors','same-origin']){
+    assert.equal(dispatch(h,'/kk',{mode}),undefined);
+  }
+  assert.deepEqual(h.calls,[]);
+});
