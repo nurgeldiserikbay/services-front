@@ -196,3 +196,15 @@ test('encoded profile identifiers and encoded route components bypass offline in
   }
   assert.deepEqual(h.calls,[]);
 });
+
+
+test('noncanonical repeated and trailing slash URLs bypass the offline worker',()=>{
+  const h=harness({offline:true});
+  for(const path of [
+    '/kk/','/ru//','/kk//services/123','/ru/services//123',
+    '/kk/professionals/123/','/ru/organizations/123//',
+  ]){
+    assert.equal(dispatch(h,path),undefined,path);
+  }
+  assert.deepEqual(h.calls,[]);
+});
