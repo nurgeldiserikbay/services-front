@@ -33,7 +33,7 @@ export default async function AccountRequestsPage({
     notFound();
   }
   const kk=locale==='kk';
-  return <main className="shell">
+  return <main id="main-content" className="shell">
     <header className="header">
       <Link className="brand" href={'/'+locale}>
         Services<span className="brandDot">.</span>
