@@ -23,7 +23,7 @@ export default async function OrganizationPage({params}:Params){
   if(!isLocale(locale))notFound();
   const t=dictionary[locale];
   const organization=await load(id);
-  return <main className="shell publicDetail">
+  return <main id="main-content" className="shell publicDetail">
     <header className="header"><Link className="brand" href={'/'+locale}>Services<span className="brandDot">.</span></Link>
       <Link href={'/'+locale}>{t.backToSearch}</Link></header>
     {organization ? <>
