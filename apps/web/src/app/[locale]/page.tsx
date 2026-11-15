@@ -80,7 +80,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
         <form role="search" className="searchForm" action={'/' + locale} method="get">
           <label htmlFor="query">{t.searchLabel}</label>
           <div className="searchRow">
-            <input type="search" enterKeyHint="search" autoComplete="off" id="query" aria-controls="results-list" name="q" placeholder={t.searchPlaceholder} maxLength={180} defaultValue={q} />
+            <input type="search" enterKeyHint="search" autoComplete="off" id="query" aria-controls="results-list" aria-describedby="results-title" name="q" placeholder={t.searchPlaceholder} maxLength={180} defaultValue={q} />
             <button type="submit">{t.search}</button>
           </div>
           {professionOptions.length > 0 ? (
