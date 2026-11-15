@@ -132,3 +132,27 @@ test('missing cached offline shell fails closed instead of returning private dat
   assert.equal(h.calls.filter(([name])=>name==='cache.match').length,1);
   assert.equal(dispatch(h,'/kk/account/requests'),undefined);
 });
+
+
+test('private workspace routes and API calls never invoke network or cache via worker',()=>{
+  const h=harness({offline:true});
+  for(const path of [
+    '/kk/account','/kk/account/requests','/ru/account/devices',
+    '/kk/seller','/ru/seller/requests','/api','/api/guest-requests',
+    '/kk/services/123/edit','/ru/organizations/123/members',
+    '/kk/professionals/123/requests','/kk/accounting',
+  ]){
+    assert.equal(dispatch(h,path),undefined,path);
+  }
+  assert.deepEqual(h.calls,[]);
+});
+
+test('public catalog navigation ignores query parameters and never caches responses',async()=>{
+  const h=harness({offline:true});
+  for(const path of ['/kk?q=service','/ru?sort=recent',
+    '/kk/professionals/abc?source=search','/ru/services/42?ref=profile']){
+    assert.equal(await dispatch(h,path),h.fallback,path);
+  }
+  assert.equal(h.calls.filter(([name])=>name==='cache.match').length,4);
+  assert.equal(h.calls.filter(([name])=>name==='cache.put').length,0);
+});
