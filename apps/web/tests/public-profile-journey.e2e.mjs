@@ -115,6 +115,12 @@ console.log('[journey] offline shell assets available');
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
+const searchHeadersResponse=await fetch(searchUrl,{signal:AbortSignal.timeout(requestTimeoutMs)});
+assert.equal(searchHeadersResponse.status,200);
+const csp=searchHeadersResponse.headers.get('content-security-policy')??'';
+assert.match(csp,/worker-src 'self'/,'PWA workers must be same-origin');
+assert.match(csp,/manifest-src 'self'/,'PWA manifests must be same-origin');
+assert.equal(searchHeadersResponse.headers.get('x-robots-tag'),null,'public pages must remain indexable');
 const searchHtml = await fetchPage(searchUrl, 'localized search page');
 assert.match(searchHtml, /<html lang="ru">/, 'document language should match the Russian route');
 assert.equal((searchHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1, 'search page should have one primary heading');
