@@ -25,6 +25,9 @@ function publicNavigation(url){
   // normalized differently by a proxy and must bypass the worker.
   if('/'+parts.join('/')!==url.pathname)return false;
   if(parts.length===1)return true;
+  // Public profile identifiers are single opaque path segments. Reject
+  // control characters and query-like delimiters in their literal path.
+  if(parts.length===3&&/[?#\\x00-\\x1f\\x7f]/.test(parts[2]))return false;
   return parts.length===3&&(
     (parts[1]==='professionals'||parts[1]==='organizations'||parts[1]==='services')
   );
