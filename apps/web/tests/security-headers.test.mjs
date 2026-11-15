@@ -12,7 +12,7 @@ test('public responses have protective headers without global deindexing',()=>{
   }
   // Public pages must remain indexable; no-store is allowed for the two
   // PWA infrastructure files only, not the global /:path* header rule.
-  const globalHeaders=config.split("source: '/:path*'")[1]?.split("source: '/sw.js'")[0]??'';
+  const globalHeaders=config.split("source: '/:path*'")[1]?.split("...['kk','ru'].flatMap")[0]??'';
   assert.doesNotMatch(globalHeaders,/X-Robots-Tag|noindex, nofollow|Cache-Control.*no-store/);
   assert.match(config,/source: '\/sw\.js'/);
   assert.match(config,/source: '\/offline\.html'/);
