@@ -37,3 +37,12 @@ test('private account and seller workspaces have route-scoped no-store and noind
   assert.match(config,/Cache-Control', value: 'private, no-store, max-age=0'/);
   assert.match(config,/X-Robots-Tag', value: 'noindex, nofollow, noarchive'/);
 });
+
+
+test('offline fallback has route-scoped noindex, no-store and nosniff headers',()=>{
+  const offlineHeaders=config.split("source: '/offline.html'")[1]??'';
+  assert.ok(offlineHeaders.includes('headers:'),'offline HTTP header block must exist');
+  assert.match(offlineHeaders,/Cache-Control', value: 'no-cache, no-store, must-revalidate'/);
+  assert.match(offlineHeaders,/X-Robots-Tag', value: 'noindex, nofollow, noarchive'/);
+  assert.match(offlineHeaders,/X-Content-Type-Options', value: 'nosniff'/);
+});
