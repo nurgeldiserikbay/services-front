@@ -63,7 +63,11 @@ const config: NextConfig = {
         // Never let a CDN accidentally turn the generic offline page into
         // a long-lived public response. The SW owns its explicit offline cache.
         source: '/offline.html',
-        headers: [{key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate'}],
+        headers: [
+          {key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate'},
+          {key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive'},
+          {key: 'X-Content-Type-Options', value: 'nosniff'},
+        ],
       },
     ];
   },
