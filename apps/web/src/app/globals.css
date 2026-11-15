@@ -36,3 +36,7 @@
 /* Small viewport hardening: keep all interactive controls and long content visible. */
 html{overflow-wrap:normal}body{min-width:0;overflow-x:clip}.shell{min-width:0}.header{gap:12px;min-width:0}.header nav{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;min-width:0}.header a{overflow-wrap:anywhere}.searchRow input,.searchRow button{min-height:44px}.resultItem,.offerDetail,.message{min-width:0;overflow-wrap:anywhere}select,textarea,input{max-width:100%}img,svg,video{max-width:100%}a,button{touch-action:manipulation}
 @media(max-width:550px){.shell{padding-inline:16px}.header{height:auto;min-height:70px;padding-block:12px;flex-wrap:wrap}.header nav{width:100%;justify-content:flex-start}.language{flex-wrap:wrap}.hero{padding-top:36px;padding-bottom:32px}.results{padding-bottom:48px}.resultList{grid-template-columns:minmax(0,1fr)}.offerDetail{margin-top:24px;padding:22px}.publicDetailHero{padding-top:32px}.searchRow button{width:100%}}
+
+/* Keyboard focus must remain visible on native select, textarea and custom controls. */
+select:focus-visible,textarea:focus-visible,[role="button"]:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+@media(forced-colors:active){.skipLink:focus-visible,a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid Highlight;outline-offset:3px}.resultItem,.offerDetail,.message{border:1px solid CanvasText}.resultLink{text-decoration:underline}}
