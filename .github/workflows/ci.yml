@@ -82,6 +82,7 @@ jobs:
       - name: Test guest and seller concurrency boundaries before dependency installation
         id: boundary_tests
         run: |
+          node --test apps/web/tests/guest-create-backend.test.mjs
           node --test apps/web/tests/guest-status-version-regression.test.mjs
           node --test apps/web/tests/seller-decision-uuid-case-regression.test.mjs
           node --test apps/web/tests/seller-decision-contract-regression.test.mjs
