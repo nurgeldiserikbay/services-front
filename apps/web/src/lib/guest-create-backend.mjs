@@ -55,7 +55,7 @@ function parseCommitted(raw,now){
   if(!Number.isFinite(localTime.getTime())||
     localTime.toISOString().slice(0,19)!==match[1]||
     localTime.getUTCMilliseconds()!==Number((match[2]??'').padEnd(3,'0')||0)||
-    expiresAt<=now||expiresAt>now+24*60*60*1000+5000)
+    expiresAt<=now||expiresAt>now+24*60*60*1000)
     throw new GuestCreateUnavailable();
   return {id:raw.id.toLowerCase(),state:'pending',
     requestCapability:raw.request_capability,expiresAt:raw.expires_at};
