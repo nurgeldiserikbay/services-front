@@ -157,7 +157,13 @@ The frontend run completed the pinned-backend PostgreSQL migration, private admi
 
 ## Current immutable integration default — 2026-11-15
 
-- The frontend CI currently checks out backend `69861edc670b731145dab861436b76e45f40f356` (as specified in `.github/workflows/ci.yml`). This entry records the **actual default**, not a claim of backend CI approval.
+- The frontend CI currently checks out backend `d39d196f7ceedd9df13a253834e3737ad5c120fd` (as specified in `.github/workflows/ci.yml`). This entry records the **actual default**, not a claim of backend CI approval.
 - [Frontend CI #43710794087](https://github.com/nurgeldiserikbay/services-front/actions/runs/43710794087) failed on an expiry test fixture that exceeded the allowed 24-hour guest capability TTL by 123 ms. Frontend [commit `1fdd457`](https://github.com/nurgeldiserikbay/services-front/commit/1fdd457a08333f41e1a9af11df98832a346d79f3) corrected that fixture.
 - A subsequent unit-test run revealed out-of-date expectations for CI ordering and fail-closed seller-decision retries, plus release status punctuation handling. Changes to those tests must keep the actual cross-repository CI and staging security gates intact.
 - Do not enable any rollout flags or mark the cross-repository compatibility/staging gate complete until the full workflow succeeds and independent acceptance evidence is recorded.
+
+## Verified backend CI pin refresh — 2026-11-15
+
+- Default backend integration SHA: `d39d196f7ceedd9df13a253834e3737ad5c120fd` ([Backend CI #43723300416](https://github.com/nurgeldiserikbay/services-back/actions/runs/43723300416): **dependency-audit** and **build-and-test** both passed).
+- Earlier frontend CI [#43723802467](https://github.com/nurgeldiserikbay/services-front/actions/runs/43723802467) passed frontend unit tests and dependency audit, then failed at a PostgreSQL test in the older backend `69861edc670b731145dab861436b76e45f40f356` (registered-customer IN_APP notification trigger, SQLSTATE 23514). That older backend is no longer the default compatibility pin.
+- **Frontend cross-repository compatibility remains unverified** until a new full frontend workflow succeeds on the refreshed immutable pin. Staging acceptance and feature flags remain unchanged.
