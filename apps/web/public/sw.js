@@ -24,8 +24,15 @@ function publicNavigation(url){
 self.addEventListener('fetch',event=>{
   const request=event.request;
   if(request.method!=='GET'||request.mode!=='navigate'||!publicNavigation(new URL(request.url)))return;
-  event.respondWith(fetch(request).catch(async()=>{
+  // A gateway can return 503/504 even while the device appears online.
+  // Show the generic offline shell for those transient infrastructure errors,
+  // but never mask application-level 4xx or other server responses.
+  const offlineShell=async()=>{
     const cache=await caches.open(CACHE);
     return (await cache.match(FALLBACK))||Response.error();
-  }));
+  };
+  event.respondWith(fetch(request)
+    .then(response=>response.status===503||response.status===504
+      ?offlineShell():response)
+    .catch(offlineShell));
 });
