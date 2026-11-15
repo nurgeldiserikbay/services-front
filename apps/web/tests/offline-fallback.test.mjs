@@ -15,7 +15,8 @@ test('offline shell does not cache private API or authenticated responses',()=>{
   assert.doesNotMatch(worker,/cache\.put\(/);
   assert.doesNotMatch(worker,/cache\.addAll\(/);
   assert.match(worker,/cache\.add\(FALLBACK\)/);
-  assert.match(worker,/fetch\(request\)\.catch/);
+  assert.match(worker,/event\.respondWith\(fetch\(request\)/);
+  assert.match(worker,/\.catch\(offlineShell\)/);
   assert.match(register,/window\.isSecureContext/);
   assert.match(register,/updateViaCache:'none'/);
 });
