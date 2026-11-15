@@ -65,7 +65,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
     return '/' + locale + '?' + query.toString();
   };
   return (
-    <main className="shell">
+    <main id="main-content" className="shell">
       <header className="header">
         <Link className="brand" href={'/' + locale}>{t.brand}<span className="brandDot">.</span></Link>
         <nav className="language" aria-label={t.languageNavigation}>
