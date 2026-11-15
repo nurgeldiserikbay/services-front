@@ -314,3 +314,16 @@ test('backend receipt validates leap-day and timezone rollover exactly',async()=
     })}),GuestCreateUnavailable);
   }
 });
+
+test('backend receipt TTL never exceeds sealed guest access 24-hour limit',async()=>{
+  const atLimit=new Date(now+24*60*60*1000).toISOString();
+  const accepted=await call({transport:async()=>json({
+    ...result,expires_at:atLimit,
+  })});
+  assert.equal(accepted.expiresAt,atLimit);
+  for(const delta of [1,1000,5000]){
+    await assert.rejects(call({transport:async()=>json({
+      ...result,expires_at:new Date(now+24*60*60*1000+delta).toISOString(),
+    })}),GuestCreateUnavailable);
+  }
+});
