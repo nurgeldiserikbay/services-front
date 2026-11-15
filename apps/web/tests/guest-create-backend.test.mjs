@@ -254,3 +254,22 @@ test('backend URL rejects credentials, query, fragment and unsupported protocols
   }
   assert.equal(calls,0);
 });
+
+test('backend guest receipt requires explicit timezone in expiration timestamp',async()=>{
+  const malformed=[
+    '2026-11-05',
+    '2026-11-05T11:00:00',
+    '2026-11-05 11:00:00Z',
+    'Thu, 05 Nov 2026 11:00:00 GMT',
+    '2026-11-05T11:00:00.1234Z',
+  ];
+  for(const expires_at of malformed){
+    await assert.rejects(call({transport:async()=>json({...result,expires_at})}),
+      GuestCreateUnavailable);
+  }
+  const offsetExpiry='2026-11-05T16:00:00+05:00';
+  const actual=await call({transport:async()=>json({
+    ...result,expires_at:offsetExpiry,
+  })});
+  assert.equal(actual.expiresAt,offsetExpiry);
+});
