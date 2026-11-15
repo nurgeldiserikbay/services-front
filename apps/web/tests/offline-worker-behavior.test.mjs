@@ -5,12 +5,12 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
 const origin='https://services.example.test';
-function harness({offline=false,cacheNames=[]}={}){
+function harness({offline=false,cacheNames=[],cacheAddFails=false}={}){
   const listeners=new Map();
   const calls=[];
   const fallback={status:200,body:'generic offline shell'};
   const cache={
-    add:async path=>{calls.push(['cache.add',path]);},
+    add:async path=>{calls.push(['cache.add',path]);if(cacheAddFails)throw new Error('cache unavailable');},
     match:async path=>{calls.push(['cache.match',path]);return path==='/offline.html'?fallback:undefined;},
   };
   const caches={
@@ -18,7 +18,7 @@ function harness({offline=false,cacheNames=[]}={}){
     keys:async()=>cacheNames,
     delete:async name=>{calls.push(['caches.delete',name]);return true;},
   };
-  const self={location:{origin},clients:{claim:async()=>{}},skipWaiting:()=>{},addEventListener:(type,fn)=>listeners.set(type,fn)};
+  const self={location:{origin},clients:{claim:async()=>{calls.push(['clients.claim']);}},skipWaiting:()=>{calls.push(['skipWaiting']);},addEventListener:(type,fn)=>listeners.set(type,fn)};
   const fetch=async request=>{
     calls.push(['fetch',request.url]);
     if(offline)throw new Error('offline');
@@ -84,4 +84,23 @@ test('activation deletes only obsolete Services offline shell caches',async()=>{
   await activation;
   const deleted=h.calls.filter(([name])=>name==='caches.delete').map(([,name])=>name);
   assert.deepEqual(deleted,['services-offline-shell-v0']);
+});
+
+
+test('worker does not skip waiting if offline shell precache fails',async()=>{
+  const h=harness({cacheAddFails:true});
+  let install;
+  h.listeners.get('install')({waitUntil:promise=>{install=promise;}});
+  await assert.rejects(install,/cache unavailable/);
+  assert.equal(h.calls.some(([name])=>name==='skipWaiting'),false);
+});
+
+test('worker claims clients only after obsolete caches are deleted',async()=>{
+  const h=harness({cacheNames:['services-offline-shell-v0']});
+  let activation;
+  h.listeners.get('activate')({waitUntil:promise=>{activation=promise;}});
+  await activation;
+  const actions=h.calls.map(([name])=>name);
+  assert.ok(actions.indexOf('caches.delete')>=0);
+  assert.ok(actions.indexOf('clients.claim')>actions.indexOf('caches.delete'));
 });
