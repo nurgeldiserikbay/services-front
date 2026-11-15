@@ -112,7 +112,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
             initialCityId={cityId} initialScope={scope} />
         </form>
       </section>
-      <section className="results" aria-labelledby="results-title">
+      <section className="results" aria-labelledby="results-title" aria-live="polite" aria-relevant="additions text">
         <h2 id="results-title">{t.results}</h2>
         {!q && <p className="message">{t.waiting}</p>}
         {q && error && <p role="status" className="message">{t.unavailable}</p>}
