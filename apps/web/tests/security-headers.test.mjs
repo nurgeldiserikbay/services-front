@@ -10,7 +10,12 @@ test('public responses have protective headers without global deindexing',()=>{
     'Cross-Origin-Opener-Policy','same-origin']){
     assert.ok(config.includes(name),name);
   }
-  assert.doesNotMatch(config,/X-Robots-Tag|noindex, nofollow|Cache-Control.*no-store/);
+  // Public pages must remain indexable; no-store is allowed for the two
+  // PWA infrastructure files only, not the global /:path* header rule.
+  const globalHeaders=config.split("source: '/:path*'")[1]?.split("source: '/sw.js'")[0]??'';
+  assert.doesNotMatch(globalHeaders,/X-Robots-Tag|noindex, nofollow|Cache-Control.*no-store/);
+  assert.match(config,/source: '\/sw\.js'/);
+  assert.match(config,/source: '\/offline\.html'/);
 });
 
 test('production CSP restricts framing, forms, resources and mixed content',()=>{
