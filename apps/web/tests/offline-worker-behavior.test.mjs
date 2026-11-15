@@ -69,6 +69,7 @@ test('install pre-caches only the static offline shell',async()=>{
   assert.deepEqual(h.calls.map(([action,value])=>[action,value]),[
     ['caches.open','services-offline-shell-v1'],
     ['cache.add','/offline.html'],
+    ['skipWaiting',undefined],
   ]);
 });
 
