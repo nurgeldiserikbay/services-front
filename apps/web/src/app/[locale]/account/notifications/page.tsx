@@ -21,7 +21,7 @@ export default async function AccountNotificationsPage({
   await getOwnAccountNotifications((await cookies()).get(ACCOUNT_WEB_COOKIE)?.value);
  }catch{notFound();}
  const kk=locale==='kk';
- return <main className="shell">
+ return <main id="main-content" className="shell">
   <header className="header">
    <Link className="brand" href={'/'+locale}>Services<span className="brandDot">.</span></Link>
    <nav>{process.env.SERVICES_WEB_ENABLE_SELLER_WORKSPACE==='enabled'&&<Link href={'/'+locale+'/account/requests'}>
