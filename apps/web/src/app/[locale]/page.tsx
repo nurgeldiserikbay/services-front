@@ -77,7 +77,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
         <p className="eyebrow">SERVICES / DISCOVERY</p>
         <h1 id="headline">{t.title}</h1>
         <p className="intro">{t.intro}</p>
-        <form className="searchForm" action={'/' + locale} method="get">
+        <form role="search" className="searchForm" action={'/' + locale} method="get">
           <label htmlFor="query">{t.searchLabel}</label>
           <div className="searchRow">
             <input type="search" enterKeyHint="search" autoComplete="off" id="query" name="q" placeholder={t.searchPlaceholder} maxLength={180} defaultValue={q} />
