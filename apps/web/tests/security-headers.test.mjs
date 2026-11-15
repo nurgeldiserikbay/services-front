@@ -21,7 +21,8 @@ test('public responses have protective headers without global deindexing',()=>{
 test('production CSP restricts framing, forms, resources and mixed content',()=>{
   for(const directive of ["default-src 'self'","object-src 'none'",
     "frame-ancestors 'none'","form-action 'self'","base-uri 'self'",
-    "connect-src 'self'","upgrade-insecure-requests"]){
+    "connect-src 'self'","worker-src 'self'","manifest-src 'self'",
+    "upgrade-insecure-requests"]){
     assert.ok(config.includes(directive),directive);
   }
   assert.match(config,/process\.env\.NODE_ENV === 'production'/);
