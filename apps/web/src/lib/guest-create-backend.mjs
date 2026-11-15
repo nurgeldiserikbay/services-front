@@ -43,8 +43,20 @@ function parseCommitted(raw,now){
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(raw.expires_at))
     throw new GuestCreateUnavailable();
   const expiresAt=Date.parse(raw.expires_at);
-  if(!Number.isFinite(expiresAt)||expiresAt<=now||
-    expiresAt>now+24*60*60*1000+5000)throw new GuestCreateUnavailable();
+  // Date.parse normalizes impossible calendar dates (e.g. February 30).
+  // Reconstruct the wall-clock time from the parsed instant and the explicit
+  // offset, then require exact agreement with the supplied calendar fields.
+  const match=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,3}))?(Z|([+-])(\\d{2}):(\\d{2}))$/.exec(raw.expires_at);
+  if(!match||!Number.isFinite(expiresAt))throw new GuestCreateUnavailable();
+  const offsetMinutes=match[3]==='Z'?0:
+    (match[4]==='+'?1:-1)*(Number(match[5])*60+Number(match[6]));
+  if(Math.abs(offsetMinutes)>23*60+59)throw new GuestCreateUnavailable();
+  const localTime=new Date(expiresAt+offsetMinutes*60_000);
+  if(!Number.isFinite(localTime.getTime())||
+    localTime.toISOString().slice(0,19)!==match[1]||
+    localTime.getUTCMilliseconds()!==Number((match[2]??'').padEnd(3,'0')||0)||
+    expiresAt<=now||expiresAt>now+24*60*60*1000+5000)
+    throw new GuestCreateUnavailable();
   return {id:raw.id.toLowerCase(),state:'pending',
     requestCapability:raw.request_capability,expiresAt:raw.expires_at};
 }
