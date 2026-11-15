@@ -17,6 +17,8 @@ function publicNavigation(url){
   const parts=url.pathname.split('/').filter(Boolean);
   if(!['kk','ru'].includes(parts[0]))return false;
   if(parts.length===1)return true;
+  // Never intercept private or API-looking paths, including encoded separators.
+  if(url.pathname.toLowerCase().includes('%2f')||url.pathname.toLowerCase().includes('%5c'))return false;
   return parts.length===3&&(
     (parts[1]==='professionals'||parts[1]==='organizations'||parts[1]==='services')
   );
