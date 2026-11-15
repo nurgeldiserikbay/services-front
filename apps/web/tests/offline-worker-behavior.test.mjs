@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
 const origin='https://services.example.test';
-function harness({offline=false,networkStatus=200,cacheNames=[],cacheAddFails=false,missingFallback=false}={}){
+function harness({offline=false,networkStatus=200,cacheNames=[],cacheAddFails=false,missingFallback=false,cacheOpenFails=false}={}){
   const listeners=new Map();
   const calls=[];
   const fallback={status:200,body:'generic offline shell'};
@@ -14,7 +14,7 @@ function harness({offline=false,networkStatus=200,cacheNames=[],cacheAddFails=fa
     match:async path=>{calls.push(['cache.match',path]);return path==='/offline.html'&&!missingFallback?fallback:undefined;},
   };
   const caches={
-    open:async name=>{calls.push(['caches.open',name]);return cache;},
+    open:async name=>{calls.push(['caches.open',name]);if(cacheOpenFails)throw new Error('storage unavailable');return cache;},
     keys:async()=>cacheNames,
     delete:async name=>{calls.push(['caches.delete',name]);return true;},
   };
@@ -155,4 +155,15 @@ test('public catalog navigation ignores query parameters and never caches respon
   }
   assert.equal(h.calls.filter(([name])=>name==='cache.match').length,4);
   assert.equal(h.calls.filter(([name])=>name==='cache.put').length,0);
+});
+
+
+test('unavailable browser Cache Storage returns a network error for public offline navigation',async()=>{
+  for(const networkStatus of [200,503]){
+    const h=harness({offline:networkStatus===200,networkStatus,cacheOpenFails:true});
+    const response=await dispatch(h,'/ru/professionals/123');
+    assert.equal(response.type,'error');
+    assert.equal(h.calls.filter(([name])=>name==='caches.open').length,1);
+    assert.equal(dispatch(h,'/ru/account/requests'),undefined);
+  }
 });
