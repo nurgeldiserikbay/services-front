@@ -24,7 +24,7 @@ function publicNavigation(url){
 self.addEventListener('fetch',event=>{
   const request=event.request;
   if(request.method!=='GET'||request.mode!=='navigate'||!publicNavigation(new URL(request.url)))return;
-  // A gateway can return 503/504 even while the device appears online.
+  // A gateway can return 502/503/504 even while the device appears online.
   // Show the generic offline shell for those transient infrastructure errors,
   // but never mask application-level 4xx or other server responses.
   const offlineShell=async()=>{
@@ -32,7 +32,7 @@ self.addEventListener('fetch',event=>{
     return (await cache.match(FALLBACK))||Response.error();
   };
   event.respondWith(fetch(request)
-    .then(response=>response.status===503||response.status===504
+    .then(response=>[502,503,504].includes(response.status)
       ?offlineShell():response)
     .catch(offlineShell));
 });
