@@ -289,3 +289,28 @@ test('backend guest receipt rejects normalized impossible calendar dates',async(
     ...result,expires_at:precise,
   })})).expiresAt,precise);
 });
+
+test('backend receipt validates leap-day and timezone rollover exactly',async()=>{
+  const leapNow=Date.parse('2028-02-28T12:00:00Z');
+  const valid=[
+    '2028-02-29T11:00:00Z',
+    '2028-02-29T16:00:00+05:00',
+    '2028-02-29T06:00:00-05:00',
+  ];
+  for(const expires_at of valid){
+    const actual=await call({now:leapNow,transport:async()=>json({
+      ...result,expires_at,
+    })});
+    assert.equal(actual.expiresAt,expires_at);
+  }
+  for(const expires_at of [
+    '2027-02-29T11:00:00Z',
+    '2028-02-30T11:00:00Z',
+    '2028-02-29T11:00:00+25:00',
+    '2028-02-29T11:00:00.1000Z',
+  ]){
+    await assert.rejects(call({now:leapNow,transport:async()=>json({
+      ...result,expires_at,
+    })}),GuestCreateUnavailable);
+  }
+});
