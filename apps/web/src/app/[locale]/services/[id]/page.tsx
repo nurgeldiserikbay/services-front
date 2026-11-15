@@ -26,7 +26,7 @@ export default async function ServiceOfferPage({params}:Props) {
   try { offer=await getPublishedServiceOffer(id); }
   catch(error) {
     if(error instanceof OfferNotFound) notFound();
-    return <main className="shell offerPage">
+    return <main id="main-content" className="shell offerPage">
       <Link href={'/'+locale}>{t.brand}</Link><p role="status">{t.unavailable}</p>
     </main>;
   }
@@ -40,7 +40,7 @@ export default async function ServiceOfferPage({params}:Props) {
     process.env.SERVICES_WEB_ENABLE_GUEST_OTP_BFF==='enabled'&&
     process.env.SERVICES_WEB_ENABLE_GUEST_CREATE_HTTP==='enabled';
   const statusEnabled=process.env.SERVICES_WEB_ENABLE_GUEST_STATUS_HTTP==='enabled';
-  return <main className="shell offerPage">
+  return <main id="main-content" className="shell offerPage">
     <nav><Link href={'/'+locale}>{t.brand}</Link></nav>
     <article className="offerDetail">
       <span className="offerType">{t.resultKinds.offer}</span>
