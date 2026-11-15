@@ -181,3 +181,18 @@ test('encoded path separators cannot disguise private nested routes as public pr
   }
   assert.deepEqual(h.calls,[]);
 });
+
+
+test('encoded profile identifiers and encoded route components bypass offline interception',()=>{
+  const h=harness({offline:true});
+  for(const path of [
+    '/kk/services/%61ccount',
+    '/ru/professionals/%2e%2e%2faccount',
+    '/kk/organizations/company%252Fprivate',
+    '/ru/services/%5cprivate',
+    '/kk/%73ervices/123',
+  ]){
+    assert.equal(dispatch(h,path),undefined,path);
+  }
+  assert.deepEqual(h.calls,[]);
+});
