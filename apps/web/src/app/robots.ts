@@ -8,9 +8,9 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: ['/', '/kk', '/ru', '/kk/professionals/', '/ru/professionals/',
         '/kk/organizations/', '/ru/organizations/', '/kk/services/', '/ru/services/'],
-      disallow: ['/api', '/api/', '/kk/account', '/kk/account/',
+      disallow: ['/api', '/api/', '/_next/', '/kk/account', '/kk/account/',
         '/ru/account', '/ru/account/', '/kk/seller', '/kk/seller/',
-        '/ru/seller', '/ru/seller/', '/offline.html', '/sw.js'],
+        '/ru/seller', '/ru/seller/', '/offline.html', '/sw.js', '/manifest.webmanifest'],
     }],
   };
 }
