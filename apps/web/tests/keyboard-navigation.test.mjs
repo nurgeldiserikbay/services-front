@@ -37,3 +37,11 @@ test('native filters and high contrast keyboard focus are visible',()=>{
   assert.match(css,/outline:2px solid Highlight/);
   assert.match(css,/\.resultLink\{text-decoration:underline\}/);
 });
+
+
+test('search field exposes native search keyboard and empty results are announced',()=>{
+  const page=readFileSync(join(appDir,'[locale]','page.tsx'),'utf8');
+  assert.match(page,/<input type="search" enterKeyHint="search"[^>]*id="query"/);
+  assert.match(page,/items\.length === 0 && <p role="status" className="message">/);
+  assert.match(page,/q && error && <p role="status"/);
+});
