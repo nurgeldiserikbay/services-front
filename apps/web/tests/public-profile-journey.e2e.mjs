@@ -140,7 +140,8 @@ console.log('[journey] public SEO robots policy excludes private routes');
 
 // Route-scoped headers protect private workspace responses even when feature
 // flags deny access and Next.js renders a 404.
-for(const path of ['/kk/account/requests','/ru/account/notifications','/kk/seller/requests']){
+for(const path of ['/kk/account','/ru/account','/kk/seller','/ru/seller',
+  '/kk/account/requests','/ru/account/notifications','/kk/seller/requests']){
   const response=await fetch(new URL(path,webBase),{
     signal:AbortSignal.timeout(requestTimeoutMs),redirect:'manual',
   });
