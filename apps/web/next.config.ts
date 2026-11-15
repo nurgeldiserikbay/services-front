@@ -40,6 +40,15 @@ const config: NextConfig = {
             : []),
         ],
       },
+      ...['kk','ru'].flatMap(locale=>['account','seller'].map(section=>({
+        // Private workspaces must never be cached or indexed, regardless of
+        // which account feature flags are enabled at deployment time.
+        source: '/'+locale+'/'+section+'/:path*',
+        headers: [
+          {key: 'Cache-Control', value: 'private, no-store, max-age=0'},
+          {key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive'},
+        ],
+      }))),
       {
         // A stale worker could keep serving obsolete navigation logic.
         // Browsers must revalidate the worker script on every check.
