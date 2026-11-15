@@ -108,7 +108,13 @@ for(const [path,expectedType,bodyPattern] of [
   assert.match(response.headers.get('cache-control')??'',/no-store/,
     path+' must be revalidated instead of served as stale HTTP cache');
   if(path==='/sw.js')assert.equal(response.headers.get('service-worker-allowed'),'/');
-  assert.match(await response.text(),bodyPattern);
+  const body=await response.text();
+  assert.match(body,bodyPattern);
+  if(path==='/offline.html'){
+    assert.match(body,/<a href="\/kk">/);
+    assert.match(body,/<a href="\/ru" lang="ru">/);
+    assert.match(body,/<main id="main-content">/);
+  }
 }
 console.log('[journey] offline shell assets available');
 
