@@ -163,6 +163,7 @@ assert.match(csp,/manifest-src 'self'/,'PWA manifests must be same-origin');
 assert.equal(searchHeadersResponse.headers.get('x-robots-tag'),null,'public pages must remain indexable');
 const searchHtml = await fetchPage(searchUrl, 'localized search page');
 assert.match(searchHtml, /<html lang="ru">/, 'document language should match the Russian route');
+assert.match(searchHtml, /<form role="search" class="searchForm"/, 'search filters should expose a search landmark');
 assert.match(searchHtml, /<meta name="theme-color" content="#167b72"/,
   'PWA browser theme must match the manifest');
 assert.match(searchHtml, /<meta name="viewport" content="width=device-width, initial-scale=1"/,
