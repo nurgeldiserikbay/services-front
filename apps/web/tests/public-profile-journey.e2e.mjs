@@ -156,6 +156,10 @@ assert.match(csp,/manifest-src 'self'/,'PWA manifests must be same-origin');
 assert.equal(searchHeadersResponse.headers.get('x-robots-tag'),null,'public pages must remain indexable');
 const searchHtml = await fetchPage(searchUrl, 'localized search page');
 assert.match(searchHtml, /<html lang="ru">/, 'document language should match the Russian route');
+assert.match(searchHtml, /<meta name="theme-color" content="#167b72"/,
+  'PWA browser theme must match the manifest');
+assert.match(searchHtml, /<meta name="viewport" content="width=device-width, initial-scale=1"/,
+  'PWA must render with a mobile viewport');
 assert.equal((searchHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1, 'search page should have one primary heading');
 assert.match(searchHtml, /<main id="main-content" class="shell">/, 'search content should have a main landmark');
 assert.match(searchHtml, /href="#main-content"/, 'localized keyboard skip link should be rendered');
