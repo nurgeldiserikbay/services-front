@@ -107,16 +107,16 @@ test('worker claims clients only after obsolete caches are deleted',async()=>{
 });
 
 
-test('transient gateway 503/504 responses show only generic offline shell',async()=>{
-  for(const networkStatus of [503,504]){
+test('transient gateway 502/503/504 responses show only generic offline shell',async()=>{
+  for(const networkStatus of [502,503,504]){
     const h=harness({networkStatus});
     assert.equal(await dispatch(h,'/ru/services/123'),h.fallback);
     assert.equal(h.calls.filter(([name])=>name==='cache.match').length,1);
   }
 });
 
-test('application 404 and 500 responses remain unmodified and uncached',async()=>{
-  for(const networkStatus of [404,500]){
+test('application 401/403/404/429/500 responses remain unmodified and uncached',async()=>{
+  for(const networkStatus of [401,403,404,429,500]){
     const h=harness({networkStatus});
     const response=await dispatch(h,'/kk/professionals/abc');
     assert.equal(response.status,networkStatus);
