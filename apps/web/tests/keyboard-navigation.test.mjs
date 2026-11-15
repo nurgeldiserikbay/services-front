@@ -29,3 +29,11 @@ test('every localized page main landmark has a skip target',()=>{
     for(const main of mains)assert.match(main,/id="main-content"/,path+' lacks skip target');
   }
 });
+
+
+test('native filters and high contrast keyboard focus are visible',()=>{
+  assert.match(css,/select:focus-visible,textarea:focus-visible/);
+  assert.match(css,/@media\(forced-colors:active\)/);
+  assert.match(css,/outline:2px solid Highlight/);
+  assert.match(css,/\.resultLink\{text-decoration:underline\}/);
+});
