@@ -45,4 +45,6 @@ test('search field exposes native search keyboard and empty results are announce
   assert.match(page,/<input type="search" enterKeyHint="search"[^>]*id="query"/);
   assert.match(page,/items\.length === 0 && <p role="status" className="message">/);
   assert.match(page,/q && error && <p role="status"/);
+  assert.match(page,/id="query" aria-controls="results-list"/);
+  assert.match(page,/<section id="results-list" className="results" aria-labelledby="results-title"/);
 });
