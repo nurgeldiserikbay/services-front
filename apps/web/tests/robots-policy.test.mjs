@@ -14,7 +14,7 @@ test('robots policy preserves crawlability of published catalog routes',()=>{
 });
 
 test('robots policy excludes private workspaces and PWA infrastructure',()=>{
-  for(const route of ['/api','/api/','/kk/account','/kk/account/',
+  for(const route of ['/api','/api/','/_next/','/manifest.webmanifest','/kk/account','/kk/account/',
     '/ru/account','/ru/account/','/kk/seller','/kk/seller/',
     '/ru/seller','/ru/seller/','/offline.html','/sw.js']){
     assert.ok(robots.includes("'"+route+"'"),route);
