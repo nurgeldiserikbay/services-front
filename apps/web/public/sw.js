@@ -16,9 +16,12 @@ function publicNavigation(url){
   if(url.origin!==self.location.origin)return false;
   const parts=url.pathname.split('/').filter(Boolean);
   if(!['kk','ru'].includes(parts[0]))return false;
+  // Only canonical, exact public routes may receive the generic offline shell.
+  // Reject encoded path components and dot-segments rather than guessing how
+  // a server or reverse proxy will decode and normalize the requested path.
+  if(url.pathname.includes('%')||url.pathname.includes('\\'))return false;
+  if(parts.some(part=>part==='.'||part==='..'))return false;
   if(parts.length===1)return true;
-  // Never intercept private or API-looking paths, including encoded separators.
-  if(url.pathname.toLowerCase().includes('%2f')||url.pathname.toLowerCase().includes('%5c'))return false;
   return parts.length===3&&(
     (parts[1]==='professionals'||parts[1]==='organizations'||parts[1]==='services')
   );
