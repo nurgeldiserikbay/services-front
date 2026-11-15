@@ -11,5 +11,5 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const requestHeaders = await headers();
   const locale = requestHeaders.get('x-services-locale');
   const documentLanguage = locale === 'ru' ? 'ru' : 'kk';
-  return <html lang={documentLanguage}><body>{children}</body></html>;
+  return <html lang={documentLanguage}><body><a className="skipLink" href="#main-content">{documentLanguage === 'ru' ? 'Перейти к содержимому' : 'Негізгі мазмұнға өту'}</a>{children}</body></html>;
 }
