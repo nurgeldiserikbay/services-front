@@ -112,6 +112,20 @@ for(const [path,expectedType,bodyPattern] of [
 }
 console.log('[journey] offline shell assets available');
 
+const robotsResponse=await fetch(new URL('/robots.txt',webBase),{
+  signal:AbortSignal.timeout(requestTimeoutMs),
+});
+assert.equal(robotsResponse.status,200,'robots.txt must be served');
+assert.match(robotsResponse.headers.get('content-type')??'',/text\/plain/i);
+const robotsBody=await robotsResponse.text();
+for(const route of ['/kk/account/','/ru/account/','/kk/seller/','/ru/seller/',
+  '/api/','/offline.html','/sw.js']){
+  assert.ok(robotsBody.includes('Disallow: '+route),'robots must exclude '+route);
+}
+assert.match(robotsBody,/Allow: \/kk\/professionals\//);
+assert.match(robotsBody,/Allow: \/ru\/organizations\//);
+console.log('[journey] public SEO robots policy excludes private routes');
+
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
