@@ -6,7 +6,7 @@ export function OfflineRegistration(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
     // Registration does not cache responses. The worker only stores a generic
     // offline page, and never intercepts account, seller or API requests.
-    navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});
+    navigator.serviceWorker.register('/sw.js',{scope:'/',updateViaCache:'none'}).catch(()=>{});
   },[]);
   return null;
 }
