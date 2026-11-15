@@ -108,6 +108,11 @@ for(const [path,expectedType,bodyPattern] of [
   assert.match(response.headers.get('cache-control')??'',/no-store/,
     path+' must be revalidated instead of served as stale HTTP cache');
   if(path==='/sw.js')assert.equal(response.headers.get('service-worker-allowed'),'/');
+  if(path==='/offline.html'){
+    assert.match(response.headers.get('x-robots-tag')??'',/noindex/,
+      'offline fallback must not be indexed');
+    assert.equal(response.headers.get('x-content-type-options'),'nosniff');
+  }
   const body=await response.text();
   assert.match(body,bodyPattern);
   if(path==='/offline.html'){
