@@ -17,6 +17,7 @@ test('offline shell does not cache private API or authenticated responses',()=>{
   assert.match(worker,/cache\.add\(FALLBACK\)/);
   assert.match(worker,/fetch\(request\)\.catch/);
   assert.match(register,/window\.isSecureContext/);
+  assert.match(register,/updateViaCache:'none'/);
 });
 
 test('offline page contains no personalized data or indexable content',()=>{
