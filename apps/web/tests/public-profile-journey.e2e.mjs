@@ -131,7 +131,7 @@ assert.match(robotsResponse.headers.get('content-type')??'',/text\/plain/i);
 const robotsBody=await robotsResponse.text();
 for(const route of ['/kk/account','/kk/account/','/ru/account','/ru/account/',
   '/kk/seller','/kk/seller/','/ru/seller','/ru/seller/',
-  '/api','/api/','/offline.html','/sw.js']){
+  '/api','/api/','/_next/','/manifest.webmanifest','/offline.html','/sw.js']){
   assert.ok(robotsBody.includes('Disallow: '+route),'robots must exclude '+route);
 }
 assert.match(robotsBody,/Allow: \/kk\/professionals\//);
