@@ -126,6 +126,19 @@ assert.match(robotsBody,/Allow: \/kk\/professionals\//);
 assert.match(robotsBody,/Allow: \/ru\/organizations\//);
 console.log('[journey] public SEO robots policy excludes private routes');
 
+// Route-scoped headers protect private workspace responses even when feature
+// flags deny access and Next.js renders a 404.
+for(const path of ['/kk/account/requests','/ru/account/notifications','/kk/seller/requests']){
+  const response=await fetch(new URL(path,webBase),{
+    signal:AbortSignal.timeout(requestTimeoutMs),redirect:'manual',
+  });
+  assert.match(response.headers.get('cache-control')??'',/no-store/,
+    path+' must not be cached');
+  assert.match(response.headers.get('x-robots-tag')??'',/noindex/,
+    path+' must not be indexed');
+}
+console.log('[journey] private workspace HTTP cache and index boundaries verified');
+
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
