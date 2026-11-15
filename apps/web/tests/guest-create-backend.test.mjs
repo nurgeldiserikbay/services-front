@@ -284,7 +284,8 @@ test('backend guest receipt rejects normalized impossible calendar dates',async(
     await assert.rejects(call({transport:async()=>json({...result,expires_at})}),
       GuestCreateUnavailable);
   }
-  const precise='2026-11-05T11:00:00.123Z';
+  // A valid precise timestamp must still respect the 24-hour access TTL.
+  const precise='2026-11-05T10:59:59.123Z';
   assert.equal((await call({transport:async()=>json({
     ...result,expires_at:precise,
   })})).expiresAt,precise);
