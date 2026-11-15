@@ -30,3 +30,5 @@
 .professionPicker legend{font-size:.88rem;font-weight:700;margin-bottom:10px}
 .professionPicker select{width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text);font:inherit;padding:12px}
 .professionError{font-size:.82rem;color:var(--muted);margin:8px 0 0}
+
+.skipLink{position:fixed;top:12px;left:12px;z-index:1000;transform:translateY(-200%);padding:12px 18px;border-radius:10px;background:white;color:var(--text);font-weight:700;box-shadow:0 2px 12px #19354b33}.skipLink:focus-visible{transform:translateY(0);outline:3px solid var(--accent);outline-offset:3px}#main-content{scroll-margin-top:16px}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:0.01ms!important;animation-duration:0.01ms!important}}
