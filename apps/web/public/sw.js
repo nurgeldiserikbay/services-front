@@ -28,8 +28,13 @@ self.addEventListener('fetch',event=>{
   // Show the generic offline shell for those transient infrastructure errors,
   // but never mask application-level 4xx or other server responses.
   const offlineShell=async()=>{
-    const cache=await caches.open(CACHE);
-    return (await cache.match(FALLBACK))||Response.error();
+    try{
+      const cache=await caches.open(CACHE);
+      return (await cache.match(FALLBACK))||Response.error();
+    }catch{
+      // Storage can be disabled or unavailable; never substitute private data.
+      return Response.error();
+    }
   };
   event.respondWith(fetch(request)
     .then(response=>[502,503,504].includes(response.status)
