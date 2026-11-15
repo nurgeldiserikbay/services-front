@@ -26,3 +26,14 @@ test('offline page contains no personalized data or indexable content',()=>{
   assert.match(offline,/Нет подключения/);
   assert.doesNotMatch(offline,/<script|localStorage|indexedDB|\/api\//i);
 });
+
+
+test('offline shell offers accessible Kazakh and Russian retry routes',()=>{
+  assert.match(offline,/<main id="main-content">/);
+  assert.match(offline,/<a href="\/kk">/);
+  assert.match(offline,/<a href="\/ru" lang="ru">/);
+  assert.match(offline,/<p lang="ru">/);
+  assert.match(offline,/a:focus-visible/);
+  assert.match(offline,/@media\(forced-colors:active\)/);
+  assert.doesNotMatch(offline,/href="https?:/);
+});
