@@ -21,6 +21,9 @@ function publicNavigation(url){
   // a server or reverse proxy will decode and normalize the requested path.
   if(url.pathname.includes('%')||url.pathname.includes('\\'))return false;
   if(parts.some(part=>part==='.'||part==='..'))return false;
+  // Canonical paths only: repeated slashes and trailing slashes may be
+  // normalized differently by a proxy and must bypass the worker.
+  if('/'+parts.join('/')!==url.pathname)return false;
   if(parts.length===1)return true;
   return parts.length===3&&(
     (parts[1]==='professionals'||parts[1]==='organizations'||parts[1]==='services')
