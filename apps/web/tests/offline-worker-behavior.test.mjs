@@ -167,3 +167,17 @@ test('unavailable browser Cache Storage returns a network error for public offli
     assert.equal(dispatch(h,'/ru/account/requests'),undefined);
   }
 });
+
+
+test('encoded path separators cannot disguise private nested routes as public profiles',()=>{
+  const h=harness({offline:true});
+  for(const path of [
+    '/kk/services/account%2Frequests',
+    '/ru/professionals/seller%2frequests',
+    '/kk/organizations/api%5Cprivate',
+    '/ru/services/account%5cdevices',
+  ]){
+    assert.equal(dispatch(h,path),undefined,path);
+  }
+  assert.deepEqual(h.calls,[]);
+});
