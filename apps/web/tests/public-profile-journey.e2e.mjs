@@ -78,6 +78,25 @@ assert.doesNotMatch(disabledBody, /(?:request_capability|create_capability|csrf_
   'disabled endpoint must not expose guest secrets');
 console.log('[journey] guest creation remains default-off and non-cacheable');
 
+// Installability metadata is public and must not expose authenticated data.
+// This does not claim service-worker offline support or device acceptance.
+const manifestResponse = await fetch(new URL('/manifest.webmanifest', webBase), {
+  signal: AbortSignal.timeout(requestTimeoutMs),
+});
+assert.equal(manifestResponse.status, 200, 'PWA manifest must be available');
+const installManifest = await manifestResponse.json();
+assert.equal(installManifest.start_url, '/kk');
+assert.equal(installManifest.scope, '/');
+assert.equal(installManifest.display, 'standalone');
+assert.ok(installManifest.icons?.some(icon => icon.src === '/icon.svg' && icon.type === 'image/svg+xml'));
+const iconResponse = await fetch(new URL('/icon.svg', webBase), {
+  signal: AbortSignal.timeout(requestTimeoutMs),
+});
+assert.equal(iconResponse.status, 200, 'PWA icon must be available');
+assert.match(iconResponse.headers.get('content-type') ?? '', /image\/svg\+xml/i);
+assert.match(await iconResponse.text(), /<svg[^>]+viewBox="0 0 192 192"/);
+console.log('[journey] public PWA install metadata and icon verified');
+
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
