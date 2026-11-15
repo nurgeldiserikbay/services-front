@@ -97,6 +97,18 @@ assert.match(iconResponse.headers.get('content-type') ?? '', /image\/svg\+xml/i)
 assert.match(await iconResponse.text(), /<svg[^>]+viewBox="0 0 192 192"/);
 console.log('[journey] public PWA install metadata and icon verified');
 
+// Offline fallback is a generic public shell. No authenticated or API data is cached.
+for(const [path,expectedType,bodyPattern] of [
+  ['/offline.html',/text\/html/i,/Нет подключения/],
+  ['/sw.js',/javascript/i,/services-offline-shell-v1/],
+]){
+  const response=await fetch(new URL(path,webBase),{signal:AbortSignal.timeout(requestTimeoutMs)});
+  assert.equal(response.status,200,path+' must be served by production frontend');
+  assert.match(response.headers.get('content-type')??'',expectedType);
+  assert.match(await response.text(),bodyPattern);
+}
+console.log('[journey] offline shell assets available');
+
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
