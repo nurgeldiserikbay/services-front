@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
 const origin='https://services.example.test';
-function harness({offline=false,cacheNames=[],cacheAddFails=false}={}){
+function harness({offline=false,networkStatus=200,cacheNames=[],cacheAddFails=false}={}){
   const listeners=new Map();
   const calls=[];
   const fallback={status:200,body:'generic offline shell'};
@@ -22,7 +22,7 @@ function harness({offline=false,cacheNames=[],cacheAddFails=false}={}){
   const fetch=async request=>{
     calls.push(['fetch',request.url]);
     if(offline)throw new Error('offline');
-    return {status:200,body:'network'};
+    return {status:networkStatus,body:'network'};
   };
   vm.runInNewContext(source,{self,caches,fetch,URL,Response,Promise},{timeout:1000});
   return {listeners,calls,fallback};
@@ -104,4 +104,22 @@ test('worker claims clients only after obsolete caches are deleted',async()=>{
   const actions=h.calls.map(([name])=>name);
   assert.ok(actions.indexOf('caches.delete')>=0);
   assert.ok(actions.indexOf('clients.claim')>actions.indexOf('caches.delete'));
+});
+
+
+test('transient gateway 503/504 responses show only generic offline shell',async()=>{
+  for(const networkStatus of [503,504]){
+    const h=harness({networkStatus});
+    assert.equal(await dispatch(h,'/ru/services/123'),h.fallback);
+    assert.equal(h.calls.filter(([name])=>name==='cache.match').length,1);
+  }
+});
+
+test('application 404 and 500 responses remain unmodified and uncached',async()=>{
+  for(const networkStatus of [404,500]){
+    const h=harness({networkStatus});
+    const response=await dispatch(h,'/kk/professionals/abc');
+    assert.equal(response.status,networkStatus);
+    assert.equal(h.calls.filter(([name])=>name==='cache.match').length,0);
+  }
 });
