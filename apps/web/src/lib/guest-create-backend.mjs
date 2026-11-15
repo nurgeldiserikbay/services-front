@@ -39,7 +39,9 @@ function parseCommitted(raw,now){
   if(keys.length!==4||keys.some(k=>!['id','state','request_capability','expires_at'].includes(k))||
     typeof raw.id!=='string'||!UUID.test(raw.id)||raw.state!=='pending'||
     typeof raw.request_capability!=='string'||!CAPABILITY.test(raw.request_capability)||
-    typeof raw.expires_at!=='string')throw new GuestCreateUnavailable();
+    typeof raw.expires_at!=='string'||
+    !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(raw.expires_at))
+    throw new GuestCreateUnavailable();
   const expiresAt=Date.parse(raw.expires_at);
   if(!Number.isFinite(expiresAt)||expiresAt<=now||
     expiresAt>now+24*60*60*1000+5000)throw new GuestCreateUnavailable();
