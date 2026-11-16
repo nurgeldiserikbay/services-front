@@ -20,7 +20,7 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let ws;
 try{
  let port;
- for(let n=0;n<100;n++){
+ for(let n=0;n<250;n++){
   if(exited)throw Error('Chrome unexpectedly exited');
   try{
    const lines=(await readFile(join(dir,'DevToolsActivePort'),'utf8')).split('\n');
