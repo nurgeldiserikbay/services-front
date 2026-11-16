@@ -6,7 +6,7 @@ const source=readFileSync(new URL('../src/components/GeographyPicker.tsx',import
 
 test('city options are cleared while a new country or city query loads',()=>{
   assert.match(source,/setCitiesBusy\(true\);\s*setCityResultsReady\(false\);\s*setCities\(\[\]\);/);
-  assert.match(source,/return \(\)=>controller\.abort\(\);\s*},\[countryId,cityQuery,cityRequestVersion\]\);/);
+  assert.match(source,/return \(\)=>controller\.abort\(\);\s*},\[countryId,debouncedCityQuery,cityRequestVersion\]\);/);
   assert.match(source,/\.finally\(\(\)=>\{if\(!controller\.signal\.aborted\)setCitiesBusy\(false\)\}\)/);
 });
 
@@ -34,7 +34,7 @@ test('country and city lookup errors are tracked separately',()=>{
 test('failed city lookup can be retried without changing filters',()=>{
   assert.match(source,/const \[cityRequestVersion,setCityRequestVersion\]=useState\(0\)/);
   assert.match(source,/onClick=\{\(\)=>setCityRequestVersion\(v=>v\+1\)\}/);
-  assert.match(source,/\[countryId,cityQuery,cityRequestVersion\]/);
+  assert.match(source,/\[countryId,debouncedCityQuery,cityRequestVersion\]/);
 });
 
 
@@ -50,4 +50,11 @@ test('empty city search is announced only after a successful lookup',()=>{
   assert.match(source,/setCityResultsReady\(false\)/);
   assert.match(source,/setCityResultsReady\(true\)/);
   assert.match(source,/countryId&&cityResultsReady&&!citiesBusy&&!cityError&&cities\.length===0&&<p role="status"/);
+});
+
+
+test('city autocomplete requests are debounced and previous timer is cancelled',()=>{
+  assert.match(source,/setTimeout\(\(\)=>setDebouncedCityQuery\(cityQuery\),250\)/);
+  assert.match(source,/return \(\)=>clearTimeout\(timer\)/);
+  assert.match(source,/\[countryId,debouncedCityQuery,cityRequestVersion\]/);
 });
