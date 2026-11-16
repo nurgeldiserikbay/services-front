@@ -7,13 +7,5 @@ import nextTypeScript from 'eslint-config-next/typescript';
 export default defineConfig([
   ...nextVitals,
   ...nextTypeScript,
-  // Legacy React-effect initialization patterns: migrate each component
-  // before lifting these narrowly scoped exceptions. Do not disable globally.
-  {
-    files:[
-      'src/components/GuestRequestStatusCheck.tsx',
-    ],
-    rules:{'react-hooks/set-state-in-effect':'off'},
-  },
   globalIgnores(['.next/**','out/**','build/**','next-env.d.ts','node_modules/**']),
 ]);
