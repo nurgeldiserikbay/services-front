@@ -20,7 +20,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let socket;
 try{
   let port;
-  for(let i=0;i<70;i++){
+  for(let i=0;i<250;i++){
     if(closed)throw Error('headless Chrome exited before DevTools became ready');
     try{
       const data=await readFile(join(dir,'DevToolsActivePort'),'utf8');
