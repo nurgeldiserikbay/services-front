@@ -58,8 +58,10 @@ export function AccountDeviceSessions({locale}:{locale:Locale}){
  },[t.error,t.expired]);
  useEffect(()=>{
   alive.current=true;
-  void refresh();
-  return ()=>{alive.current=false;requestId.current++;};
+  // Defer the initial state-changing request until after the effect callback.
+  // A discarded Strict Mode mount cancels this timer before it starts.
+  const timer=setTimeout(()=>{void refresh();},0);
+  return ()=>{clearTimeout(timer);alive.current=false;requestId.current++;};
  },[refresh]);
  async function revoke(item:AccountDeviceItem){
   if(busy!==null||loading||!csrf||item.current)return;
