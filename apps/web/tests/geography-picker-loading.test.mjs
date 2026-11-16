@@ -36,3 +36,10 @@ test('failed city lookup can be retried without changing filters',()=>{
   assert.match(source,/onClick=\{\(\)=>setCityRequestVersion\(v=>v\+1\)\}/);
   assert.match(source,/\[countryId,cityQuery,cityRequestVersion\]/);
 });
+
+
+test('failed country lookup can be retried without resetting the geography form',()=>{
+  assert.match(source,/const \[countryRequestVersion,setCountryRequestVersion\]=useState\(0\)/);
+  assert.match(source,/onClick=\{\(\)=>setCountryRequestVersion\(v=>v\+1\)\}/);
+  assert.match(source,/\[countryRequestVersion\]/);
+});
