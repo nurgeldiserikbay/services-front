@@ -91,8 +91,8 @@ test('retrying country lookup restores loading state until request settles',()=>
 test('city search exposes a busy relationship and prevents edits without omitting form value',()=>{
   assert.match(source,/aria-controls="geography-city-select"/);
   assert.match(source,/aria-busy=\{citiesBusy\|\|queryPending\}/);
-  assert.match(source,/aria-disabled=\{citiesBusy\|\|queryPending\}/);
-  assert.match(source,/if\(citiesBusy\|\|queryPending\)return/);
+  assert.match(source,/aria-disabled=\{citiesBusy\|\|queryPending\|\|cityError\}/);
+  assert.match(source,/if\(citiesBusy\|\|queryPending\|\|cityError\)return/);
 });
 
 
