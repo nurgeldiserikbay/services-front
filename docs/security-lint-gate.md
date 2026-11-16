@@ -38,3 +38,7 @@ The initial device-sessions refresh now starts from a zero-delay timer scheduled
 ### Seller workspace effect lint cleanup (2026-11-16)
 
 The first seller inbox request is now scheduled outside the synchronous React effect callback and the cleanup cancels an unstarted request and invalidates any in-flight generation. The seller page's unauthorized-response clearing, stale-result rejection, retry and cursor safety checks remain unchanged. The file-scoped `react-hooks/set-state-in-effect` exception for `SellerWorkspace.tsx` has been removed; only `GeographyPicker.tsx` and `GuestRequestStatusCheck.tsx` remain excepted. A clean CI result is required to accept the change.
+
+### Geography picker effect lint cleanup (2026-11-16)
+
+Country and city catalog requests are scheduled after the synchronous React effect callback. Each effect cancels an unstarted timer and aborts any already-started request on cleanup. City response generation checks, strict catalog parsing, loading indicators and explicit retry behavior remain in place. The `GeographyPicker.tsx` file-scoped `react-hooks/set-state-in-effect` exception was removed and tested. The remaining exception is `GuestRequestStatusCheck.tsx`; receipt-switch privacy and synchronous stale-status clearing must be preserved when refactoring it. CI acceptance is pending.
