@@ -43,7 +43,12 @@ export function AccountNotificationsInbox({locale}:{locale:Locale}){
    }
   }finally{lock.current=false;if(current===generation.current)setBusy(false);}
  },[t.error,t.unauthorized]);
- useEffect(()=>{void load();return ()=>{generation.current++;};},[load]);
+ // Schedule the initial load after the effect callback. This avoids a
+ // synchronous state cascade and cancels Strict Mode's discarded mount.
+ useEffect(()=>{
+  const timer=setTimeout(()=>{void load();},0);
+  return ()=>{clearTimeout(timer);generation.current++;};
+ },[load]);
  return <section aria-label={t.title}>
   <h2>{t.title}</h2><p>{t.note}</p>
   <button type="button" onClick={()=>void load()} disabled={busy}>
