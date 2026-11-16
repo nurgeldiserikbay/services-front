@@ -26,7 +26,7 @@ test('geography retry clears city error and preserves a selected country',()=>{
 test('country and city lookup errors are tracked separately',()=>{
   assert.match(source,/const \[cityError,setCityError\]=useState\(false\)/);
   assert.match(source,/setCitiesBusy\(true\);\s*setCityResultsReady\(false\);\s*setCities\(\[\]\);\s*setCityError\(false\)/);
-  assert.match(source,/\.catch\(\(\)=>\{if\(isCurrent\(\)\)setCityError\(true\)\}\)/);
+  assert.match(source,/\.catch\(\(\)=>\{if\(isCurrent\(\)\)\{setCityError\(true\);setQueryPending\(false\)\}\}\)/);
   assert.match(source,/!queryPending&&cityError&&<p role="status"/);
 });
 
@@ -54,7 +54,7 @@ test('empty city search is announced only after a successful lookup',()=>{
 
 
 test('city autocomplete requests are debounced and previous timer is cancelled',()=>{
-  assert.match(source,/setTimeout\(\(\)=>\{setDebouncedCityQuery\(cityQuery\);setQueryPending\(false\)\},250\)/);
+  assert.match(source,/setTimeout\(\(\)=>setDebouncedCityQuery\(cityQuery\),250\)/);
   assert.match(source,/return \(\)=>clearTimeout\(timer\)/);
   assert.match(source,/\[countryId,debouncedCityQuery,cityRequestVersion\]/);
 });
@@ -93,4 +93,11 @@ test('city search exposes a busy relationship and prevents edits without omittin
   assert.match(source,/aria-busy=\{citiesBusy\|\|queryPending\}/);
   assert.match(source,/aria-disabled=\{citiesBusy\|\|queryPending\}/);
   assert.match(source,/if\(citiesBusy\|\|queryPending\)return/);
+});
+
+
+test('pending city input remains pending until the latest lookup resolves',()=>{
+  assert.match(source,/setTimeout\(\(\)=>setDebouncedCityQuery\(cityQuery\),250\)/);
+  assert.match(source,/setCityResultsReady\(true\);setQueryPending\(false\)/);
+  assert.match(source,/setCityError\(true\);setQueryPending\(false\)/);
 });
