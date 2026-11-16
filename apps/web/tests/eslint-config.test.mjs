@@ -20,3 +20,11 @@ test('CI lint invokes ESLint and retains both existing security gates',()=>{
   assert.ok(manifest.devDependencies.eslint);
   assert.ok(manifest.devDependencies['eslint-config-next']);
 });
+
+test('legacy React hook exceptions remain scoped to named components',()=>{
+  assert.match(config,/react-hooks\/set-state-in-effect/);
+  assert.match(config,/react-hooks\/refs/);
+  for(const file of ['AccountDeviceSessions','AccountNotificationsInbox','GeographyPicker','GuestRequestStatusCheck','SellerWorkspace','SellerDecisionActions'])
+    assert.ok(config.includes(`src/components/${file}.tsx`),file);
+  assert.doesNotMatch(config,/files:\s*\['src\/\*\*/);
+});
