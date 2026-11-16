@@ -6,7 +6,7 @@ const source=readFileSync(new URL('../src/components/GeographyPicker.tsx',import
 
 test('city options are cleared while a new country or city query loads',()=>{
   assert.match(source,/setCitiesBusy\(true\);\s*setCityResultsReady\(false\);\s*setCities\(\[\]\);/);
-  assert.match(source,/return \(\)=>controller\.abort\(\);\s*},\[countryId,debouncedCityQuery,cityRequestVersion\]\);/);
+  assert.match(source,/return \(\)=>\{clearTimeout\(timer\);controller\.abort\(\);\};\s*},\[countryId,debouncedCityQuery,cityRequestVersion\]\);/);
   assert.match(source,/\.finally\(\(\)=>\{if\(isCurrent\(\)\)setCitiesBusy\(false\)\}\)/);
 });
 
