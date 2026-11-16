@@ -19,9 +19,5 @@ export default defineConfig([
     ],
     rules:{'react-hooks/set-state-in-effect':'off'},
   },
-  {
-    files:['src/components/SellerDecisionActions.tsx'],
-    rules:{'react-hooks/refs':'off'},
-  },
   globalIgnores(['.next/**','out/**','build/**','next-env.d.ts','node_modules/**']),
 ]);
