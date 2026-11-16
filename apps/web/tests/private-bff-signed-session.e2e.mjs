@@ -22,6 +22,11 @@ const bearer=randomBytes(32).toString('base64url');
 const tokenHash=createHmac('sha256',hmacKey)
  .update('services-session:v1\0').update(bearer).digest('hex');
 const userId=randomUUID(),sessionId=randomUUID(),familyId=randomUUID();
+const outsiderId=randomUUID(),outsiderSessionId=randomUUID();
+const outsiderBearer=randomBytes(32).toString('base64url');
+const outsiderHash=createHmac('sha256',hmacKey)
+ .update('services-session:v1\\0'.replace('\\0',String.fromCharCode(0)))
+ .update(outsiderBearer).digest('hex');
 const fixture={
  personId:randomUUID(),orgId:randomUUID(),definitionId:randomUUID(),
  offerId:randomUUID(),guestIds:[randomUUID(),randomUUID()],
@@ -29,6 +34,7 @@ const fixture={
 };
 const sealed=sealAccountWebSession(key,bearer,600);
 const cookie='__Host-services_account_web='+sealed.cookie;
+const outsiderCookie='__Host-services_account_web='+sealAccountWebSession(key,outsiderBearer,600).cookie;
 const db=new Client({connectionString:process.env.DATABASE_URL});
 await db.connect();
 let userCreated=false;
@@ -82,6 +88,31 @@ try{
     ) VALUES($1,$2,$3,'ORGANIZATION',$4,'PENDING')`,
    [fixture.requestIds[i],fixture.offerId,fixture.guestIds[i],fixture.orgId]);
  }
+ // A valid but unrelated account must not inherit another seller's grants.
+ await db.query('INSERT INTO users(id) VALUES($1)',[outsiderId]);
+ await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
+  VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
+  [outsiderSessionId,outsiderId,outsiderHash,randomUUID()]);
+ const outsiderRead=await fetch(new URL('/api/seller/requests',base),{
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:outsiderCookie},
+  signal:AbortSignal.timeout(8000),redirect:'manual',
+ });
+ assert.equal(outsiderRead.status,200);
+ const outsiderPage=await outsiderRead.json();
+ assert.deepEqual(outsiderPage.items,[],'unrelated seller cannot read pending requests');
+ const outsiderDecision=await fetch(new URL(
+  '/api/seller/requests/'+fixture.requestIds[0]+'/accept',base),{
+  method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:outsiderCookie,
+   Origin:'https://services.example.test','Content-Type':'application/json'},
+  body:JSON.stringify({version:1,csrf_token:outsiderPage.csrf_token,
+   idempotency_key:randomUUID()}),
+ });
+ assert.equal(outsiderDecision.status,403,'unrelated seller must be forbidden');
+ assert.equal((await outsiderDecision.json()).code,'FORBIDDEN');
+ const foreignRequest=await db.query('SELECT status,version FROM service_requests WHERE id=$1',
+  [fixture.requestIds[0]]);
+ assert.deepEqual(foreignRequest.rows[0],{status:'PENDING',version:1});
  const populated=await inbox();
  assert.equal(populated.status,200,'seller must read only own committed requests');
  const page=await populated.json();
@@ -159,6 +190,8 @@ try{
   await db.query('DELETE FROM service_definitions WHERE id=$1',
    [fixture.definitionId]).catch(()=>{});
   await db.query('DELETE FROM persons WHERE id=$1',[fixture.personId]).catch(()=>{});
+  await db.query('DELETE FROM sessions WHERE id=$1',[outsiderSessionId]).catch(()=>{});
+  await db.query('DELETE FROM users WHERE id=$1',[outsiderId]).catch(()=>{});
   await db.query('DELETE FROM sessions WHERE id=$1',[sessionId]).catch(()=>{});
   await db.query('DELETE FROM users WHERE id=$1',[userId]).catch(()=>{});
  }
