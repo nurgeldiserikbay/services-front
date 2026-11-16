@@ -124,10 +124,10 @@ export function SellerDecisionActions({locale,requestId,version,onDecision,onSuc
   }
   return <div>
     <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:12}}>
-      <button type="button" aria-busy={busy} disabled={busy||committed||!validContext||uncertainAction==='decline'||!canStartSellerDecision(pendingKey.current,requestId,version,'accept')} onClick={()=>void submit('accept')}>
+      <button type="button" aria-busy={busy} disabled={busy||committed||!validContext||uncertainAction==='decline'||(uncertainAction!==null&&uncertainAction!=='accept')} onClick={()=>void submit('accept')}>
         {busy?t.working:t.accept}
       </button>
-      <button type="button" aria-busy={busy} disabled={busy||committed||!validContext||uncertainAction==='accept'||!canStartSellerDecision(pendingKey.current,requestId,version,'decline')} onClick={()=>void submit('decline')}>
+      <button type="button" aria-busy={busy} disabled={busy||committed||!validContext||uncertainAction==='accept'||(uncertainAction!==null&&uncertainAction!=='decline')} onClick={()=>void submit('decline')}>
         {busy?t.working:t.decline}
       </button>
     </div>
