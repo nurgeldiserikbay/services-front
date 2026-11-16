@@ -30,7 +30,7 @@ instance.require=(id)=>{
       shouldReplaceGuestStatus:()=>false,
       withGuestStatusAbort:()=>Promise.reject(new Error('not invoked')),
     };
-  if(id==='./GuestRequestStatusCheck.module.css')return {panel:'test-panel',error:'test-error'};
+  if(id==='./GuestRequestStatusCheck.module.css')return {default:{panel:'test-panel',error:'test-error'}};
   if(id==='./RequestTimeline')return {RequestTimeline:()=>React.createElement('span',null,'timeline')};
   return require(id);
 };
