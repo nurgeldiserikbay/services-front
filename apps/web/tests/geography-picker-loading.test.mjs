@@ -141,3 +141,11 @@ test('country and city lookup errors are associated with their form controls',()
   assert.match(source,/aria-invalid=\{cityError\} aria-describedby=\{cityError&&!queryPending\?"geography-city-error":undefined\}/);
   assert.match(source,/id="geography-city-error" role="status"/);
 });
+
+test('country and city inputs expose accurate assistive busy and error states',()=>{
+  assert.match(source,/name="country_id" value=\{countryId\} disabled=\{busy\} aria-busy=\{busy\} aria-invalid=\{error\}/);
+  assert.match(source,/value=\{cityQuery\} aria-controls="geography-city-select" aria-busy=\{citiesBusy\|\|queryPending\} aria-invalid=\{cityError&&!queryPending\}/);
+  assert.match(source,/aria-describedby=\{cityError&&!queryPending\?"geography-city-error":undefined\} onChange=/);
+  assert.match(source,/name="city_id" value=\{cityId\} aria-busy=\{citiesBusy\|\|queryPending\}/);
+  assert.match(source,/aria-invalid=\{cityError&&!queryPending\} aria-describedby=\{cityError&&!queryPending\?"geography-city-error":undefined\}/);
+});
