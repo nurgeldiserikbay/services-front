@@ -163,7 +163,7 @@ test('malformed city response is an error and cross-country options are filtered
 });
 
 test('catalog parsing is delegated to the runtime-validated module',()=>{
-  assert.match(source,/import \{parseCountries,parseCities\} from '@\\/lib\\/geography-catalog\\.mjs'/);
-  assert.match(source,/const items=parseCountries\\(data\\)/);
-  assert.match(source,/const items=parseCities\\(data,countryId\\)/);
+  assert.ok(source.includes("import {parseCountries,parseCities} from '@/lib/geography-catalog.mjs';"));
+  assert.ok(source.includes('const items=parseCountries(data)'));
+  assert.ok(source.includes('const items=parseCities(data,countryId)'));
 });
