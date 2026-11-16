@@ -1,0 +1,1 @@
+export function validateGeographyQuery(searchParams:URLSearchParams):URLSearchParams;
