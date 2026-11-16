@@ -23,8 +23,17 @@ test('CI lint invokes ESLint and retains both existing security gates',()=>{
 
 test('legacy React hook exceptions remain scoped to named components',()=>{
   assert.match(config,/react-hooks\/set-state-in-effect/);
-  assert.match(config,/react-hooks\/refs/);
-  for(const file of ['AccountDeviceSessions','AccountNotificationsInbox','GeographyPicker','GuestRequestStatusCheck','SellerWorkspace','SellerDecisionActions'])
+  assert.doesNotMatch(config,/react-hooks\/refs/);
+  for(const file of ['AccountDeviceSessions','AccountNotificationsInbox','GeographyPicker','GuestRequestStatusCheck','SellerWorkspace'])
     assert.ok(config.includes(`src/components/${file}.tsx`),file);
   assert.doesNotMatch(config,/files:\s*\['src\/\*\*/);
+});
+
+test('seller decision render does not read pending ref and keeps submit guard',()=>{
+  const component=readFileSync(new URL('../src/components/SellerDecisionActions.tsx',import.meta.url),'utf8');
+  const render=component.slice(component.lastIndexOf('  return <div>'));
+  assert.doesNotMatch(render,/pendingKey\.current/);
+  assert.match(component,/if\(!canStartSellerDecision\(pendingKey\.current,requestId,version,action\)\)return/);
+  assert.match(render,/uncertainAction!==null&&uncertainAction!=='accept'/);
+  assert.match(render,/uncertainAction!==null&&uncertainAction!=='decline'/);
 });
