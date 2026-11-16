@@ -12,7 +12,6 @@ export default defineConfig([
   {
     files:[
       'src/components/AccountDeviceSessions.tsx',
-      'src/components/AccountNotificationsInbox.tsx',
       'src/components/GeographyPicker.tsx',
       'src/components/GuestRequestStatusCheck.tsx',
       'src/components/SellerWorkspace.tsx',
