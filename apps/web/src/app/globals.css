@@ -40,3 +40,9 @@ html{overflow-wrap:normal}body{min-width:0;overflow-x:clip}.shell{min-width:0}.h
 /* Keyboard focus must remain visible on native select, textarea and custom controls. */
 select:focus-visible,textarea:focus-visible,[role="button"]:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 @media(forced-colors:active){.skipLink:focus-visible,a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid Highlight;outline-offset:3px}.resultItem,.offerDetail,.message{border:1px solid CanvasText}.resultLink{text-decoration:underline}}
+
+/* Geography retry is a real touch and keyboard target, including at 200% zoom. */
+.geoError{display:flex;flex-wrap:wrap;align-items:center;gap:10px;overflow-wrap:anywhere}
+.geoError button{min-height:44px;min-width:44px;padding:10px 16px;line-height:1.4;max-width:100%;white-space:normal}
+@media(max-width:360px){.geoError button{width:100%}}
+@media(forced-colors:active){.geoError button{border:1px solid ButtonText}}
