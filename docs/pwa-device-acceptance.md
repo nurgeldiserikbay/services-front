@@ -28,6 +28,7 @@ Automated tests are necessary but do not replace a real browser/device acceptanc
 - [ ] Simulate a country catalog failure and a city catalog failure independently. Verify each retry button repeats only the relevant lookup, the current search inputs remain intact, and the associated select exposes its error through `aria-invalid` and `aria-describedby`.
 - [ ] Simulate a successful empty country catalog and a successful empty city lookup; verify the localized no-results message and retry button appear, rather than the unavailable/error message.
 - [ ] With NVDA/VoiceOver or TalkBack, confirm loading status is announced without repeated disruptive announcements, the city search input is associated with its city select, and failed selections cannot be committed while the lookup is pending or errored.
+- [ ] With a screen reader, independently test country selector busy state and city search-input error association (`aria-busy`, `aria-invalid`, `aria-describedby`) during pending debounce, failed lookup, retry and successful result. Verify errors are not announced prematurely while a new query is pending.
 - [ ] At 200% zoom and a 320 CSS-pixel viewport, verify country, city, retry buttons and validation messages remain readable and operable by touch and keyboard.
 
 For every failed scenario record the exact request URL (without credentials), response status, locale, screenshot, browser/version and frontend SHA. Keep the checkbox open until tested on a real browser/device; source-regression tests alone are not acceptance evidence.
