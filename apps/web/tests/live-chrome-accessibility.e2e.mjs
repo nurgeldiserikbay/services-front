@@ -102,21 +102,23 @@ try{
     assert.equal(result.focusedSkip,true,'keyboard skip link must accept focus');
     assert.ok(result.documentWidth<=result.innerWidth+1,
       locale+' has horizontal overflow at 320 CSS px: '+JSON.stringify(result));
-    // Exercise a real keyboard Tab transition instead of relying only on a
-    // programmatic .focus() call. The next target must remain keyboard reachable.
+    // Start at the document rather than an artificial script-focused link.
+    // Real keyboard Tab must reach the skip link as the first focus target.
+    await evaluate('document.activeElement?.blur()');
     await send('Input.dispatchKeyEvent',{
-      type:'rawKeyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,
+      type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,nativeVirtualKeyCode:9,
     });
     await send('Input.dispatchKeyEvent',{
-      type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,
+      type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,nativeVirtualKeyCode:9,
     });
     const keyboard=await evaluate(`(()=>{
       const current=document.activeElement;
       const skip=document.querySelector('a[href="#main-content"]');
-      return {moved:!!current&&current!==skip&&current!==document.body,
-        tag:current?.tagName??''};
+      return {isSkip:current===skip,tag:current?.tagName??'',
+        href:current?.getAttribute?.('href')??''};
     })()`);
-    assert.equal(keyboard.moved,true,locale+' Tab must reach next focusable control');
+    assert.equal(keyboard.isSkip,true,
+      locale+' first keyboard Tab must reach skip link: '+JSON.stringify(keyboard));
 
     // Chromium's actual forced-colors emulation catches missing or ineffective
     // high-contrast focus indicators, beyond a source-only CSS assertion.
