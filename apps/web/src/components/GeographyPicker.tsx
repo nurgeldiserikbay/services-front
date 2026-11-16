@@ -8,6 +8,11 @@ type City = {id:string;country_id:string;area_id:string|null;name:string;timezon
 type Scope = 'global'|'country'|'city';
 type Props = {locale:Locale;initialCountryId:string;initialCityId:string;initialScope:Scope};
 
+const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const isCountry=(value:unknown):value is Country=>isRecord(value)&&typeof value.id==='string'&&uuid.test(value.id)&&typeof value.name==='string'&&value.name.trim().length>0&&typeof value.iso2==='string'&&/^[A-Za-z]{2}$/.test(value.iso2);
+const isCity=(value:unknown):value is City=>isRecord(value)&&typeof value.id==='string'&&uuid.test(value.id)&&typeof value.country_id==='string'&&uuid.test(value.country_id)&&typeof value.name==='string'&&value.name.trim().length>0&&typeof value.timezone==='string'&&value.timezone.length>0&&(value.area_id===null||(typeof value.area_id==='string'&&uuid.test(value.area_id)));
+
 const copy = {
   kk: {region:'Іздеу аймағы',world:'Бүкіл әлем',country:'Ел',city:'Қала',chooseCountry:'Елді таңдаңыз',chooseCity:'Қаланы таңдаңыз',searchCity:'Қала атауы',loading:'Жүктелуде...',unavailable:'Географиялық каталог қазір қолжетімсіз',hint:'Қаланы табу үшін атауын енгізіңіз',allCities:'Ел бойынша іздеу'},
   ru: {region:'Регион поиска',world:'Весь мир',country:'Страна',city:'Город',chooseCountry:'Выберите страну',chooseCity:'Выберите город',searchCity:'Название города',loading:'Загрузка...',unavailable:'Географический каталог сейчас недоступен',hint:'Введите название, чтобы найти нужный город',allCities:'Поиск по стране'},
@@ -41,7 +46,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     setCountries([]);
     fetch('/api/geography/countries',{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('geography unavailable');return r.json()})
-      .then((data:{items?:Country[]})=>{if(!Array.isArray(data?.items))throw new Error('invalid country catalog');if(!controller.signal.aborted){setCountries(data.items);setCountryResultsReady(true)}})
+      .then((data:{items?:Country[]})=>{if(!Array.isArray(data?.items)||!data.items.every(isCountry))throw new Error('invalid country catalog');if(!controller.signal.aborted){setCountries(data.items);setCountryResultsReady(true)}})
       .catch(()=>{if(!controller.signal.aborted)setError(true)})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false)});
     return ()=>controller.abort();
@@ -63,7 +68,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     if(debouncedCityQuery.trim())query.set('q',debouncedCityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('cities unavailable');return r.json()})
-      .then((data:{items?:City[]})=>{if(!Array.isArray(data?.items))throw new Error('invalid city catalog');if(isCurrent()){setCities(data.items.filter(city=>city?.country_id===countryId));setCityResultsReady(true);setQueryPending(false)}})
+      .then((data:{items?:City[]})=>{if(!Array.isArray(data?.items)||!data.items.every(isCity))throw new Error('invalid city catalog');if(isCurrent()){setCities(data.items.filter(city=>city?.country_id===countryId));setCityResultsReady(true);setQueryPending(false)}})
       .catch(()=>{if(isCurrent()){setCityError(true);setQueryPending(false)}})
       .finally(()=>{if(isCurrent())setCitiesBusy(false)});
     return ()=>controller.abort();
