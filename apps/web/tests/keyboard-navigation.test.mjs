@@ -48,3 +48,11 @@ test('search field exposes native search keyboard and empty results are announce
   assert.match(page,/id="query" aria-controls="results-list" aria-describedby="results-title"/);
   assert.match(page,/<section id="results-list" className="results" aria-labelledby="results-title"/);
 });
+
+test('geography retry uses native keyboard buttons and inherits visible focus styling',()=>{
+  const geo=readFileSync(new URL('../src/components/GeographyPicker.tsx',import.meta.url),'utf8');
+  assert.equal((geo.match(/<button type="button" onClick=\{\(\)=>set(?:Country|City)RequestVersion\(v=>v\+1\)\}/g)??[]).length,4);
+  assert.match(css,/button:focus-visible,a:focus-visible,input:focus-visible/);
+  assert.match(css,/\.geoError button\{min-height:44px;min-width:44px/);
+  assert.doesNotMatch(geo,/onKeyDown=\{[^}]*preventDefault/);
+});
