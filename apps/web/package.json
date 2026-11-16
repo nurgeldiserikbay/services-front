@@ -8,7 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
-    "lint": "node scripts/lint-security.mjs && node scripts/lint-ast.mjs"
+    "lint": "node scripts/lint-security.mjs && node scripts/lint-ast.mjs && eslint src"
   },
   "dependencies": {
     "next": "^16.4.3",
@@ -19,6 +19,8 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "^16.4.3"
   }
 }
