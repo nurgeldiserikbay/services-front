@@ -34,6 +34,8 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const cityInputGeneration=useRef(0);
   useEffect(()=>{
     const controller=new AbortController();
+    // Begin the stateful reload outside the synchronous effect callback.
+    const timer=setTimeout(()=>{
     setError(false);
     setBusy(true);
     setCountryResultsReady(false);
@@ -43,15 +45,18 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       .then((data:unknown)=>{const items=parseCountries(data);if(!controller.signal.aborted){setCountries(items);setCountryResultsReady(true)}})
       .catch(()=>{if(!controller.signal.aborted)setError(true)})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false)});
-    return ()=>controller.abort();
+    },0);
+    return ()=>{clearTimeout(timer);controller.abort();};
   },[countryRequestVersion]);
   useEffect(()=>{
     const timer=setTimeout(()=>setDebouncedCityQuery(cityQuery),250);
     return ()=>clearTimeout(timer);
   },[cityQuery]);
   useEffect(()=>{
-    if(!countryId){setCities([]);setCitiesBusy(false);setCityError(false);setCityResultsReady(false);return;}
     const controller=new AbortController();
+    // Schedule state changes after the effect; discarded mounts never start a fetch.
+    const timer=setTimeout(()=>{
+    if(!countryId){setCities([]);setCitiesBusy(false);setCityError(false);setCityResultsReady(false);return;}
     const generation=cityInputGeneration.current;
     const isCurrent=()=>!controller.signal.aborted&&generation===cityInputGeneration.current;
     setCitiesBusy(true);
@@ -65,7 +70,8 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       .then((data:unknown)=>{const items=parseCities(data,countryId);if(isCurrent()){setCities(items);setCityResultsReady(true);setQueryPending(false)}})
       .catch(()=>{if(isCurrent()){setCityError(true);setQueryPending(false)}})
       .finally(()=>{if(isCurrent())setCitiesBusy(false)});
-    return ()=>controller.abort();
+    },0);
+    return ()=>{clearTimeout(timer);controller.abort();};
   },[countryId,debouncedCityQuery,cityRequestVersion]);
   return <fieldset className="geoPicker">
     <legend>{t.region}</legend>
