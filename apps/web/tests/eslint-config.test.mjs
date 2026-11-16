@@ -24,7 +24,7 @@ test('CI lint invokes ESLint and retains both existing security gates',()=>{
 test('legacy React hook exceptions remain scoped to named components',()=>{
   assert.match(config,/react-hooks\/set-state-in-effect/);
   assert.doesNotMatch(config,/react-hooks\/refs/);
-  for(const file of ['GeographyPicker','GuestRequestStatusCheck'])
+  for(const file of ['GuestRequestStatusCheck'])
     assert.ok(config.includes(`src/components/${file}.tsx`),file);
   assert.doesNotMatch(config,/files:\s*\['src\/\*\*/);
 });
@@ -67,4 +67,17 @@ test('seller workspace initial load is deferred and cleanup invalidates stale re
   assert.match(workspace,/if\(current===generation\.current\)/);
   assert.match(workspace,/if\(refreshLock\.current\)return/);
   assert.match(workspace,/setStatus\('unauthorized'\)/);
+});
+
+test('geography picker defers effects but still aborts stale country and city requests',()=>{
+  const component=readFileSync(new URL('../src/components/GeographyPicker.tsx',import.meta.url),'utf8');
+  assert.ok(!config.includes('src/components/GeographyPicker.tsx'));
+  const effects=component.match(/const timer=setTimeout\(\(\)=>\{/g)??[];
+  assert.equal(effects.length,2);
+  const cleanup=component.match(/return \(\)=>\{clearTimeout\(timer\);controller\.abort\(\);\}/g)??[];
+  assert.equal(cleanup.length,2);
+  assert.match(component,/generation===cityInputGeneration\.current/);
+  assert.match(component,/if\(!countryId\)\{setCities\(\[\]\)/);
+  assert.match(component,/parseCountries\(data\)/);
+  assert.match(component,/parseCities\(data,countryId\)/);
 });
