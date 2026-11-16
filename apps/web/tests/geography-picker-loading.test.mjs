@@ -17,8 +17,8 @@ test('a previously selected city remains a valid form option during refresh',()=
 });
 
 
-test('geography retry clears previous error and preserves a selected country',()=>{
-  assert.match(source,/setCitiesBusy\(true\);\s*setCities\(\[\]\);\s*setError\(false\);/);
+test('geography retry clears city error and preserves a selected country',()=>{
+  assert.match(source,/setCitiesBusy\(true\);\s*setCities\(\[\]\);\s*setCityError\(false\);/);
   assert.match(source,/countryId&&!countries\.some\(c=>c\.id===countryId\)&&<option value=\{countryId\}>/);
 });
 
