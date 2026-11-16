@@ -4,11 +4,11 @@ import {fileURLToPath} from 'node:url';
 
 const root=fileURLToPath(new URL('../src/',import.meta.url));
 const forbidden=[
-  {name:'dynamic JavaScript execution',pattern:/\\b(?:eval|Function)\\s*\\(/g},
-  {name:'unsafe HTML injection',pattern:/\\bdangerouslySetInnerHTML\\s*=/g},
-  {name:'direct DOM HTML mutation',pattern:/\\.innerHTML\\s*=/g},
-  {name:'client-side storage of credentials',pattern:/\\b(?:localStorage|sessionStorage)\\s*\\.\\s*setItem\\s*\\(/g},
-  {name:'disabled TLS verification',pattern:/\\bNODE_TLS_REJECT_UNAUTHORIZED\\s*[:=]\\s*['"]?0\\b/g},
+  {name:'dynamic JavaScript execution',pattern:/\b(?:eval|Function)\s*\(/g},
+  {name:'unsafe HTML injection',pattern:/\bdangerouslySetInnerHTML\s*=/g},
+  {name:'direct DOM HTML mutation',pattern:/\.innerHTML\s*=/g},
+  {name:'client-side storage of credentials',pattern:/\b(?:localStorage|sessionStorage)\s*\.\s*setItem\s*\(/g},
+  {name:'disabled TLS verification',pattern:/\bNODE_TLS_REJECT_UNAUTHORIZED\s*[:=]\s*['"]?0\b/g},
 ];
 let scanned=0;
 const failures=[];
@@ -22,12 +22,12 @@ function walk(dir){
     for(const {name,pattern} of forbidden){
       pattern.lastIndex=0;
       for(const match of content.matchAll(pattern)){
-        const line=content.slice(0,match.index).split('\\n').length;
+        const line=content.slice(0,match.index).split('\n').length;
         failures.push(`${relative(root,path)}:${line}: ${name}`);
       }
     }
   }
 }
 walk(root);
-if(failures.length){console.error(failures.join('\\n'));process.exitCode=1;}
+if(failures.length){console.error(failures.join('\n'));process.exitCode=1;}
 else console.log(`Security lint passed for ${scanned} source files`);
