@@ -91,12 +91,12 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         }}>
           <option value="">{citiesBusy||queryPending?t.loading:t.chooseCity}</option>
           {cityId&&!cities.some(c=>c.id===cityId)&&<option value={cityId}>{t.city}</option>}
-          {cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          {!queryPending&&cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </label>}
     </div>
     {error&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
     {countryId&&cityResultsReady&&!citiesBusy&&!queryPending&&!cityError&&cities.length===0&&<p role="status" className="geoError">{locale==='kk'?'Қала табылмады':'Города не найдены'}</p>}
-    {cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
+    {!queryPending&&cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
   </fieldset>;
 }
