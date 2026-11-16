@@ -102,7 +102,40 @@ try{
     assert.equal(result.focusedSkip,true,'keyboard skip link must accept focus');
     assert.ok(result.documentWidth<=result.innerWidth+1,
       locale+' has horizontal overflow at 320 CSS px: '+JSON.stringify(result));
-    console.log('Chrome mobile keyboard/landmark smoke '+locale+' OK');
+    // Exercise a real keyboard Tab transition instead of relying only on a
+    // programmatic .focus() call. The next target must remain keyboard reachable.
+    await send('Input.dispatchKeyEvent',{
+      type:'rawKeyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,
+    });
+    await send('Input.dispatchKeyEvent',{
+      type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,
+    });
+    const keyboard=await evaluate(`(()=>{
+      const current=document.activeElement;
+      const skip=document.querySelector('a[href="#main-content"]');
+      return {moved:!!current&&current!==skip&&current!==document.body,
+        tag:current?.tagName??''};
+    })()`);
+    assert.equal(keyboard.moved,true,locale+' Tab must reach next focusable control');
+
+    // Chromium's actual forced-colors emulation catches missing or ineffective
+    // high-contrast focus indicators, beyond a source-only CSS assertion.
+    await send('Emulation.setEmulatedMedia',{features:[{
+      name:'forced-colors',value:'active',
+    }]});
+    const contrast=await evaluate(`(()=>{
+      const link=document.querySelector('a[href="#main-content"]');
+      link?.focus();
+      return {active:matchMedia('(forced-colors: active)').matches,
+        style:getComputedStyle(link).outlineStyle,
+        width:getComputedStyle(link).outlineWidth};
+    })()`);
+    assert.equal(contrast.active,true,'Chrome forced-colors should be active');
+    assert.notEqual(contrast.style,'none','skip link needs a high-contrast outline');
+    assert.notEqual(contrast.width,'0px','skip link outline must be visible');
+    await send('Emulation.setEmulatedMedia',{features:[]});
+
+    console.log('Chrome mobile keyboard/landmark/high-contrast smoke '+locale+' OK');
   }
 }finally{
   if(socket)socket.close();
