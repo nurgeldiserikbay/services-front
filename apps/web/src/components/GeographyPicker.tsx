@@ -27,6 +27,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [citiesBusy,setCitiesBusy]=useState(false);
   const [cityError,setCityError]=useState(false);
   const [cityRequestVersion,setCityRequestVersion]=useState(0);
+  const [countryRequestVersion,setCountryRequestVersion]=useState(0);
   useEffect(()=>{
     const controller=new AbortController();
     setError(false);
@@ -36,7 +37,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       .catch(()=>{if(!controller.signal.aborted)setError(true)})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false)});
     return ()=>controller.abort();
-  },[]);
+  },[countryRequestVersion]);
   useEffect(()=>{
     if(!countryId){setCities([]);setCitiesBusy(false);setCityError(false);return;}
     const controller=new AbortController();
@@ -86,7 +87,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         </select>
       </label>}
     </div>
-    {error&&<p role="status" className="geoError">{t.unavailable}</p>}
+    {error&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
     {cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
   </fieldset>;
 }
