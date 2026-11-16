@@ -38,3 +38,15 @@ test('rejects HTTP errors and unavailable body stream',async()=>{
   await assert.rejects(readGeoResponse(new Response('{"items":[]}',{status:503,headers:{'content-type':'application/json'}})),/invalid_geo_response/);
   await assert.rejects(readGeoResponse(new Response(null,{headers:{'content-type':'application/json'}})),/invalid_geo_response/);
 });
+
+test('public directory response does not reflect unexpected upstream metadata',async()=>{
+  const result=await readGeoResponse(response(JSON.stringify({
+    items:[{id:'visible'}],
+    trace_id:'internal-debug-id',
+    internal_notes:'never expose this',
+    credentials:{token:'secret'}
+  })));
+  assert.deepEqual(result,{items:[{id:'visible'}]});
+  assert.equal('trace_id' in result,false);
+  assert.equal('credentials' in result,false);
+});
