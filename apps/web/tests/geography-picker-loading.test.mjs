@@ -27,7 +27,7 @@ test('country and city lookup errors are tracked separately',()=>{
   assert.match(source,/const \[cityError,setCityError\]=useState\(false\)/);
   assert.match(source,/setCitiesBusy\(true\);\s*setCityResultsReady\(false\);\s*setCities\(\[\]\);\s*setCityError\(false\)/);
   assert.match(source,/\.catch\(\(\)=>\{if\(isCurrent\(\)\)\{setCityError\(true\);setQueryPending\(false\)\}\}\)/);
-  assert.match(source,/!queryPending&&cityError&&<p role="status"/);
+  assert.match(source,/!queryPending&&cityError&&<p id="geography-city-error" role="status"/);
 });
 
 
@@ -69,7 +69,7 @@ test('pending debounced city input suppresses stale empty feedback',()=>{
 
 test('stale city options and lookup errors stay hidden during pending input',()=>{
   assert.match(source,/!queryPending&&!cityError&&cities\.map\(c=><option/);
-  assert.match(source,/!queryPending&&cityError&&<p role="status"/);
+  assert.match(source,/!queryPending&&cityError&&<p id="geography-city-error" role="status"/);
 });
 
 
