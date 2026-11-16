@@ -100,6 +100,9 @@ jobs:
       - name: Audit production dependencies for high-severity vulnerabilities
         id: dependency_audit
         run: pnpm audit --prod --audit-level high
+      - name: Frontend security lint
+        id: frontend_lint
+        run: pnpm lint
       - name: Frontend unit tests
         id: frontend_tests
         run: pnpm test
@@ -249,6 +252,7 @@ jobs:
           DEPENDENCY_AUDIT: ${{ steps.dependency_audit.outcome }}
           BACKEND_INTEGRATION: ${{ steps.backend_integration.outcome }}
           FRONTEND_TYPECHECK: ${{ steps.frontend_typecheck.outcome }}
+          FRONTEND_LINT: ${{ steps.frontend_lint.outcome }}
           FRONTEND_TESTS: ${{ steps.frontend_tests.outcome }}
           FRONTEND_BUILD: ${{ steps.frontend_build.outcome }}
           LIVE_E2E: ${{ steps.live_e2e.outcome }}
@@ -263,6 +267,7 @@ jobs:
             echo "| Frontend lockfile install | $FRONTEND_INSTALL |"
             echo "| Dependency security audit | $DEPENDENCY_AUDIT |"
             echo "| Backend migration and integration | $BACKEND_INTEGRATION |"
+            echo "| Frontend security lint | $FRONTEND_LINT |"
             echo "| Frontend TypeScript | $FRONTEND_TYPECHECK |"
             echo "| Frontend unit tests | $FRONTEND_TESTS |"
             echo "| Frontend production build | $FRONTEND_BUILD |"
