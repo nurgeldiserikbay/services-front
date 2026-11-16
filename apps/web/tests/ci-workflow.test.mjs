@@ -31,6 +31,11 @@ test('frontend CI protects the cross-repository integration journey',()=>{
  assert.match(workflow,/node apps\/web\/tests\/private-bff-default-off\.e2e\.mjs/);
  assert.match(workflow,/node apps\/web\/tests\/live-pwa-worker-isolation\.e2e\.mjs/);
  assert.match(workflow,/node apps\/web\/tests\/live-chrome-accessibility\.e2e\.mjs/);
+ assert.match(workflow,/node apps\/web\/tests\/live-chrome-sw-offline\.e2e\.mjs/);
+ assert.ok(workflow.indexOf('Verify real Chrome PWA worker offline and private cache isolation')>
+  workflow.indexOf('Start frontend production server'));
+ assert.ok(workflow.indexOf('Verify real Chrome PWA worker offline and private cache isolation')<
+  workflow.indexOf('Verify live search-to-profile journey'));
  assert.ok(workflow.indexOf('Verify mobile keyboard and landmarks in headless Chrome')>
   workflow.indexOf('Start frontend production server'));
  assert.ok(workflow.indexOf('Verify mobile keyboard and landmarks in headless Chrome')<
