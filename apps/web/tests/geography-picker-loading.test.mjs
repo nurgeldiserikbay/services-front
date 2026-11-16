@@ -49,12 +49,19 @@ test('empty city search is announced only after a successful lookup',()=>{
   assert.match(source,/const \[cityResultsReady,setCityResultsReady\]=useState\(false\)/);
   assert.match(source,/setCityResultsReady\(false\)/);
   assert.match(source,/setCityResultsReady\(true\)/);
-  assert.match(source,/countryId&&cityResultsReady&&!citiesBusy&&!cityError&&cities\.length===0&&<p role="status"/);
+  assert.match(source,/countryId&&cityResultsReady&&!citiesBusy&&!queryPending&&!cityError&&cities\.length===0&&<p role="status"/);
 });
 
 
 test('city autocomplete requests are debounced and previous timer is cancelled',()=>{
-  assert.match(source,/setTimeout\(\(\)=>setDebouncedCityQuery\(cityQuery\),250\)/);
+  assert.match(source,/setTimeout\(\(\)=>\{setDebouncedCityQuery\(cityQuery\);setQueryPending\(false\)\},250\)/);
   assert.match(source,/return \(\)=>clearTimeout\(timer\)/);
   assert.match(source,/\[countryId,debouncedCityQuery,cityRequestVersion\]/);
+});
+
+
+test('pending debounced city input suppresses stale empty feedback',()=>{
+  assert.match(source,/const \[queryPending,setQueryPending\]=useState\(false\)/);
+  assert.match(source,/setCityQuery\(e\.target\.value\);setQueryPending\(true\)/);
+  assert.match(source,/cityResultsReady&&!citiesBusy&&!queryPending&&!cityError&&cities\.length===0/);
 });
