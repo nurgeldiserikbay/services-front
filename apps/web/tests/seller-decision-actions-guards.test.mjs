@@ -4,10 +4,11 @@ import {test} from 'node:test';
 
 const component=readFileSync(new URL('../src/components/SellerDecisionActions.tsx',import.meta.url),'utf8');
 
-test('both seller decision buttons fail closed on invalid request context',()=>{
- assert.match(component,/disabled=\{busy\|\|committed\|\|!validContext\|\|uncertainAction==='decline'\|\|!canStartSellerDecision\(pendingKey\.current,requestId,version,'accept'\)\} onClick=\{\(\)=>void submit\('accept'\)\}/);
- assert.match(component,/disabled=\{busy\|\|committed\|\|!validContext\|\|uncertainAction==='accept'\|\|!canStartSellerDecision\(pendingKey\.current,requestId,version,'decline'\)\} onClick=\{\(\)=>void submit\('decline'\)\}/);
+test('both seller decision buttons fail closed on invalid or uncertain request context',()=>{
+ assert.match(component,/disabled=\{busy\|\|committed\|\|!validContext\|\|uncertainAction==='decline'\|\|\(uncertainAction!==null&&uncertainAction!=='accept'\)\}/);
+ assert.match(component,/disabled=\{busy\|\|committed\|\|!validContext\|\|uncertainAction==='accept'\|\|\(uncertainAction!==null&&uncertainAction!=='decline'\)\}/);
  assert.match(component,/if\(locked\.current\|\|committedRef\.current\|\|!validContext\)return/);
+ assert.match(component,/if\(!canStartSellerDecision\(pendingKey\.current,requestId,version,action\)\)return/);
  assert.match(component,/committedRef\.current=true/);
  assert.match(component,/committedRef\.current=false/);
 });
@@ -28,9 +29,11 @@ test('invalid request context gives actionable bilingual error feedback',()=>{
  assert.match(component,/Данные заявки недействительны/);
 });
 
-test('both seller action buttons expose their busy state to assistive technology',()=>{
- const matches=component.match(/aria-busy=\{busy\} disabled=\{busy\|\|committed\|\|!validContext\|\|uncertainAction==='(?:accept|decline)'\|\|!canStartSellerDecision\(pendingKey\.current,requestId,version,'(?:accept|decline)'\)\}/g)??[];
+test('both seller action buttons expose busy state without reading ref during render',()=>{
+ const render=component.slice(component.lastIndexOf('  return <div>'));
+ const matches=render.match(/aria-busy=\{busy\} disabled=\{busy\|\|committed\|\|!validContext\|\|uncertainAction==='(?:accept|decline)'\|\|\(uncertainAction!==null&&uncertainAction!=='(?:accept|decline)'\)\}/g)??[];
  assert.equal(matches.length,2);
+ assert.doesNotMatch(render,/pendingKey\.current/);
 });
 
 test('both seller decision buttons display processing label while busy',()=>{
