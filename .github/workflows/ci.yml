@@ -247,6 +247,10 @@ jobs:
         run: |
           command -v google-chrome
           node apps/web/tests/live-chrome-accessibility.e2e.mjs
+      - name: Verify real Chrome PWA worker offline and private cache isolation
+        run: |
+          command -v google-chrome
+          node apps/web/tests/live-chrome-sw-offline.e2e.mjs
       - name: Verify live search-to-profile journey
         id: live_e2e
         run: node apps/web/tests/public-profile-journey.e2e.mjs
