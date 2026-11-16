@@ -15,3 +15,9 @@ test('a previously selected city remains a valid form option during refresh',()=
   assert.match(source,/<select name="city_id" value=\{cityId\} onChange=/);
   assert.doesNotMatch(source,/<select name="city_id"[^>]*disabled=/);
 });
+
+
+test('geography retry clears previous error and preserves a selected country',()=>{
+  assert.match(source,/setCitiesBusy\(true\);\s*setCities\(\[\]\);\s*setError\(false\);/);
+  assert.match(source,/countryId&&!countries\.some\(c=>c\.id===countryId\)&&<option value=\{countryId\}>/);
+});
