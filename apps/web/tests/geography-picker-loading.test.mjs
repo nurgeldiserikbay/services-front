@@ -43,3 +43,11 @@ test('failed country lookup can be retried without resetting the geography form'
   assert.match(source,/onClick=\{\(\)=>setCountryRequestVersion\(v=>v\+1\)\}/);
   assert.match(source,/\[countryRequestVersion\]/);
 });
+
+
+test('empty city search is announced only after a successful lookup',()=>{
+  assert.match(source,/const \[cityResultsReady,setCityResultsReady\]=useState\(false\)/);
+  assert.match(source,/setCityResultsReady\(false\)/);
+  assert.match(source,/setCityResultsReady\(true\)/);
+  assert.match(source,/countryId&&cityResultsReady&&!citiesBusy&&!cityError&&cities\.length===0&&<p role="status"/);
+});
