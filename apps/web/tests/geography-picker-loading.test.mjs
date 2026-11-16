@@ -21,3 +21,11 @@ test('geography retry clears previous error and preserves a selected country',()
   assert.match(source,/setCitiesBusy\(true\);\s*setCities\(\[\]\);\s*setError\(false\);/);
   assert.match(source,/countryId&&!countries\.some\(c=>c\.id===countryId\)&&<option value=\{countryId\}>/);
 });
+
+
+test('country and city lookup errors are tracked separately',()=>{
+  assert.match(source,/const \[cityError,setCityError\]=useState\(false\)/);
+  assert.match(source,/setCitiesBusy\(true\);\s*setCities\(\[\]\);\s*setCityError\(false\)/);
+  assert.match(source,/\.catch\(\(\)=>\{if\(!controller\.signal\.aborted\)setCityError\(true\)\}\)/);
+  assert.match(source,/\(error\|\|cityError\)&&<p role="status"/);
+});
