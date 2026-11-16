@@ -46,3 +46,11 @@ test('offline fallback has route-scoped noindex, no-store and nosniff headers',(
   assert.match(offlineHeaders,/X-Robots-Tag', value: 'noindex, nofollow, noarchive'/);
   assert.match(offlineHeaders,/X-Content-Type-Options', value: 'nosniff'/);
 });
+
+test('private frontend BFF headers override the public referrer policy',()=>{
+  assert.match(config,/\['guest-requests','seller','account'\]\.map\(section=>\(\{/);
+  assert.match(config,/source: '\/api\/'\+section\+'\/:path\*'/);
+  assert.match(config,/headers: \[\{key: 'Referrer-Policy', value: 'no-referrer'\}\]/);
+  // The public baseline remains unchanged for indexable catalog pages.
+  assert.match(config,/\{key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin'\}/);
+});
