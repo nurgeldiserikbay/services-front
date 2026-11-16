@@ -245,12 +245,14 @@ jobs:
           exit 1
       - name: Start isolated feature-enabled private BFF without real login
         run: |
+          umask 077
+          openssl rand -base64 32 > "$RUNNER_TEMP/services-private-bff-account-key"
           (
             cd apps/web
             SERVICES_WEB_ENABLE_GUEST_STATUS_HTTP=enabled \
             SERVICES_WEB_ENABLE_SELLER_BFF=enabled \
             SERVICES_WEB_GUEST_SESSION_KEY="$(openssl rand -base64 32)" \
-            SERVICES_WEB_ACCOUNT_SESSION_KEY="$(openssl rand -base64 32)" \
+            SERVICES_WEB_ACCOUNT_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-account-key")" \
             SERVICES_WEB_ORIGIN=https://services.example.test \
             pnpm start --hostname 127.0.0.1 --port 3001 > "$RUNNER_TEMP/services-private-bff.log" 2>&1 &
           )
@@ -263,6 +265,9 @@ jobs:
       - name: Verify enabled private BFF still rejects missing and forged sessions
         id: enabled_private_denial_e2e
         run: node apps/web/tests/private-bff-enabled-denial.e2e.mjs
+      - name: Verify signed web session reaches backend and revocation invalidates access
+        id: signed_seller_session_e2e
+        run: node apps/web/tests/private-bff-signed-session.e2e.mjs
       - name: Verify private frontend BFF routes remain default-off over live HTTP
         id: private_bff_e2e
         run: node apps/web/tests/private-bff-default-off.e2e.mjs
@@ -296,6 +301,7 @@ jobs:
           FRONTEND_TESTS: ${{ steps.frontend_tests.outcome }}
           FRONTEND_BUILD: ${{ steps.frontend_build.outcome }}
           ENABLED_PRIVATE_DENIAL_E2E: ${{ steps.enabled_private_denial_e2e.outcome }}
+          SIGNED_SELLER_SESSION_E2E: ${{ steps.signed_seller_session_e2e.outcome }}
           PRIVATE_BFF_E2E: ${{ steps.private_bff_e2e.outcome }}
           WORKER_ISOLATION_E2E: ${{ steps.worker_isolation_e2e.outcome }}
           CHROME_MOBILE_E2E: ${{ steps.chrome_mobile_e2e.outcome }}
@@ -317,6 +323,7 @@ jobs:
             echo "| Frontend unit tests | $FRONTEND_TESTS |"
             echo "| Frontend production build | $FRONTEND_BUILD |"
             echo "| Enabled private BFF unauthorized proof rejection | $ENABLED_PRIVATE_DENIAL_E2E |"
+            echo "| Signed seller web session and backend revocation | $SIGNED_SELLER_SESSION_E2E |"
             echo "| Private frontend BFF live HTTP E2E | $PRIVATE_BFF_E2E |"
             echo "| Served worker isolation E2E | $WORKER_ISOLATION_E2E |"
             echo "| Chrome mobile and keyboard smoke | $CHROME_MOBILE_E2E |"
