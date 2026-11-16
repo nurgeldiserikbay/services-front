@@ -149,3 +149,15 @@ test('country and city inputs expose accurate assistive busy and error states',(
   assert.match(source,/name="city_id" value=\{cityId\} aria-busy=\{citiesBusy\|\|queryPending\}/);
   assert.match(source,/aria-invalid=\{cityError&&!queryPending\} aria-describedby=\{cityError&&!queryPending\?"geography-city-error":undefined\}/);
 });
+
+test('malformed country response is an error rather than an empty successful directory',()=>{
+  assert.match(source,/if\(!Array\.isArray\(data\?\.items\)\)throw new Error\('invalid country catalog'\)/);
+  assert.match(source,/\.catch\(\(\)=>\{if\(!controller\.signal\.aborted\)setError\(true\)\}\)/);
+  assert.match(source,/countryResultsReady&&!busy&&!error&&countries\.length===0/);
+});
+
+test('malformed city response is an error and cross-country options are filtered',()=>{
+  assert.match(source,/if\(!Array\.isArray\(data\?\.items\)\)throw new Error\('invalid city catalog'\)/);
+  assert.match(source,/setCities\(data\.items\.filter\(city=>city\?\.country_id===countryId\)\)/);
+  assert.match(source,/setCityError\(true\);setQueryPending\(false\)/);
+});
