@@ -15,3 +15,19 @@ export function parseCities(value,countryId){
   // IDs are case-insensitive, including API responses with uppercase UUIDs.
   return value.items.filter(city=>city.country_id.toLowerCase()===countryId.toLowerCase());
 }
+
+/**
+ * The public proxy returns only UI contract fields, never unrecognized
+ * upstream object attributes (e.g. diagnostics, contact data or internal notes).
+ * Areas are not transformed here because their schema is distinct.
+ */
+export function projectPublicGeographyCatalog(kind, catalog){
+  if(kind!=='countries'&&kind!=='cities')return catalog;
+  if(!isRecord(catalog)||!Array.isArray(catalog.items))throw new Error('invalid geography catalog');
+  if(kind==='countries'){
+    if(!catalog.items.every(isCountry))throw new Error('invalid country catalog');
+    return {items:catalog.items.map(({id,iso2,name})=>({id,iso2,name}))};
+  }
+  if(!catalog.items.every(isCity))throw new Error('invalid city catalog');
+  return {items:catalog.items.map(({id,country_id,area_id,name,timezone})=>({id,country_id,area_id,name,timezone}))};
+}
