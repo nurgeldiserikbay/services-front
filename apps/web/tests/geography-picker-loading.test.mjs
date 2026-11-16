@@ -7,7 +7,7 @@ const source=readFileSync(new URL('../src/components/GeographyPicker.tsx',import
 test('city options are cleared while a new country or city query loads',()=>{
   assert.match(source,/setCitiesBusy\(true\);\s*setCityResultsReady\(false\);\s*setCities\(\[\]\);/);
   assert.match(source,/return \(\)=>controller\.abort\(\);\s*},\[countryId,debouncedCityQuery,cityRequestVersion\]\);/);
-  assert.match(source,/\.finally\(\(\)=>\{if\(!controller\.signal\.aborted\)setCitiesBusy\(false\)\}\)/);
+  assert.match(source,/\.finally\(\(\)=>\{if\(isCurrent\(\)\)setCitiesBusy\(false\)\}\)/);
 });
 
 test('a previously selected city remains a valid form option during refresh',()=>{
@@ -26,7 +26,7 @@ test('geography retry clears city error and preserves a selected country',()=>{
 test('country and city lookup errors are tracked separately',()=>{
   assert.match(source,/const \[cityError,setCityError\]=useState\(false\)/);
   assert.match(source,/setCitiesBusy\(true\);\s*setCityResultsReady\(false\);\s*setCities\(\[\]\);\s*setCityError\(false\)/);
-  assert.match(source,/\.catch\(\(\)=>\{if\(!controller\.signal\.aborted\)setCityError\(true\)\}\)/);
+  assert.match(source,/\.catch\(\(\)=>\{if\(isCurrent\(\)\)setCityError\(true\)\}\)/);
   assert.match(source,/!queryPending&&cityError&&<p role="status"/);
 });
 
@@ -70,4 +70,13 @@ test('pending debounced city input suppresses stale empty feedback',()=>{
 test('stale city options and lookup errors stay hidden during pending input',()=>{
   assert.match(source,/!queryPending&&cities\.map\(c=><option/);
   assert.match(source,/!queryPending&&cityError&&<p role="status"/);
+});
+
+
+test('late city responses cannot overwrite new input during debounce',()=>{
+  assert.match(source,/const cityInputGeneration=useRef\(0\)/);
+  assert.match(source,/const generation=cityInputGeneration\.current/);
+  assert.match(source,/generation===cityInputGeneration\.current/);
+  assert.match(source,/if\(isCurrent\(\)\)\{setCities\(/);
+  assert.match(source,/cityInputGeneration\.current\+\+;setCityQuery\(e\.target\.value\)/);
 });
