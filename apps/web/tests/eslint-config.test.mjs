@@ -24,7 +24,7 @@ test('CI lint invokes ESLint and retains both existing security gates',()=>{
 test('legacy React hook exceptions remain scoped to named components',()=>{
   assert.match(config,/react-hooks\/set-state-in-effect/);
   assert.doesNotMatch(config,/react-hooks\/refs/);
-  for(const file of ['AccountDeviceSessions','AccountNotificationsInbox','GeographyPicker','GuestRequestStatusCheck','SellerWorkspace'])
+  for(const file of ['AccountDeviceSessions','GeographyPicker','GuestRequestStatusCheck','SellerWorkspace'])
     assert.ok(config.includes(`src/components/${file}.tsx`),file);
   assert.doesNotMatch(config,/files:\s*\['src\/\*\*/);
 });
@@ -36,4 +36,13 @@ test('seller decision render does not read pending ref and keeps submit guard',(
   assert.match(component,/if\(!canStartSellerDecision\(pendingKey\.current,requestId,version,action\)\)return/);
   assert.match(render,/uncertainAction!==null&&uncertainAction!=='accept'/);
   assert.match(render,/uncertainAction!==null&&uncertainAction!=='decline'/);
+});
+
+test('notification inbox initial load is scheduled outside React effect and cancelled on cleanup',()=>{
+  const inbox=readFileSync(new URL('../src/components/AccountNotificationsInbox.tsx',import.meta.url),'utf8');
+  assert.ok(!config.includes('src/components/AccountNotificationsInbox.tsx'));
+  assert.match(inbox,/useEffect\(\(\)=>\{\s*const timer=setTimeout\(\(\)=>\{void load\(\);\},0\)/);
+  assert.match(inbox,/return \(\)=>\{clearTimeout\(timer\);generation\.current\+\+;\}/);
+  assert.match(inbox,/if\(current===generation\.current\)setItems\(result\.items\)/);
+  assert.match(inbox,/if\(lock\.current\)return/);
 });
