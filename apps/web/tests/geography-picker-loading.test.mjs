@@ -80,3 +80,9 @@ test('late city responses cannot overwrite new input during debounce',()=>{
   assert.match(source,/if\(isCurrent\(\)\)\{setCities\(/);
   assert.match(source,/cityInputGeneration\.current\+\+;setCityQuery\(e\.target\.value\)/);
 });
+
+
+test('retrying country lookup restores loading state until request settles',()=>{
+  assert.match(source,/setError\(false\);\s*setBusy\(true\);\s*fetch\('\/api\/geography\/countries'/);
+  assert.match(source,/\.finally\(\(\)=>\{if\(!controller\.signal\.aborted\)setBusy\(false\)\}\)/);
+});
