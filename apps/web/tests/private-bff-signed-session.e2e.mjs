@@ -22,6 +22,11 @@ const bearer=randomBytes(32).toString('base64url');
 const tokenHash=createHmac('sha256',hmacKey)
  .update('services-session:v1\0').update(bearer).digest('hex');
 const userId=randomUUID(),sessionId=randomUUID(),familyId=randomUUID();
+const fixture={
+ personId:randomUUID(),orgId:randomUUID(),definitionId:randomUUID(),
+ offerId:randomUUID(),guestIds:[randomUUID(),randomUUID()],
+ requestIds:[randomUUID(),randomUUID()],
+};
 const sealed=sealAccountWebSession(key,bearer,600);
 const cookie='__Host-services_account_web='+sealed.cookie;
 const db=new Client({connectionString:process.env.DATABASE_URL});
@@ -53,6 +58,76 @@ try{
  assert.ok(!JSON.stringify(body).includes(bearer));
  assert.ok(!JSON.stringify(body).includes(sealed.cookie));
 
+ // Create committed, isolated seller resources so the real backend process,
+ // not this test's SQL connection, must authorize and mutate them.
+ await db.query('INSERT INTO persons(id,user_id) VALUES($1,$2)',[fixture.personId,userId]);
+ await db.query(`INSERT INTO organizations(id,owner_person_id,slug,name,status)
+  VALUES($1,$2,$3,'CI seller owner','ACTIVE')`,
+  [fixture.orgId,fixture.personId,'ci-signed-seller-'+randomUUID()]);
+ await db.query(`INSERT INTO organization_members(id,organization_id,user_id,role)
+  VALUES($1,$2,$3,'ADMIN')`,[randomUUID(),fixture.orgId,userId]);
+ await db.query('INSERT INTO service_definitions(id,code,name) VALUES($1,$2,$3)',
+  [fixture.definitionId,'ci-signed-seller-'+randomUUID(),'CI test service']);
+ await db.query(`INSERT INTO service_offers(
+  id,definition_id,organization_id,title,status,delivery_mode,contacts
+  ) VALUES($1,$2,$3,'Signed seller CI offer','PUBLISHED','online','{}'::jsonb)`,
+  [fixture.offerId,fixture.definitionId,fixture.orgId]);
+ for(let i=0;i<2;i++){
+  await db.query(`INSERT INTO guest_contacts(
+    id,channel,encrypted_value,digest,verified_at,expires_at
+    ) VALUES($1,'email','test-encrypted',$2,now(),now()+interval '1 day')`,
+   [fixture.guestIds[i],'ci-signed-guest-'+randomUUID()]);
+  await db.query(`INSERT INTO service_requests(
+    id,offer_id,guest_contact_id,source_context,seller_organization_id,status
+    ) VALUES($1,$2,$3,'ORGANIZATION',$4,'PENDING')`,
+   [fixture.requestIds[i],fixture.offerId,fixture.guestIds[i],fixture.orgId]);
+ }
+ const populated=await inbox();
+ assert.equal(populated.status,200,'seller must read only own committed requests');
+ const page=await populated.json();
+ assert.deepEqual(new Set(page.items.map(x=>x.id)),new Set(fixture.requestIds));
+ assert.ok(page.items.every(x=>x.sellerKind==='organization'&&
+  x.version===1&&x.state==='pending'));
+ assert.equal(page.csrf_token,sealed.csrf);
+ async function decision(id,action,idempotencyKey,version=1,csrf=sealed.csrf){
+  return fetch(new URL('/api/seller/requests/'+id+'/'+action,base),{
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+   headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie,
+    Origin:'https://services.example.test','Content-Type':'application/json'},
+   body:JSON.stringify({version,csrf_token:csrf,idempotency_key:idempotencyKey}),
+  });
+ }
+ // A wrong CSRF must fail without touching the authoritative request.
+ const csrfDenied=await decision(fixture.requestIds[0],'accept',randomUUID(),1,
+  randomBytes(32).toString('base64url'));
+ assert.equal(csrfDenied.status,401,'wrong CSRF must fail');
+ const untouched=await db.query('SELECT status,version FROM service_requests WHERE id=$1',
+  [fixture.requestIds[0]]);
+ assert.equal(untouched.rows[0].status,'PENDING');
+ assert.equal(untouched.rows[0].version,1);
+ for(const [index,action] of ['accept','decline'].entries()){
+  const id=fixture.requestIds[index],key=randomUUID();
+  const first=await decision(id,action,key);
+  assert.equal(first.status,200,action+' must be authorized by backend');
+  assert.deepEqual(await first.json(),{outcome:'ok'});
+  const replay=await decision(id,action,key);
+  assert.equal(replay.status,200,'idempotent retry must be successful');
+  assert.deepEqual(await replay.json(),{outcome:'ok'});
+  const row=await db.query('SELECT status,version FROM service_requests WHERE id=$1',[id]);
+  assert.deepEqual(row.rows[0],{status:action==='accept'?'ACCEPTED':'DECLINED',version:2});
+  const notices=await db.query(`SELECT count(*)::integer AS n FROM notification_intents
+   WHERE dedupe_key=$1`,['request-'+action+':guest:'+id]);
+  assert.equal(notices.rows[0].n,1,'replay cannot duplicate notification intent');
+  const stale=await decision(id,action,randomUUID());
+  assert.equal(stale.status,409,'new key cannot reapply a finalized decision');
+ }
+ const pendingPage=await fetch(new URL('/api/seller/requests?state=pending',base),{
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie},redirect:'manual',
+  signal:AbortSignal.timeout(8000),
+ });
+ assert.equal(pendingPage.status,200);
+ assert.deepEqual((await pendingPage.json()).items,[]);
+
  await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
  const revoked=await inbox();
  assert.equal(revoked.status,401,'revocation must defeat still-valid web cookie');
@@ -63,6 +138,27 @@ try{
  console.log('Signed web cookie -> actual backend empty seller inbox -> revoked bearer denied');
 }finally{
  if(userCreated){
+  // The test database is ephemeral, but still clean all committed fixtures.
+  const ids=fixture.requestIds;
+  await db.query(`DELETE FROM notification_intents
+    WHERE domain_event_id IN
+     (SELECT id FROM domain_outbox_events WHERE subject_id=ANY($1::uuid[]))`,[ids]).catch(()=>{});
+  await db.query('DELETE FROM idempotency_records WHERE actor_scope=$1',
+   ['seller:'+userId]).catch(()=>{});
+  await db.query('DELETE FROM domain_outbox_events WHERE subject_id=ANY($1::uuid[])',
+   [ids]).catch(()=>{});
+  await db.query('DELETE FROM service_request_events WHERE request_id=ANY($1::uuid[])',
+   [ids]).catch(()=>{});
+  await db.query('DELETE FROM service_requests WHERE id=ANY($1::uuid[])',[ids]).catch(()=>{});
+  await db.query('DELETE FROM guest_contacts WHERE id=ANY($1::uuid[])',
+   [fixture.guestIds]).catch(()=>{});
+  await db.query('DELETE FROM service_offers WHERE id=$1',[fixture.offerId]).catch(()=>{});
+  await db.query('DELETE FROM organization_members WHERE organization_id=$1',
+   [fixture.orgId]).catch(()=>{});
+  await db.query('DELETE FROM organizations WHERE id=$1',[fixture.orgId]).catch(()=>{});
+  await db.query('DELETE FROM service_definitions WHERE id=$1',
+   [fixture.definitionId]).catch(()=>{});
+  await db.query('DELETE FROM persons WHERE id=$1',[fixture.personId]).catch(()=>{});
   await db.query('DELETE FROM sessions WHERE id=$1',[sessionId]).catch(()=>{});
   await db.query('DELETE FROM users WHERE id=$1',[userId]).catch(()=>{});
  }
