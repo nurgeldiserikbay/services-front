@@ -29,6 +29,11 @@ test('frontend CI protects the cross-repository integration journey',()=>{
  assert.match(workflow,/node apps\/web\/tests\/request-lifecycle-boundary\.e2e\.mjs/);
  assert.match(workflow,/node apps\/web\/tests\/public-profile-journey\.e2e\.mjs/);
  assert.match(workflow,/node apps\/web\/tests\/private-bff-default-off\.e2e\.mjs/);
+ assert.match(workflow,/node apps\/web\/tests\/private-bff-enabled-denial\.e2e\.mjs/);
+ assert.ok(workflow.indexOf('Verify enabled private BFF still rejects missing and forged sessions')>
+  workflow.indexOf('Start isolated feature-enabled private BFF without real login'));
+ assert.ok(workflow.includes('steps.enabled_private_denial_e2e.outcome'));
+ assert.ok(workflow.includes('Enabled private BFF unauthorized proof rejection'));
  assert.match(workflow,/node apps\/web\/tests\/live-pwa-worker-isolation\.e2e\.mjs/);
  assert.match(workflow,/node apps\/web\/tests\/live-chrome-accessibility\.e2e\.mjs/);
  assert.match(workflow,/node apps\/web\/tests\/live-chrome-sw-offline\.e2e\.mjs/);
