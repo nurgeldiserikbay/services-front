@@ -28,6 +28,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [cityError,setCityError]=useState(false);
   const [cityRequestVersion,setCityRequestVersion]=useState(0);
   const [countryRequestVersion,setCountryRequestVersion]=useState(0);
+  const [cityResultsReady,setCityResultsReady]=useState(false);
   useEffect(()=>{
     const controller=new AbortController();
     setError(false);
@@ -39,16 +40,17 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     return ()=>controller.abort();
   },[countryRequestVersion]);
   useEffect(()=>{
-    if(!countryId){setCities([]);setCitiesBusy(false);setCityError(false);return;}
+    if(!countryId){setCities([]);setCitiesBusy(false);setCityError(false);setCityResultsReady(false);return;}
     const controller=new AbortController();
     setCitiesBusy(true);
+    setCityResultsReady(false);
     setCities([]);
     setCityError(false);
     const query=new URLSearchParams({country_id:countryId});
     if(cityQuery.trim())query.set('q',cityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('cities unavailable');return r.json()})
-      .then((data:{items?:City[]})=>{if(!controller.signal.aborted)setCities(Array.isArray(data.items)?data.items:[])})
+      .then((data:{items?:City[]})=>{if(!controller.signal.aborted){setCities(Array.isArray(data.items)?data.items:[]);setCityResultsReady(true)}})
       .catch(()=>{if(!controller.signal.aborted)setCityError(true)})
       .finally(()=>{if(!controller.signal.aborted)setCitiesBusy(false)});
     return ()=>controller.abort();
@@ -88,6 +90,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       </label>}
     </div>
     {error&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
+    {countryId&&cityResultsReady&&!citiesBusy&&!cityError&&cities.length===0&&<p role="status" className="geoError">{locale==='kk'?'Қала табылмады':'Города не найдены'}</p>}
     {cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
   </fieldset>;
 }
