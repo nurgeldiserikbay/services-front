@@ -1,3 +1,4 @@
+import {projectPublicGeographyCatalog} from '@/lib/geography-catalog.mjs';
 import {validateGeographyQuery} from '@/lib/geography-query.mjs';
 import {readGeoResponse} from '@/lib/geography-proxy-response.mjs';
 import { NextRequest, NextResponse } from 'next/server';
@@ -31,7 +32,10 @@ export async function GET(req: NextRequest, context: RouteContext) {
     let value;
     try { value = await readGeoResponse(r); }
     catch { return NextResponse.json({error:'invalid_backend_response'},{status:502}); }
-    return NextResponse.json(value,{headers:{'Cache-Control':'public, max-age=60'}});
+    let publicValue;
+    try { publicValue = projectPublicGeographyCatalog(kind,value); }
+    catch { return NextResponse.json({error:'invalid_backend_response'},{status:502}); }
+    return NextResponse.json(publicValue,{headers:{'Cache-Control':'public, max-age=60'}});
   } catch {
     return NextResponse.json({error:'unavailable'},{status:503});
   }
