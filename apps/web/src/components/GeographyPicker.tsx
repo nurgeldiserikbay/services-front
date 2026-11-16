@@ -44,7 +44,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     return ()=>controller.abort();
   },[countryRequestVersion]);
   useEffect(()=>{
-    const timer=setTimeout(()=>{setDebouncedCityQuery(cityQuery);setQueryPending(false)},250);
+    const timer=setTimeout(()=>setDebouncedCityQuery(cityQuery),250);
     return ()=>clearTimeout(timer);
   },[cityQuery]);
   useEffect(()=>{
@@ -60,8 +60,8 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     if(debouncedCityQuery.trim())query.set('q',debouncedCityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('cities unavailable');return r.json()})
-      .then((data:{items?:City[]})=>{if(isCurrent()){setCities(Array.isArray(data.items)?data.items:[]);setCityResultsReady(true)}})
-      .catch(()=>{if(isCurrent())setCityError(true)})
+      .then((data:{items?:City[]})=>{if(isCurrent()){setCities(Array.isArray(data.items)?data.items:[]);setCityResultsReady(true);setQueryPending(false)}})
+      .catch(()=>{if(isCurrent()){setCityError(true);setQueryPending(false)}})
       .finally(()=>{if(isCurrent())setCitiesBusy(false)});
     return ()=>controller.abort();
   },[countryId,debouncedCityQuery,cityRequestVersion]);
