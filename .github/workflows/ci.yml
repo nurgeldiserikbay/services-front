@@ -120,6 +120,10 @@ jobs:
           # Exercise authorization against the same migrated database used
           # for the browser-to-API integration journey.
           node --import tsx --test test/session-proof-db.test.ts test/seller-inbox-authority-parity-db.test.ts
+          # Signed-in seller success path against live PostgreSQL, with
+          # transaction rollback and random ephemeral users/requests.
+          node --import tsx --test test/account-otp-seller-journey-db.test.ts
+          node --import tsx --test test/account-bearer-session-http.test.ts
           npm run db:seed:geo
           npm run build
       - name: Install PostgreSQL client and verify migrated schema
