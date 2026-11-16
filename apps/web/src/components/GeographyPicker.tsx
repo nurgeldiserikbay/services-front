@@ -104,9 +104,9 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       </label>}
     </div>
     <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">{busy?t.loading:countryId&&(citiesBusy||queryPending)?t.loading:""}</p>
-    {countryResultsReady&&!busy&&!error&&countries.length===0&&<p role="status" className="geoError">{locale==='kk'?'Елдер табылмады':'Страны не найдены'}</p>}
+    {countryResultsReady&&!busy&&!error&&countries.length===0&&<p role="status" className="geoError">{locale==='kk'?'Елдер табылмады':'Страны не найдены'} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
     {error&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
-    {countryId&&cityResultsReady&&!citiesBusy&&!queryPending&&!cityError&&cities.length===0&&<p role="status" className="geoError">{locale==='kk'?'Қала табылмады':'Города не найдены'}</p>}
+    {countryId&&cityResultsReady&&!citiesBusy&&!queryPending&&!cityError&&cities.length===0&&<p role="status" className="geoError">{locale==='kk'?'Қала табылмады':'Города не найдены'} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
     {!queryPending&&cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
   </fieldset>;
 }
