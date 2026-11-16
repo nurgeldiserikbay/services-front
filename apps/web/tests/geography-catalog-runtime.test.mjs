@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {isCountry,isCity,parseCountries,parseCities} from '../src/lib/geography-catalog.mjs';
+import {isCountry,isCity,parseCountries,parseCities,projectPublicGeographyCatalog} from '../src/lib/geography-catalog.mjs';
 
 const A='10000000-0000-4000-8000-000000000001';
 const B='10000000-0000-4000-8000-000000000002';
@@ -34,4 +34,19 @@ test('city parser validates fields and filters cross-country entries',()=>{
     assert.throws(()=>parseCities({items:[entry]},A),/invalid city catalog/);
   }
   assert.throws(()=>parseCities({items:[city]},'not-a-uuid'),/invalid city catalog/);
+});
+
+test('public country and city responses exclude nested unknown upstream fields',()=>{
+  const c={...country,private_email:'internal@example.com',debug:{token:'secret'}};
+  const cityWithExtras={...city,internal_notes:'not public',phone:'private'};
+  assert.deepEqual(projectPublicGeographyCatalog('countries',{items:[c]}),{items:[country]});
+  assert.deepEqual(projectPublicGeographyCatalog('cities',{items:[cityWithExtras]}),{items:[city]});
+  assert.deepEqual(projectPublicGeographyCatalog('countries',{items:[]}),{items:[]});
+  assert.throws(()=>projectPublicGeographyCatalog('countries',{items:[{...country,id:'invalid'}]}),/invalid country catalog/);
+  assert.throws(()=>projectPublicGeographyCatalog('cities',{items:[{...city,timezone:null}]}),/invalid city catalog/);
+});
+
+test('area catalog is retained until its distinct public DTO is specified',()=>{
+  const areas={items:[{id:B,country_id:A,name:'Region'}]};
+  assert.equal(projectPublicGeographyCatalog('areas',areas),areas);
 });
