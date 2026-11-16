@@ -26,6 +26,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [busy,setBusy]=useState(true);
   const [citiesBusy,setCitiesBusy]=useState(false);
   const [cityError,setCityError]=useState(false);
+  const [cityRequestVersion,setCityRequestVersion]=useState(0);
   useEffect(()=>{
     const controller=new AbortController();
     setError(false);
@@ -37,7 +38,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     return ()=>controller.abort();
   },[]);
   useEffect(()=>{
-    if(!countryId){setCities([]);setCitiesBusy(false);return;}
+    if(!countryId){setCities([]);setCitiesBusy(false);setCityError(false);return;}
     const controller=new AbortController();
     setCitiesBusy(true);
     setCities([]);
@@ -50,7 +51,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       .catch(()=>{if(!controller.signal.aborted)setCityError(true)})
       .finally(()=>{if(!controller.signal.aborted)setCitiesBusy(false)});
     return ()=>controller.abort();
-  },[countryId,cityQuery]);
+  },[countryId,cityQuery,cityRequestVersion]);
   return <fieldset className="geoPicker">
     <legend>{t.region}</legend>
     <div className="geoControls">
@@ -85,6 +86,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         </select>
       </label>}
     </div>
-    {(error||cityError)&&<p role="status" className="geoError">{t.unavailable}</p>}
+    {error&&<p role="status" className="geoError">{t.unavailable}</p>}
+    {cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
   </fieldset>;
 }
