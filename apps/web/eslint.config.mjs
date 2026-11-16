@@ -11,7 +11,6 @@ export default defineConfig([
   // before lifting these narrowly scoped exceptions. Do not disable globally.
   {
     files:[
-      'src/components/GeographyPicker.tsx',
       'src/components/GuestRequestStatusCheck.tsx',
     ],
     rules:{'react-hooks/set-state-in-effect':'off'},
