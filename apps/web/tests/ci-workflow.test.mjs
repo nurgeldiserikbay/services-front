@@ -11,9 +11,11 @@ test('frontend CI protects the cross-repository integration journey',()=>{
  // The full immutable checkout SHA is validated in backend-ci-pin.test.mjs.
  assert.match(workflow,/repository: nurgeldiserikbay\/services-back/);
  assert.match(workflow,/\s+path: services-back\n\s+persist-credentials: false/);
- const gates=['pnpm test','npm run db:migrate','npm run db:seed:geo','Verify pinned backend admin HTTP boundary stays private','Verify guest and seller lifecycle HTTP boundaries deny anonymous calls','pnpm typecheck','pnpm build','Verify live search-to-profile journey'];
+ const gates=['pnpm lint','pnpm test','npm run db:migrate','npm run db:seed:geo','Verify pinned backend admin HTTP boundary stays private','Verify guest and seller lifecycle HTTP boundaries deny anonymous calls','pnpm typecheck','pnpm build','Verify live search-to-profile journey'];
  // Unit tests run early to fail fast; PostgreSQL-backed checks precede build/E2E.
- assert.ok(workflow.indexOf('pnpm install --frozen-lockfile')<workflow.indexOf('pnpm test'));
+ assert.ok(workflow.indexOf('pnpm install --frozen-lockfile')<workflow.indexOf('pnpm lint'));
+ assert.ok(workflow.indexOf('pnpm lint')<workflow.indexOf('pnpm test'));
+ assert.match(workflow,/Frontend security lint/);
  assert.ok(workflow.indexOf('pnpm typecheck')<workflow.indexOf('pnpm build'));
 
  let previous=-1;
