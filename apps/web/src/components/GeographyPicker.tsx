@@ -100,6 +100,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         </select>
       </label>}
     </div>
+    <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">{busy?t.loading:countryId&&(citiesBusy||queryPending)?t.loading:""}</p>
     {error&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
     {countryId&&cityResultsReady&&!citiesBusy&&!queryPending&&!cityError&&cities.length===0&&<p role="status" className="geoError">{locale==='kk'?'Қала табылмады':'Города не найдены'}</p>}
     {!queryPending&&cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
