@@ -41,3 +41,7 @@ For every failed scenario record the exact request URL (without credentials), re
 - [ ] Record any device/browser-specific issues and rerun after fixes.
 
 **Release decision:** PWA device and accessibility acceptance remains **NO-GO** until all applicable items have recorded evidence and sign-off.
+
+## Automated desktop Chrome mobile-width smoke (2026-11-16)
+
+CI also runs `apps/web/tests/live-chrome-accessibility.e2e.mjs` against the real Next.js production server in headless Chrome, exercising the two localized entry pages at a 320 CSS-pixel mobile viewport. It checks the actual browser DOM for correct language and viewport metadata, one `h1`, the main landmark, focusable keyboard skip link and absence of page-wide horizontal overflow. This verifies browser layout/DOM behavior beyond static source tests, **not** installed Android PWA behavior, service-worker lifecycle, screen-reader announcements, gesture/touch target acceptance or full authenticated browser journeys. Keep the device checklist above unchecked until real-device evidence is recorded.
