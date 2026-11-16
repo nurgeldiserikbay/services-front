@@ -21,12 +21,10 @@ test('CI lint invokes ESLint and retains both existing security gates',()=>{
   assert.ok(manifest.devDependencies['eslint-config-next']);
 });
 
-test('legacy React hook exceptions remain scoped to named components',()=>{
-  assert.match(config,/react-hooks\/set-state-in-effect/);
+test('React hook rules are not disabled for any component',()=>{
+  assert.doesNotMatch(config,/react-hooks\/set-state-in-effect/);
   assert.doesNotMatch(config,/react-hooks\/refs/);
-  for(const file of ['GuestRequestStatusCheck'])
-    assert.ok(config.includes(`src/components/${file}.tsx`),file);
-  assert.doesNotMatch(config,/files:\s*\['src\/\*\*/);
+  assert.doesNotMatch(config,/rules:\s*\{[^}]*react-hooks\//);
 });
 
 test('seller decision render does not read pending ref and keeps submit guard',()=>{
@@ -80,4 +78,15 @@ test('geography picker defers effects but still aborts stale country and city re
   assert.match(component,/if\(!countryId\)\{setCities\(\[\]\)/);
   assert.match(component,/parseCountries\(data\)/);
   assert.match(component,/parseCities\(data,countryId\)/);
+});
+
+test('guest status receipt switches reset state at render, with abort-only cleanup',()=>{
+  const component=readFileSync(new URL('../src/components/GuestRequestStatusCheck.tsx',import.meta.url),'utf8');
+  assert.match(component,/return <ReceiptStatusView key=\{props\.requestId\+'\|'\+props\.serviceOfferId\} \{\.\.\.props\}\/>/);
+  assert.match(component,/function ReceiptStatusView\(\{locale,requestId,serviceOfferId\}:Props\)/);
+  assert.match(component,/useLayoutEffect\(\(\)=>\(\)=>\{\s*active\.current\?\.abort\(\)/);
+  assert.doesNotMatch(component,/useLayoutEffect\([\s\S]*?setState\(null\)/);
+  assert.match(component,/if\(active\.current!==controller\|\|controller\.signal\.aborted\)return/);
+  assert.match(component,/shouldReplaceGuestStatus\(currentVersion\.current,result\.version\)/);
+  assert.match(component,/setVersion\(null\);setState\(null\);setError\(true\)/);
 });
