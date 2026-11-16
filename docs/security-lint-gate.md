@@ -30,3 +30,7 @@ The seller decision action buttons now derive their disabled state from React st
 ### Notification inbox effect lint cleanup (2026-11-16)
 
 The initial inbox request is scheduled in a zero-delay timer instead of invoking the state-changing fetch directly in the React effect body; cleanup cancels a not-yet-started request and invalidates stale results. The `react-hooks/set-state-in-effect` exception for `AccountNotificationsInbox.tsx` has been removed, with a regression assertion for the cleanup behavior. The other four file-scoped effect exceptions still require migration. A green CI run remains required for acceptance.
+
+### Device sessions effect lint cleanup (2026-11-16)
+
+The initial device-sessions refresh now starts from a zero-delay timer scheduled by the effect, and the cleanup cancels that timer while invalidating the active request generation. The manual refresh/revoke handlers and server-confirmed revocation logic are unchanged. The `AccountDeviceSessions.tsx` file-scoped `react-hooks/set-state-in-effect` exception is removed, with a regression checking cancellation and server-confirmed refresh. The remaining exemptions are GeographyPicker, GuestRequestStatusCheck and SellerWorkspace, pending their separate migrations and CI acceptance.
