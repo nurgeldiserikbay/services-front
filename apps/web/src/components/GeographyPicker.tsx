@@ -41,7 +41,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     setCountries([]);
     fetch('/api/geography/countries',{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('geography unavailable');return r.json()})
-      .then((data:{items?:Country[]})=>{if(!controller.signal.aborted){setCountries(Array.isArray(data.items)?data.items:[]);setCountryResultsReady(true)}})
+      .then((data:{items?:Country[]})=>{if(!Array.isArray(data?.items))throw new Error('invalid country catalog');if(!controller.signal.aborted){setCountries(data.items);setCountryResultsReady(true)}})
       .catch(()=>{if(!controller.signal.aborted)setError(true)})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false)});
     return ()=>controller.abort();
@@ -63,7 +63,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     if(debouncedCityQuery.trim())query.set('q',debouncedCityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('cities unavailable');return r.json()})
-      .then((data:{items?:City[]})=>{if(isCurrent()){setCities(Array.isArray(data.items)?data.items:[]);setCityResultsReady(true);setQueryPending(false)}})
+      .then((data:{items?:City[]})=>{if(!Array.isArray(data?.items))throw new Error('invalid city catalog');if(isCurrent()){setCities(data.items.filter(city=>city?.country_id===countryId));setCityResultsReady(true);setQueryPending(false)}})
       .catch(()=>{if(isCurrent()){setCityError(true);setQueryPending(false)}})
       .finally(()=>{if(isCurrent())setCitiesBusy(false)});
     return ()=>controller.abort();
