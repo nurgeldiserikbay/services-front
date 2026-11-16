@@ -20,6 +20,18 @@ Automated tests are necessary but do not replace a real browser/device acceptanc
 - [ ] Check 200% browser zoom and Windows forced-colors/high-contrast mode: text, borders and controls remain perceivable.
 - [ ] With a screen reader, verify one primary heading, main landmark, meaningful links and correct Russian pronunciation for text annotated `lang=ru`.
 
+## Geographic search acceptance (both locales)
+
+- [ ] On narrow Android Chrome and desktop keyboard, choose a country and then a city; submit the public search form and verify the resulting URL and displayed scope correspond to the chosen IDs (do not rely on the dropdown label alone).
+- [ ] Switch from city to country scope and then to global scope; verify the results no longer apply a stale city restriction. Switch countries and confirm the prior city's ID cannot be submitted as a new-country city selection.
+- [ ] Type a city query rapidly, then replace it before the 250 ms debounce finishes; with DevTools network throttling, confirm late responses do not restore stale options or a stale empty/error message.
+- [ ] Simulate a country catalog failure and a city catalog failure independently. Verify each retry button repeats only the relevant lookup, the current search inputs remain intact, and the associated select exposes its error through `aria-invalid` and `aria-describedby`.
+- [ ] Simulate a successful empty country catalog and a successful empty city lookup; verify the localized no-results message and retry button appear, rather than the unavailable/error message.
+- [ ] With NVDA/VoiceOver or TalkBack, confirm loading status is announced without repeated disruptive announcements, the city search input is associated with its city select, and failed selections cannot be committed while the lookup is pending or errored.
+- [ ] At 200% zoom and a 320 CSS-pixel viewport, verify country, city, retry buttons and validation messages remain readable and operable by touch and keyboard.
+
+For every failed scenario record the exact request URL (without credentials), response status, locale, screenshot, browser/version and frontend SHA. Keep the checkbox open until tested on a real browser/device; source-regression tests alone are not acceptance evidence.
+
 ## Security and diagnostics
 
 - [ ] In DevTools > Application > Cache Storage, confirm only the generic `/offline.html` response is cached by the Services service worker; no authenticated HTML, API payloads, tokens or search/profile data.
