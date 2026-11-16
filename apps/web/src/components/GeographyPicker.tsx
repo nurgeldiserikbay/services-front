@@ -31,14 +31,16 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [cityRequestVersion,setCityRequestVersion]=useState(0);
   const [countryRequestVersion,setCountryRequestVersion]=useState(0);
   const [cityResultsReady,setCityResultsReady]=useState(false);
+  const [countryResultsReady,setCountryResultsReady]=useState(false);
   const cityInputGeneration=useRef(0);
   useEffect(()=>{
     const controller=new AbortController();
     setError(false);
     setBusy(true);
+    setCountryResultsReady(false);
     fetch('/api/geography/countries',{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('geography unavailable');return r.json()})
-      .then((data:{items?:Country[]})=>{if(!controller.signal.aborted)setCountries(Array.isArray(data.items)?data.items:[])})
+      .then((data:{items?:Country[]})=>{if(!controller.signal.aborted){setCountries(Array.isArray(data.items)?data.items:[]);setCountryResultsReady(true)}})
       .catch(()=>{if(!controller.signal.aborted)setError(true)})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false)});
     return ()=>controller.abort();
@@ -101,6 +103,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       </label>}
     </div>
     <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">{busy?t.loading:countryId&&(citiesBusy||queryPending)?t.loading:""}</p>
+    {countryResultsReady&&!busy&&!error&&countries.length===0&&<p role="status" className="geoError">{locale==='kk'?'Елдер табылмады':'Страны не найдены'}</p>}
     {error&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
     {countryId&&cityResultsReady&&!citiesBusy&&!queryPending&&!cityError&&cities.length===0&&<p role="status" className="geoError">{locale==='kk'?'Қала табылмады':'Города не найдены'}</p>}
     {!queryPending&&cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
