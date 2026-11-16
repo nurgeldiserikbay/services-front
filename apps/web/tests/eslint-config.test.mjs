@@ -85,7 +85,8 @@ test('guest status receipt switches reset state at render, with abort-only clean
   assert.match(component,/return <ReceiptStatusView key=\{props\.requestId\+'\|'\+props\.serviceOfferId\} \{\.\.\.props\}\/>/);
   assert.match(component,/function ReceiptStatusView\(\{locale,requestId,serviceOfferId\}:Props\)/);
   assert.match(component,/useLayoutEffect\(\(\)=>\(\)=>\{\s*active\.current\?\.abort\(\)/);
-  assert.doesNotMatch(component,/useLayoutEffect\([\s\S]*?setState\(null\)/);
+  const cleanup=component.slice(component.indexOf('useLayoutEffect('),component.indexOf('async function refresh()'));
+  assert.doesNotMatch(cleanup,/setState\(null\)|setVersion\(null\)|setPending\(false\)|setError\(false\)/);
   assert.match(component,/if\(active\.current!==controller\|\|controller\.signal\.aborted\)return/);
   assert.match(component,/shouldReplaceGuestStatus\(currentVersion\.current,result\.version\)/);
   assert.match(component,/setVersion\(null\);setState\(null\);setError\(true\)/);
