@@ -77,7 +77,7 @@ test('late city responses cannot overwrite new input during debounce',()=>{
   assert.match(source,/const cityInputGeneration=useRef\(0\)/);
   assert.match(source,/const generation=cityInputGeneration\.current/);
   assert.match(source,/generation===cityInputGeneration\.current/);
-  assert.match(source,/if\(isCurrent\(\)\)\{setCities\(/);
+  assert.match(source,/const items=parseCities\(data,countryId\);if\(isCurrent\(\)\)\{setCities\(items\)/);
   assert.match(source,/cityInputGeneration\.current\+\+;setCityQuery\(e\.target\.value\)/);
 });
 
@@ -151,27 +151,19 @@ test('country and city inputs expose accurate assistive busy and error states',(
 });
 
 test('malformed country response is an error rather than an empty successful directory',()=>{
-  assert.match(source,/if\(!Array\.isArray\(data\?\.items\)\|\|!data\.items\.every\(isCountry\)\)throw new Error\('invalid country catalog'\)/);
+  assert.match(source,/const items=parseCountries\(data\)/);
   assert.match(source,/\.catch\(\(\)=>\{if\(!controller\.signal\.aborted\)setError\(true\)\}\)/);
   assert.match(source,/countryResultsReady&&!busy&&!error&&countries\.length===0/);
 });
 
 test('malformed city response is an error and cross-country options are filtered',()=>{
-  assert.match(source,/if\(!Array\.isArray\(data\?\.items\)\|\|!data\.items\.every\(isCity\)\)throw new Error\('invalid city catalog'\)/);
-  assert.match(source,/setCities\(data\.items\.filter\(city=>city\?\.country_id===countryId\)\)/);
+  assert.match(source,/const items=parseCities\(data,countryId\)/);
+  assert.match(source,/setCities\(items\)/);
   assert.match(source,/setCityError\(true\);setQueryPending\(false\)/);
 });
 
-test('country catalog entries require UUIDs, readable names and ISO2 codes',()=>{
-  assert.match(source,/const isCountry=\(value:unknown\):value is Country/);
-  assert.match(source,/uuid\.test\(value\.id\)/);
-  assert.match(source,/value\.name\.trim\(\)\.length>0/);
-  assert.match(source,/\^\[A-Za-z\]\{2\}\$/);
-});
-
-test('city catalog entries require valid IDs and mandatory location metadata',()=>{
-  assert.match(source,/const isCity=\(value:unknown\):value is City/);
-  assert.match(source,/uuid\.test\(value\.country_id\)/);
-  assert.match(source,/value\.timezone\.length>0/);
-  assert.match(source,/value\.area_id===null/);
+test('catalog parsing is delegated to the runtime-validated module',()=>{
+  assert.match(source,/import \{parseCountries,parseCities\} from '@\\/lib\\/geography-catalog\\.mjs'/);
+  assert.match(source,/const items=parseCountries\\(data\\)/);
+  assert.match(source,/const items=parseCities\\(data,countryId\\)/);
 });
