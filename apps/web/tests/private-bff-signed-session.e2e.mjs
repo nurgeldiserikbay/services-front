@@ -25,7 +25,7 @@ const userId=randomUUID(),sessionId=randomUUID(),familyId=randomUUID();
 const outsiderId=randomUUID(),outsiderSessionId=randomUUID();
 const outsiderBearer=randomBytes(32).toString('base64url');
 const outsiderHash=createHmac('sha256',hmacKey)
- .update('services-session:v1\\0'.replace('\\0',String.fromCharCode(0)))
+ .update('services-session:v1\0')
  .update(outsiderBearer).digest('hex');
 const fixture={
  personId:randomUUID(),orgId:randomUUID(),definitionId:randomUUID(),
