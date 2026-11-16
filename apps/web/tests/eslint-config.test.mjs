@@ -24,7 +24,7 @@ test('CI lint invokes ESLint and retains both existing security gates',()=>{
 test('legacy React hook exceptions remain scoped to named components',()=>{
   assert.match(config,/react-hooks\/set-state-in-effect/);
   assert.doesNotMatch(config,/react-hooks\/refs/);
-  for(const file of ['AccountDeviceSessions','GeographyPicker','GuestRequestStatusCheck','SellerWorkspace'])
+  for(const file of ['GeographyPicker','GuestRequestStatusCheck','SellerWorkspace'])
     assert.ok(config.includes(`src/components/${file}.tsx`),file);
   assert.doesNotMatch(config,/files:\s*\['src\/\*\*/);
 });
@@ -45,4 +45,15 @@ test('notification inbox initial load is scheduled outside React effect and canc
   assert.match(inbox,/return \(\)=>\{clearTimeout\(timer\);generation\.current\+\+;\}/);
   assert.match(inbox,/if\(current===generation\.current\)setItems\(result\.items\)/);
   assert.match(inbox,/if\(lock\.current\)return/);
+});
+
+test('device sessions initial fetch is deferred and cancelled on discarded mounts',()=>{
+  const component=readFileSync(new URL('../src/components/AccountDeviceSessions.tsx',import.meta.url),'utf8');
+  assert.ok(!config.includes('src/components/AccountDeviceSessions.tsx'));
+  assert.match(component,/useEffect\(\(\)=>\{\s*alive\.current=true;/);
+  assert.match(component,/const timer=setTimeout\(\(\)=>\{void refresh\(\);\},0\)/);
+  assert.match(component,/return \(\)=>\{clearTimeout\(timer\);alive\.current=false;requestId\.current\+\+;\}/);
+  assert.match(component,/if\(!alive\.current\|\|seq!==requestId\.current\)return/);
+  assert.match(component,/await revokeOtherAccountDevice\(\{sessionId:item\.id,csrf\}\)/);
+  assert.match(component,/await refresh\(\)/);
 });
