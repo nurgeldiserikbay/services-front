@@ -72,3 +72,13 @@ test('CI summary includes all production private and browser acceptance smoke ou
  }
  assert.match(workflow,/if: always\(\)/);
 });
+
+test('CI proves signed temporary seller web session reaches backend and is revoked',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ assert.match(workflow,/openssl rand -base64 32 > "\$RUNNER_TEMP\/services-private-bff-account-key"/);
+ assert.match(workflow,/SERVICES_WEB_ACCOUNT_SESSION_KEY="\$\(cat "\$RUNNER_TEMP\/services-private-bff-account-key"\)"/);
+ assert.match(workflow,/node apps\/web\/tests\/private-bff-signed-session\.e2e\.mjs/);
+ assert.ok(workflow.indexOf('Verify signed web session reaches backend and revocation invalidates access')>
+  workflow.indexOf('Start isolated feature-enabled private BFF without real login'));
+ assert.ok(workflow.includes('steps.signed_seller_session_e2e.outcome'));
+});
