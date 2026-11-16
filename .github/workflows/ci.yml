@@ -241,6 +241,8 @@ jobs:
           exit 1
       - name: Verify private frontend BFF routes remain default-off over live HTTP
         run: node apps/web/tests/private-bff-default-off.e2e.mjs
+      - name: Verify production service worker never intercepts private routes
+        run: node apps/web/tests/live-pwa-worker-isolation.e2e.mjs
       - name: Verify live search-to-profile journey
         id: live_e2e
         run: node apps/web/tests/public-profile-journey.e2e.mjs
