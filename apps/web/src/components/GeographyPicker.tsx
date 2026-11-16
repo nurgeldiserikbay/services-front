@@ -79,7 +79,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         </select>
       </label>
       <label>{t.country}
-        <select name="country_id" value={countryId} disabled={busy} onChange={e=>{
+        <select name="country_id" value={countryId} disabled={busy} aria-invalid={error} aria-describedby={error?"geography-country-error":undefined} onChange={e=>{
           const id=e.target.value;cityInputGeneration.current++;setCountryId(id);setCityId('');setCityQuery('');setDebouncedCityQuery('');setQueryPending(false);setCities([]);setScope(id?'country':'global');
         }}>
           <option value="">{busy?t.loading:t.chooseCountry}</option>
@@ -93,7 +93,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         }} placeholder={t.hint} maxLength={140} />
       </label>}
       {countryId&&<label>{t.city}
-        <select id="geography-city-select" name="city_id" value={cityId} aria-busy={citiesBusy||queryPending} aria-disabled={citiesBusy||queryPending||cityError} onChange={e=>{
+        <select id="geography-city-select" name="city_id" value={cityId} aria-busy={citiesBusy||queryPending} aria-disabled={citiesBusy||queryPending||cityError} aria-invalid={cityError} aria-describedby={cityError&&!queryPending?"geography-city-error":undefined} onChange={e=>{
           if(citiesBusy||queryPending||cityError)return;
           const value=e.target.value;setCityId(value);setScope(value?'city':'country');
         }}>
@@ -105,8 +105,8 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     </div>
     <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">{busy?t.loading:countryId&&(citiesBusy||queryPending)?t.loading:""}</p>
     {countryResultsReady&&!busy&&!error&&countries.length===0&&<p role="status" className="geoError">{locale==='kk'?'Елдер табылмады':'Страны не найдены'} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
-    {error&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
+    {error&&<p id="geography-country-error" role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
     {countryId&&cityResultsReady&&!citiesBusy&&!queryPending&&!cityError&&cities.length===0&&<p role="status" className="geoError">{locale==='kk'?'Қала табылмады':'Города не найдены'} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
-    {!queryPending&&cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
+    {!queryPending&&cityError&&<p id="geography-city-error" role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
   </fieldset>;
 }
