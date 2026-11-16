@@ -24,6 +24,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [cityQuery,setCityQuery]=useState('');
   const [error,setError]=useState(false);
   const [busy,setBusy]=useState(true);
+  const [citiesBusy,setCitiesBusy]=useState(false);
   useEffect(()=>{
     const controller=new AbortController();
     fetch('/api/geography/countries',{signal:controller.signal})
@@ -34,14 +35,17 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     return ()=>controller.abort();
   },[]);
   useEffect(()=>{
-    if(!countryId){return;}
+    if(!countryId){setCities([]);setCitiesBusy(false);return;}
     const controller=new AbortController();
+    setCitiesBusy(true);
+    setCities([]);
     const query=new URLSearchParams({country_id:countryId});
     if(cityQuery.trim())query.set('q',cityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('cities unavailable');return r.json()})
       .then((data:{items?:City[]})=>{if(!controller.signal.aborted)setCities(Array.isArray(data.items)?data.items:[])})
-      .catch(()=>{if(!controller.signal.aborted)setError(true)});
+      .catch(()=>{if(!controller.signal.aborted)setError(true)})
+      .finally(()=>{if(!controller.signal.aborted)setCitiesBusy(false)});
     return ()=>controller.abort();
   },[countryId,cityQuery]);
   return <fieldset className="geoPicker">
@@ -68,10 +72,11 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         }} placeholder={t.hint} maxLength={140} />
       </label>}
       {countryId&&<label>{t.city}
-        <select name="city_id" value={cityId} onChange={e=>{
+        <select name="city_id" value={cityId} disabled={citiesBusy} onChange={e=>{
           const value=e.target.value;setCityId(value);setScope(value?'city':'country');
         }}>
-          <option value="">{t.chooseCity}</option>
+          <option value="">{citiesBusy?t.loading:t.chooseCity}</option>
+          {cityId&&!cities.some(c=>c.id===cityId)&&<option value={cityId}>{t.city}</option>}
           {cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </label>}
