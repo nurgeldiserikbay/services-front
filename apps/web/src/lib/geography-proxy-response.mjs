@@ -34,5 +34,7 @@ export async function readGeoResponse(response){
   catch{throw new Error('invalid_geo_response');}
   if(!data||typeof data!=='object'||Array.isArray(data)||!Array.isArray(data.items))
     throw new Error('invalid_geo_response');
-  return data;
+  // Only the directory entries belong to the public response contract.
+  // Do not reflect backend debug metadata or accidental top-level fields.
+  return {items:data.items};
 }
