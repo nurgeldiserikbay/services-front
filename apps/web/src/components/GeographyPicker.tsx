@@ -27,6 +27,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [citiesBusy,setCitiesBusy]=useState(false);
   useEffect(()=>{
     const controller=new AbortController();
+    setError(false);
     fetch('/api/geography/countries',{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('geography unavailable');return r.json()})
       .then((data:{items?:Country[]})=>{if(!controller.signal.aborted)setCountries(Array.isArray(data.items)?data.items:[])})
@@ -39,6 +40,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     const controller=new AbortController();
     setCitiesBusy(true);
     setCities([]);
+    setError(false);
     const query=new URLSearchParams({country_id:countryId});
     if(cityQuery.trim())query.set('q',cityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
@@ -63,6 +65,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
           const id=e.target.value;setCountryId(id);setCityId('');setCityQuery('');setCities([]);setScope(id?'country':'global');
         }}>
           <option value="">{busy?t.loading:t.chooseCountry}</option>
+          {countryId&&!countries.some(c=>c.id===countryId)&&<option value={countryId}>{t.country}</option>}
           {countries.map(c=><option key={c.id} value={c.id}>{c.name} ({c.iso2})</option>)}
         </select>
       </label>
