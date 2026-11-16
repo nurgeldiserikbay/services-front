@@ -68,7 +68,7 @@ test('pending debounced city input suppresses stale empty feedback',()=>{
 
 
 test('stale city options and lookup errors stay hidden during pending input',()=>{
-  assert.match(source,/!queryPending&&cities\.map\(c=><option/);
+  assert.match(source,/!queryPending&&!cityError&&cities\.map\(c=><option/);
   assert.match(source,/!queryPending&&cityError&&<p role="status"/);
 });
 
@@ -106,4 +106,11 @@ test('pending city input remains pending until the latest lookup resolves',()=>{
 test('geography loading is announced to screen readers',()=>{
   assert.match(source,/<p role="status" aria-live="polite" aria-atomic="true" className="sr-only">/);
   assert.match(source,/busy\?t\.loading:countryId&&\(citiesBusy\|\|queryPending\)\?t\.loading:""/);
+});
+
+
+test('failed city lookup cannot expose stale choices or accept a selection',()=>{
+  assert.match(source,/aria-disabled=\{citiesBusy\|\|queryPending\|\|cityError\}/);
+  assert.match(source,/if\(citiesBusy\|\|queryPending\|\|cityError\)return/);
+  assert.match(source,/!queryPending&&!cityError&&cities\.map/);
 });
