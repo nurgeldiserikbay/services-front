@@ -35,6 +35,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   useEffect(()=>{
     const controller=new AbortController();
     setError(false);
+    setBusy(true);
     fetch('/api/geography/countries',{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('geography unavailable');return r.json()})
       .then((data:{items?:Country[]})=>{if(!controller.signal.aborted)setCountries(Array.isArray(data.items)?data.items:[])})
