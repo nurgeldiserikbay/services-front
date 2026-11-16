@@ -28,6 +28,11 @@ test('frontend CI protects the cross-repository integration journey',()=>{
  assert.match(workflow,/node apps\/web\/tests\/admin-api-boundary\.e2e\.mjs/);
  assert.match(workflow,/node apps\/web\/tests\/request-lifecycle-boundary\.e2e\.mjs/);
  assert.match(workflow,/node apps\/web\/tests\/public-profile-journey\.e2e\.mjs/);
+ assert.match(workflow,/node apps\/web\/tests\/private-bff-default-off\.e2e\.mjs/);
+ assert.ok(workflow.indexOf('Start frontend production server')<
+  workflow.indexOf('Verify private frontend BFF routes remain default-off over live HTTP'));
+ assert.ok(workflow.indexOf('Verify private frontend BFF routes remain default-off over live HTTP')<
+  workflow.indexOf('Verify live search-to-profile journey'));
  assert.ok(workflow.includes('curl --connect-timeout 2 --max-time 5 --cacert "$RUNNER_TEMP/api.crt" --fail --silent https://localhost:8443/v1/professions'));
  assert.doesNotMatch(workflow,/curl\s+--insecure\b/);
  assert.equal((workflow.match(/curl --connect-timeout 2 --max-time 5/g) ?? []).length,3,'all readiness probes must have a request deadline');
