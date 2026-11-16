@@ -2,16 +2,10 @@
 
 import {useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
+import {parseCountries,parseCities} from '@/lib/geography-catalog.mjs';
 
-type Country = {id:string;iso2:string;name:string};
-type City = {id:string;country_id:string;area_id:string|null;name:string;timezone:string};
 type Scope = 'global'|'country'|'city';
 type Props = {locale:Locale;initialCountryId:string;initialCityId:string;initialScope:Scope};
-
-const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
-const isCountry=(value:unknown):value is Country=>isRecord(value)&&typeof value.id==='string'&&uuid.test(value.id)&&typeof value.name==='string'&&value.name.trim().length>0&&typeof value.iso2==='string'&&/^[A-Za-z]{2}$/.test(value.iso2);
-const isCity=(value:unknown):value is City=>isRecord(value)&&typeof value.id==='string'&&uuid.test(value.id)&&typeof value.country_id==='string'&&uuid.test(value.country_id)&&typeof value.name==='string'&&value.name.trim().length>0&&typeof value.timezone==='string'&&value.timezone.length>0&&(value.area_id===null||(typeof value.area_id==='string'&&uuid.test(value.area_id)));
 
 const copy = {
   kk: {region:'Іздеу аймағы',world:'Бүкіл әлем',country:'Ел',city:'Қала',chooseCountry:'Елді таңдаңыз',chooseCity:'Қаланы таңдаңыз',searchCity:'Қала атауы',loading:'Жүктелуде...',unavailable:'Географиялық каталог қазір қолжетімсіз',hint:'Қаланы табу үшін атауын енгізіңіз',allCities:'Ел бойынша іздеу'},
@@ -21,8 +15,8 @@ const copy = {
 /** No precise location requests. Server checks canonical UUIDs for each selected scope. */
 export function GeographyPicker({locale,initialCountryId,initialCityId,initialScope}:Props) {
   const t=copy[locale];
-  const [countries,setCountries]=useState<Country[]>([]);
-  const [cities,setCities]=useState<City[]>([]);
+  const [countries,setCountries]=useState<ReturnType<typeof parseCountries>>([]);
+  const [cities,setCities]=useState<ReturnType<typeof parseCities>>([]);
   const [countryId,setCountryId]=useState(initialCountryId);
   const [cityId,setCityId]=useState(initialCityId);
   const [scope,setScope]=useState<Scope>(initialScope);
@@ -46,7 +40,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     setCountries([]);
     fetch('/api/geography/countries',{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('geography unavailable');return r.json()})
-      .then((data:{items?:Country[]})=>{if(!Array.isArray(data?.items)||!data.items.every(isCountry))throw new Error('invalid country catalog');if(!controller.signal.aborted){setCountries(data.items);setCountryResultsReady(true)}})
+      .then((data:unknown)=>{const items=parseCountries(data);if(!controller.signal.aborted){setCountries(items);setCountryResultsReady(true)}})
       .catch(()=>{if(!controller.signal.aborted)setError(true)})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false)});
     return ()=>controller.abort();
@@ -68,7 +62,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     if(debouncedCityQuery.trim())query.set('q',debouncedCityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('cities unavailable');return r.json()})
-      .then((data:{items?:City[]})=>{if(!Array.isArray(data?.items)||!data.items.every(isCity))throw new Error('invalid city catalog');if(isCurrent()){setCities(data.items.filter(city=>city?.country_id===countryId));setCityResultsReady(true);setQueryPending(false)}})
+      .then((data:unknown)=>{const items=parseCities(data,countryId);if(isCurrent()){setCities(items);setCityResultsReady(true);setQueryPending(false)}})
       .catch(()=>{if(isCurrent()){setCityError(true);setQueryPending(false)}})
       .finally(()=>{if(isCurrent())setCitiesBusy(false)});
     return ()=>controller.abort();
