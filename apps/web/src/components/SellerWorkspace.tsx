@@ -89,7 +89,13 @@ export function SellerWorkspace({locale}:{locale:Locale}){
    throw error;
    }finally{refreshLock.current=false;}
  },[]);
- useEffect(()=>{void load().catch(()=>{});return ()=>{generation.current++;};},[load]);
+ // Initial fetch is scheduled after the effect callback so that it does
+ // not synchronously cascade React updates. Cleanup cancels an unstarted
+ // request and invalidates a request already underway.
+ useEffect(()=>{
+   const timer=setTimeout(()=>{void load().catch(()=>{});},0);
+   return ()=>{clearTimeout(timer);generation.current++;};
+ },[load]);
  const loadMore=useCallback(async()=>{
    if(!cursor||pageLock.current||refreshLock.current)return;
    pageLock.current=true;
