@@ -101,3 +101,9 @@ test('pending city input remains pending until the latest lookup resolves',()=>{
   assert.match(source,/setCityResultsReady\(true\);setQueryPending\(false\)/);
   assert.match(source,/setCityError\(true\);setQueryPending\(false\)/);
 });
+
+
+test('geography loading is announced to screen readers',()=>{
+  assert.match(source,/<p role="status" aria-live="polite" aria-atomic="true" className="sr-only">/);
+  assert.match(source,/busy\?t\.loading:countryId&&\(citiesBusy\|\|queryPending\)\?t\.loading:""/);
+});
