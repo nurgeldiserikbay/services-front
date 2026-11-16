@@ -88,8 +88,8 @@ try{
  // Chromium service workers run in a separate DevTools target. Offline
  // emulation on the page target alone can leave the worker network online,
  // so explicitly make both the document and its active worker offline.
- const targets=await send('Target.getTargets');
- const serviceWorker=targets.targetInfos.find(x=>x.type==='service_worker'&&x.url.startsWith(origin+'/sw.js'));
+ const workerTargets=await send('Target.getTargets');
+ const serviceWorker=workerTargets.targetInfos.find(x=>x.type==='service_worker'&&x.url.startsWith(origin+'/sw.js'));
  assert.ok(serviceWorker,'active service worker DevTools target must exist');
  const attached=await send('Target.attachToTarget',{targetId:serviceWorker.targetId,flatten:true});
  assert.ok(attached.sessionId,'Chrome must attach to worker target');
