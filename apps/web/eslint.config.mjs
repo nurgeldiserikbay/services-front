@@ -13,7 +13,6 @@ export default defineConfig([
     files:[
       'src/components/GeographyPicker.tsx',
       'src/components/GuestRequestStatusCheck.tsx',
-      'src/components/SellerWorkspace.tsx',
     ],
     rules:{'react-hooks/set-state-in-effect':'off'},
   },
