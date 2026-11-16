@@ -18,3 +18,7 @@ The **TypeScript AST lint** (`apps/web/scripts/lint-ast.mjs`) additionally rejec
 ## Next.js semantic lint (2026-11-16)
 
 `pnpm lint` additionally runs ESLint 9 over `apps/web/src` with Next.js 16 flat configs (`eslint-config-next/core-web-vitals` and `eslint-config-next/typescript`). These cover React, hooks, accessibility, Core Web Vitals and TypeScript recommendations. Security and AST lint still run first. Acceptance requires a verified pnpm lockfile and green frontend foundation CI.
+
+### Tracked React lint baseline
+
+The initial full ESLint run ([CI #43832617953](https://github.com/nurgeldiserikbay/services-front/actions/runs/43832617953)) exposed 8 React hook errors in existing components. The `react-hooks/set-state-in-effect` rule is temporarily disabled **only** for AccountDeviceSessions, AccountNotificationsInbox, GeographyPicker, GuestRequestStatusCheck and SellerWorkspace. `react-hooks/refs` is temporarily disabled **only** for SellerDecisionActions. These are explicit migration debts, not blanket suppression of React rules; removing each file-level exception requires restructuring the relevant component and a passing CI run. The remaining React/Next.js/TypeScript recommended rules continue to run.
