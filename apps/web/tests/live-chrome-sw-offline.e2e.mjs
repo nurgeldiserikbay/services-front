@@ -49,7 +49,7 @@ try{
   if(msg.error)job.reject(Error(msg.error.message));
   else job.resolve(msg.result);
  });
- const send=(method,params={})=>new Promise((resolve,reject)=>{
+ const send=(method,params={},sessionId)=>new Promise((resolve,reject)=>{
   const current=++id;
   const timeout=setTimeout(()=>{
    pending.delete(current);
@@ -59,7 +59,7 @@ try{
    resolve:value=>{clearTimeout(timeout);resolve(value);},
    reject:error=>{clearTimeout(timeout);reject(error);},
   });
-  ws.send(JSON.stringify({id:current,method,params}));
+  ws.send(JSON.stringify({id:current,method,params,...(sessionId?{sessionId}:{})}));
  });
  const evaluate=async expression=>{
   const result=await send('Runtime.evaluate',{
@@ -85,8 +85,18 @@ try{
  const before=await evaluate('(async()=>{const names=await caches.keys();const details=[];for(const name of names){const cache=await caches.open(name);const keys=await cache.keys();details.push({name,urls:keys.map(x=>new URL(x.url).pathname)});}return details})()');
  assert.deepEqual(before,[{name:'services-offline-shell-v1',urls:['/offline.html']}],
   'only generic public offline page may be cached');
- // No more network access; the running service worker can still serve offline.html.
- await send('Network.emulateNetworkConditions',{offline:true,latency:0,downloadThroughput:0,uploadThroughput:0});
+ // Chromium service workers run in a separate DevTools target. Offline
+ // emulation on the page target alone can leave the worker network online,
+ // so explicitly make both the document and its active worker offline.
+ const targets=await send('Target.getTargets');
+ const serviceWorker=targets.targetInfos.find(x=>x.type==='service_worker'&&x.url.startsWith(origin+'/sw.js'));
+ assert.ok(serviceWorker,'active service worker DevTools target must exist');
+ const attached=await send('Target.attachToTarget',{targetId:serviceWorker.targetId,flatten:true});
+ assert.ok(attached.sessionId,'Chrome must attach to worker target');
+ await send('Network.enable',{},attached.sessionId);
+ const noNetwork={offline:true,latency:0,downloadThroughput:0,uploadThroughput:0};
+ await send('Network.emulateNetworkConditions',noNetwork,attached.sessionId);
+ await send('Network.emulateNetworkConditions',noNetwork);
  await send('Page.navigate',{url:origin+'/ru'});
  await until(()=>evaluate('document.querySelector("main#main-content")?.textContent?.includes("Нет подключения")===true'),'offline public navigation');
  const offline=await evaluate('({body:document.body.textContent,lang:document.documentElement.lang})');
@@ -97,7 +107,9 @@ try{
   'private API requests must fail offline without cached successful responses: '+JSON.stringify(privateChecks));
  const after=await evaluate('(async()=>{const names=await caches.keys();const results=[];for(const name of names){const entries=await(await caches.open(name)).keys();results.push({name,urls:entries.map(x=>new URL(x.url).pathname)});}return results})()');
  assert.deepEqual(after,before,'private requests must not add Cache Storage entries');
- await send('Network.emulateNetworkConditions',{offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1});
+ const online={offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1};
+ await send('Network.emulateNetworkConditions',online,attached.sessionId);
+ await send('Network.emulateNetworkConditions',online);
  await send('Page.navigate',{url:origin+'/kk'});
  await until(()=>evaluate('document.documentElement.lang==="kk" && !!document.querySelector("form[role=search]")'),'online recovery');
  console.log('Real Chrome SW: registered, controlled, public offline fallback, private failures, no cache leakage, and recovery');
