@@ -90,13 +90,13 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         }} placeholder={t.hint} maxLength={140} />
       </label>}
       {countryId&&<label>{t.city}
-        <select id="geography-city-select" name="city_id" value={cityId} aria-busy={citiesBusy||queryPending} aria-disabled={citiesBusy||queryPending} onChange={e=>{
-          if(citiesBusy||queryPending)return;
+        <select id="geography-city-select" name="city_id" value={cityId} aria-busy={citiesBusy||queryPending} aria-disabled={citiesBusy||queryPending||cityError} onChange={e=>{
+          if(citiesBusy||queryPending||cityError)return;
           const value=e.target.value;setCityId(value);setScope(value?'city':'country');
         }}>
           <option value="">{citiesBusy||queryPending?t.loading:t.chooseCity}</option>
           {cityId&&!cities.some(c=>c.id===cityId)&&<option value={cityId}>{t.city}</option>}
-          {!queryPending&&cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          {!queryPending&&!cityError&&cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </label>}
     </div>
