@@ -17,3 +17,10 @@ test('long content and interactive controls remain usable on narrow screens',()=
   assert.match(css,/\.geoControls select,\.geoControls input/);
   assert.match(css,/\.searchRow button\{width:100%\}/);
 });
+
+test('geography errors and retry touch targets remain usable at narrow width and zoom',()=>{
+  assert.match(css,/\.geoError\{display:flex;flex-wrap:wrap;align-items:center;gap:10px;overflow-wrap:anywhere\}/);
+  assert.match(css,/\.geoError button\{min-height:44px;min-width:44px;padding:10px 16px;line-height:1\.4;max-width:100%;white-space:normal\}/);
+  assert.match(css,/@media\(max-width:360px\)\{\.geoError button\{width:100%\}\}/);
+  assert.match(css,/@media\(forced-colors:active\)\{\.geoError button\{border:1px solid ButtonText\}\}/);
+});
