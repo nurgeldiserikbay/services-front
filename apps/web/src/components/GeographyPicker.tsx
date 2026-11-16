@@ -72,7 +72,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         }} placeholder={t.hint} maxLength={140} />
       </label>}
       {countryId&&<label>{t.city}
-        <select name="city_id" value={cityId} disabled={citiesBusy} onChange={e=>{
+        <select name="city_id" value={cityId} onChange={e=>{
           const value=e.target.value;setCityId(value);setScope(value?'city':'country');
         }}>
           <option value="">{citiesBusy?t.loading:t.chooseCity}</option>
