@@ -6,7 +6,7 @@ const source=readFileSync(new URL('../src/components/GeographyPicker.tsx',import
 
 test('city options are cleared while a new country or city query loads',()=>{
   assert.match(source,/setCitiesBusy\(true\);\s*setCities\(\[\]\);/);
-  assert.match(source,/return \(\)=>controller\.abort\(\);\s*},\[countryId,cityQuery\]\);/);
+  assert.match(source,/return \(\)=>controller\.abort\(\);\s*},\[countryId,cityQuery,cityRequestVersion\]\);/);
   assert.match(source,/\.finally\(\(\)=>\{if\(!controller\.signal\.aborted\)setCitiesBusy\(false\)\}\)/);
 });
 
@@ -27,5 +27,12 @@ test('country and city lookup errors are tracked separately',()=>{
   assert.match(source,/const \[cityError,setCityError\]=useState\(false\)/);
   assert.match(source,/setCitiesBusy\(true\);\s*setCities\(\[\]\);\s*setCityError\(false\)/);
   assert.match(source,/\.catch\(\(\)=>\{if\(!controller\.signal\.aborted\)setCityError\(true\)\}\)/);
-  assert.match(source,/\(error\|\|cityError\)&&<p role="status"/);
+  assert.match(source,/cityError&&<p role="status"/);
+});
+
+
+test('failed city lookup can be retried without changing filters',()=>{
+  assert.match(source,/const \[cityRequestVersion,setCityRequestVersion\]=useState\(0\)/);
+  assert.match(source,/onClick=\{\(\)=>setCityRequestVersion\(v=>v\+1\)\}/);
+  assert.match(source,/\[countryId,cityQuery,cityRequestVersion\]/);
 });
