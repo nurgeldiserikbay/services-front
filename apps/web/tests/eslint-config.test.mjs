@@ -24,7 +24,7 @@ test('CI lint invokes ESLint and retains both existing security gates',()=>{
 test('legacy React hook exceptions remain scoped to named components',()=>{
   assert.match(config,/react-hooks\/set-state-in-effect/);
   assert.doesNotMatch(config,/react-hooks\/refs/);
-  for(const file of ['GeographyPicker','GuestRequestStatusCheck','SellerWorkspace'])
+  for(const file of ['GeographyPicker','GuestRequestStatusCheck'])
     assert.ok(config.includes(`src/components/${file}.tsx`),file);
   assert.doesNotMatch(config,/files:\s*\['src\/\*\*/);
 });
@@ -56,4 +56,15 @@ test('device sessions initial fetch is deferred and cancelled on discarded mount
   assert.match(component,/if\(!alive\.current\|\|seq!==requestId\.current\)return/);
   assert.match(component,/await revokeOtherAccountDevice\(\{sessionId:item\.id,csrf\}\)/);
   assert.match(component,/await refresh\(\)/);
+});
+
+test('seller workspace initial load is deferred and cleanup invalidates stale requests',()=>{
+  const workspace=readFileSync(new URL('../src/components/SellerWorkspace.tsx',import.meta.url),'utf8');
+  assert.ok(!config.includes('src/components/SellerWorkspace.tsx'));
+  assert.match(workspace,/const timer=setTimeout\(\(\)=>\{void load\(\)\.catch\(\(\)=>\{\}\);\},0\)/);
+  assert.match(workspace,/return \(\)=>\{clearTimeout\(timer\);generation\.current\+\+;\}/);
+  assert.match(workspace,/if\(current!==generation\.current\)return/);
+  assert.match(workspace,/if\(current===generation\.current\)/);
+  assert.match(workspace,/if\(refreshLock\.current\)return/);
+  assert.match(workspace,/setStatus\('unauthorized'\)/);
 });
