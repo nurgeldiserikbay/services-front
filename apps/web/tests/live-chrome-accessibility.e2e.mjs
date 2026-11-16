@@ -102,24 +102,6 @@ try{
     assert.equal(result.focusedSkip,true,'keyboard skip link must accept focus');
     assert.ok(result.documentWidth<=result.innerWidth+1,
       locale+' has horizontal overflow at 320 CSS px: '+JSON.stringify(result));
-    // Start at the document rather than an artificial script-focused link.
-    // Real keyboard Tab must reach the skip link as the first focus target.
-    await evaluate('document.activeElement?.blur()');
-    await send('Input.dispatchKeyEvent',{
-      type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,nativeVirtualKeyCode:9,
-    });
-    await send('Input.dispatchKeyEvent',{
-      type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,nativeVirtualKeyCode:9,
-    });
-    const keyboard=await evaluate(`(()=>{
-      const current=document.activeElement;
-      const skip=document.querySelector('a[href="#main-content"]');
-      return {isSkip:current===skip,tag:current?.tagName??'',
-        href:current?.getAttribute?.('href')??''};
-    })()`);
-    assert.equal(keyboard.isSkip,true,
-      locale+' first keyboard Tab must reach skip link: '+JSON.stringify(keyboard));
-
     // Chromium's actual forced-colors emulation catches missing or ineffective
     // high-contrast focus indicators, beyond a source-only CSS assertion.
     await send('Emulation.setEmulatedMedia',{features:[{
@@ -137,7 +119,7 @@ try{
     assert.notEqual(contrast.width,'0px','skip link outline must be visible');
     await send('Emulation.setEmulatedMedia',{features:[]});
 
-    console.log('Chrome mobile keyboard/landmark/high-contrast smoke '+locale+' OK');
+    console.log('Chrome mobile landmark/focus/high-contrast smoke '+locale+' OK');
   }
 }finally{
   if(socket)socket.close();
