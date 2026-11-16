@@ -12,8 +12,8 @@ test('city options are cleared while a new country or city query loads',()=>{
 
 test('a previously selected city remains a valid form option during refresh',()=>{
   assert.match(source,/cityId&&!cities\.some\(c=>c\.id===cityId\)&&<option value=\{cityId\}>/);
-  assert.match(source,/<select name="city_id" value=\{cityId\} onChange=/);
-  assert.doesNotMatch(source,/<select name="city_id"[^>]*disabled=/);
+  assert.match(source,/<select id="geography-city-select" name="city_id" value=\{cityId\}/);
+  assert.doesNotMatch(source,/<select id="geography-city-select"[^>]*\sdisabled=/);
 });
 
 
@@ -85,4 +85,12 @@ test('late city responses cannot overwrite new input during debounce',()=>{
 test('retrying country lookup restores loading state until request settles',()=>{
   assert.match(source,/setError\(false\);\s*setBusy\(true\);\s*fetch\('\/api\/geography\/countries'/);
   assert.match(source,/\.finally\(\(\)=>\{if\(!controller\.signal\.aborted\)setBusy\(false\)\}\)/);
+});
+
+
+test('city search exposes a busy relationship and prevents edits without omitting form value',()=>{
+  assert.match(source,/aria-controls="geography-city-select"/);
+  assert.match(source,/aria-busy=\{citiesBusy\|\|queryPending\}/);
+  assert.match(source,/aria-disabled=\{citiesBusy\|\|queryPending\}/);
+  assert.match(source,/if\(citiesBusy\|\|queryPending\)return/);
 });
