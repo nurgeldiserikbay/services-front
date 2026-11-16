@@ -121,3 +121,9 @@ test('empty country directory is distinct from a request failure',()=>{
   assert.match(source,/setCountryResultsReady\(true\)/);
   assert.match(source,/countryResultsReady&&!busy&&!error&&countries\.length===0&&<p role="status"/);
 });
+
+
+test('country directory retry does not expose stale country choices',()=>{
+  assert.match(source,/setCountryResultsReady\(false\);\s*setCountries\(\[\]\);\s*fetch\('\/api\/geography\/countries'/);
+  assert.match(source,/!error&&countries\.map\(c=><option/);
+});
