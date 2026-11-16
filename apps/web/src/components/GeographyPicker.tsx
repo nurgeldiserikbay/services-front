@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 
 type Country = {id:string;iso2:string;name:string};
@@ -31,6 +31,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [cityRequestVersion,setCityRequestVersion]=useState(0);
   const [countryRequestVersion,setCountryRequestVersion]=useState(0);
   const [cityResultsReady,setCityResultsReady]=useState(false);
+  const cityInputGeneration=useRef(0);
   useEffect(()=>{
     const controller=new AbortController();
     setError(false);
@@ -48,6 +49,8 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   useEffect(()=>{
     if(!countryId){setCities([]);setCitiesBusy(false);setCityError(false);setCityResultsReady(false);return;}
     const controller=new AbortController();
+    const generation=cityInputGeneration.current;
+    const isCurrent=()=>!controller.signal.aborted&&generation===cityInputGeneration.current;
     setCitiesBusy(true);
     setCityResultsReady(false);
     setCities([]);
@@ -56,9 +59,9 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     if(debouncedCityQuery.trim())query.set('q',debouncedCityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('cities unavailable');return r.json()})
-      .then((data:{items?:City[]})=>{if(!controller.signal.aborted){setCities(Array.isArray(data.items)?data.items:[]);setCityResultsReady(true)}})
-      .catch(()=>{if(!controller.signal.aborted)setCityError(true)})
-      .finally(()=>{if(!controller.signal.aborted)setCitiesBusy(false)});
+      .then((data:{items?:City[]})=>{if(isCurrent()){setCities(Array.isArray(data.items)?data.items:[]);setCityResultsReady(true)}})
+      .catch(()=>{if(isCurrent())setCityError(true)})
+      .finally(()=>{if(isCurrent())setCitiesBusy(false)});
     return ()=>controller.abort();
   },[countryId,debouncedCityQuery,cityRequestVersion]);
   return <fieldset className="geoPicker">
@@ -73,7 +76,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       </label>
       <label>{t.country}
         <select name="country_id" value={countryId} disabled={busy} onChange={e=>{
-          const id=e.target.value;setCountryId(id);setCityId('');setCityQuery('');setDebouncedCityQuery('');setQueryPending(false);setCities([]);setScope(id?'country':'global');
+          const id=e.target.value;cityInputGeneration.current++;setCountryId(id);setCityId('');setCityQuery('');setDebouncedCityQuery('');setQueryPending(false);setCities([]);setScope(id?'country':'global');
         }}>
           <option value="">{busy?t.loading:t.chooseCountry}</option>
           {countryId&&!countries.some(c=>c.id===countryId)&&<option value={countryId}>{t.country}</option>}
@@ -82,7 +85,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       </label>
       {countryId&&<label>{t.searchCity}
         <input type="search" value={cityQuery} onChange={e=>{
-          setCityQuery(e.target.value);setQueryPending(true);setCityId('');if(scope==='city')setScope('country');
+          cityInputGeneration.current++;setCityQuery(e.target.value);setQueryPending(true);setCityId('');if(scope==='city')setScope('country');
         }} placeholder={t.hint} maxLength={140} />
       </label>}
       {countryId&&<label>{t.city}
