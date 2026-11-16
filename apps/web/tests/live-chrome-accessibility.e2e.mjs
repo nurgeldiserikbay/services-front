@@ -109,12 +109,14 @@ try{
     }]});
     const contrast=await evaluate(`(()=>{
       const link=document.querySelector('a[href="#main-content"]');
-      link?.focus();
+      link?.focus({focusVisible:true});
       return {active:matchMedia('(forced-colors: active)').matches,
+        focusVisible:link?.matches(':focus-visible')??false,
         style:getComputedStyle(link).outlineStyle,
         width:getComputedStyle(link).outlineWidth};
     })()`);
     assert.equal(contrast.active,true,'Chrome forced-colors should be active');
+    assert.equal(contrast.focusVisible,true,'keyboard-style focus state must be active');
     assert.notEqual(contrast.style,'none','skip link needs a high-contrast outline');
     assert.notEqual(contrast.width,'0px','skip link outline must be visible');
     await send('Emulation.setEmulatedMedia',{features:[]});
