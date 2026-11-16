@@ -38,10 +38,16 @@ const translations={
   },
 } as const;
 
-/** Manual refresh only: no background polling, no contact/OTP or bearer exposure. */
-export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
-  locale:Locale;requestId:string;serviceOfferId:string;
-}){
+type Props={locale:Locale;requestId:string;serviceOfferId:string};
+
+/** A receipt switch must replace the whole stateful subtree during React's
+ * render, not after an effect: no old customer's status is ever painted.
+ * Manual refresh only; no background polling or bearer exposure.
+ */
+export function GuestRequestStatusCheck(props:Props){
+  return <ReceiptStatusView key={props.requestId+'|'+props.serviceOfferId} {...props}/>;
+}
+function ReceiptStatusView({locale,requestId,serviceOfferId}:Props){
   const t=translations[locale];
   const [state,setState]=useState<PrivateGuestStatusState|null>(null);
   const [version,setVersion]=useState<number|null>(null);
@@ -50,23 +56,13 @@ export function GuestRequestStatusCheck({locale,requestId,serviceOfferId}:{
   const active=useRef<AbortController|null>(null);
   const busy=useRef(false);
   const currentVersion=useRef<number|null>(null);
-  // A receipt switch invalidates both the displayed result and in-flight
-  // requests. Never show one customer's status for another receipt.
-  useLayoutEffect(()=>{
+  // The key on ReceiptStatusView resets every state/ref at render time when
+  // the receipt changes. Cleanup only aborts work for an unmounted receipt.
+  useLayoutEffect(()=>()=>{
     active.current?.abort();
     active.current=null;
     busy.current=false;
-    currentVersion.current=null;
-    setState(null);
-    setVersion(null);
-    setPending(false);
-    setError(false);
-    return ()=>{
-      active.current?.abort();
-      active.current=null;
-      busy.current=false;
-    };
-  },[requestId,serviceOfferId]);
+  },[]);
 
   async function refresh(){
     if(busy.current)return;
