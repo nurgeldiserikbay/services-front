@@ -127,3 +127,9 @@ test('country directory retry does not expose stale country choices',()=>{
   assert.match(source,/setCountryResultsReady\(false\);\s*setCountries\(\[\]\);\s*fetch\('\/api\/geography\/countries'/);
   assert.match(source,/!error&&countries\.map\(c=><option/);
 });
+
+
+test('empty country and city catalogs can be retried without refreshing page',()=>{
+  assert.match(source,/countries\.length===0&&<p role="status"[^\n]*setCountryRequestVersion\(v=>v\+1\)/);
+  assert.match(source,/cities\.length===0&&<p role="status"[^\n]*setCityRequestVersion\(v=>v\+1\)/);
+});
