@@ -38,6 +38,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     setError(false);
     setBusy(true);
     setCountryResultsReady(false);
+    setCountries([]);
     fetch('/api/geography/countries',{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('geography unavailable');return r.json()})
       .then((data:{items?:Country[]})=>{if(!controller.signal.aborted){setCountries(Array.isArray(data.items)?data.items:[]);setCountryResultsReady(true)}})
@@ -83,7 +84,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         }}>
           <option value="">{busy?t.loading:t.chooseCountry}</option>
           {countryId&&!countries.some(c=>c.id===countryId)&&<option value={countryId}>{t.country}</option>}
-          {countries.map(c=><option key={c.id} value={c.id}>{c.name} ({c.iso2})</option>)}
+          {!error&&countries.map(c=><option key={c.id} value={c.id}>{c.name} ({c.iso2})</option>)}
         </select>
       </label>
       {countryId&&<label>{t.searchCity}
