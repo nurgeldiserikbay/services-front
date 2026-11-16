@@ -23,6 +23,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [scope,setScope]=useState<Scope>(initialScope);
   const [cityQuery,setCityQuery]=useState('');
   const [debouncedCityQuery,setDebouncedCityQuery]=useState('');
+  const [queryPending,setQueryPending]=useState(false);
   const [error,setError]=useState(false);
   const [busy,setBusy]=useState(true);
   const [citiesBusy,setCitiesBusy]=useState(false);
@@ -41,7 +42,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     return ()=>controller.abort();
   },[countryRequestVersion]);
   useEffect(()=>{
-    const timer=setTimeout(()=>setDebouncedCityQuery(cityQuery),250);
+    const timer=setTimeout(()=>{setDebouncedCityQuery(cityQuery);setQueryPending(false)},250);
     return ()=>clearTimeout(timer);
   },[cityQuery]);
   useEffect(()=>{
@@ -72,7 +73,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       </label>
       <label>{t.country}
         <select name="country_id" value={countryId} disabled={busy} onChange={e=>{
-          const id=e.target.value;setCountryId(id);setCityId('');setCityQuery('');setCities([]);setScope(id?'country':'global');
+          const id=e.target.value;setCountryId(id);setCityId('');setCityQuery('');setDebouncedCityQuery('');setQueryPending(false);setCities([]);setScope(id?'country':'global');
         }}>
           <option value="">{busy?t.loading:t.chooseCountry}</option>
           {countryId&&!countries.some(c=>c.id===countryId)&&<option value={countryId}>{t.country}</option>}
@@ -81,21 +82,21 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
       </label>
       {countryId&&<label>{t.searchCity}
         <input type="search" value={cityQuery} onChange={e=>{
-          setCityQuery(e.target.value);setCityId('');if(scope==='city')setScope('country');
+          setCityQuery(e.target.value);setQueryPending(true);setCityId('');if(scope==='city')setScope('country');
         }} placeholder={t.hint} maxLength={140} />
       </label>}
       {countryId&&<label>{t.city}
         <select name="city_id" value={cityId} onChange={e=>{
           const value=e.target.value;setCityId(value);setScope(value?'city':'country');
         }}>
-          <option value="">{citiesBusy?t.loading:t.chooseCity}</option>
+          <option value="">{citiesBusy||queryPending?t.loading:t.chooseCity}</option>
           {cityId&&!cities.some(c=>c.id===cityId)&&<option value={cityId}>{t.city}</option>}
           {cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </label>}
     </div>
     {error&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCountryRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
-    {countryId&&cityResultsReady&&!citiesBusy&&!cityError&&cities.length===0&&<p role="status" className="geoError">{locale==='kk'?'Қала табылмады':'Города не найдены'}</p>}
+    {countryId&&cityResultsReady&&!citiesBusy&&!queryPending&&!cityError&&cities.length===0&&<p role="status" className="geoError">{locale==='kk'?'Қала табылмады':'Города не найдены'}</p>}
     {cityError&&<p role="status" className="geoError">{t.unavailable} <button type="button" onClick={()=>setCityRequestVersion(v=>v+1)}>{locale==='kk'?'Қайталау':'Повторить'}</button></p>}
   </fieldset>;
 }
