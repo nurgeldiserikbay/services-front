@@ -85,12 +85,12 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         </select>
       </label>
       {countryId&&<label>{t.searchCity}
-        <input type="search" value={cityQuery} onChange={e=>{
+        <input type="search" value={cityQuery} aria-controls="geography-city-select" onChange={e=>{
           cityInputGeneration.current++;setCityQuery(e.target.value);setQueryPending(true);setCityId('');if(scope==='city')setScope('country');
         }} placeholder={t.hint} maxLength={140} />
       </label>}
       {countryId&&<label>{t.city}
-        <select name="city_id" value={cityId} onChange={e=>{
+        <select id="geography-city-select" name="city_id" value={cityId} aria-busy={citiesBusy||queryPending} disabled={citiesBusy||queryPending} onChange={e=>{
           const value=e.target.value;setCityId(value);setScope(value?'city':'country');
         }}>
           <option value="">{citiesBusy||queryPending?t.loading:t.chooseCity}</option>
