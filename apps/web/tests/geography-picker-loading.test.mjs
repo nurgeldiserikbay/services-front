@@ -83,7 +83,7 @@ test('late city responses cannot overwrite new input during debounce',()=>{
 
 
 test('retrying country lookup restores loading state until request settles',()=>{
-  assert.match(source,/setError\(false\);\s*setBusy\(true\);\s*setCountryResultsReady\(false\);\s*fetch\('\/api\/geography\/countries'/);
+  assert.match(source,/setError\(false\);\s*setBusy\(true\);\s*setCountryResultsReady\(false\);\s*setCountries\(\[\]\);\s*fetch\('\/api\/geography\/countries'/);
   assert.match(source,/\.finally\(\(\)=>\{if\(!controller\.signal\.aborted\)setBusy\(false\)\}\)/);
 });
 
