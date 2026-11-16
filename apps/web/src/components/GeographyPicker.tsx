@@ -79,7 +79,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         </select>
       </label>
       <label>{t.country}
-        <select name="country_id" value={countryId} disabled={busy} aria-invalid={error} aria-describedby={error?"geography-country-error":undefined} onChange={e=>{
+        <select name="country_id" value={countryId} disabled={busy} aria-busy={busy} aria-invalid={error} aria-describedby={error?"geography-country-error":undefined} onChange={e=>{
           const id=e.target.value;cityInputGeneration.current++;setCountryId(id);setCityId('');setCityQuery('');setDebouncedCityQuery('');setQueryPending(false);setCities([]);setScope(id?'country':'global');
         }}>
           <option value="">{busy?t.loading:t.chooseCountry}</option>
@@ -88,12 +88,12 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         </select>
       </label>
       {countryId&&<label>{t.searchCity}
-        <input type="search" value={cityQuery} aria-controls="geography-city-select" onChange={e=>{
+        <input type="search" value={cityQuery} aria-controls="geography-city-select" aria-busy={citiesBusy||queryPending} aria-invalid={cityError&&!queryPending} aria-describedby={cityError&&!queryPending?"geography-city-error":undefined} onChange={e=>{
           cityInputGeneration.current++;setCityQuery(e.target.value);setQueryPending(true);setCityId('');if(scope==='city')setScope('country');
         }} placeholder={t.hint} maxLength={140} />
       </label>}
       {countryId&&<label>{t.city}
-        <select id="geography-city-select" name="city_id" value={cityId} aria-busy={citiesBusy||queryPending} aria-disabled={citiesBusy||queryPending||cityError} aria-invalid={cityError} aria-describedby={cityError&&!queryPending?"geography-city-error":undefined} onChange={e=>{
+        <select id="geography-city-select" name="city_id" value={cityId} aria-busy={citiesBusy||queryPending} aria-disabled={citiesBusy||queryPending||cityError} aria-invalid={cityError&&!queryPending} aria-describedby={cityError&&!queryPending?"geography-city-error":undefined} onChange={e=>{
           if(citiesBusy||queryPending||cityError)return;
           const value=e.target.value;setCityId(value);setScope(value?'city':'country');
         }}>
