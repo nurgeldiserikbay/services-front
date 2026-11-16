@@ -133,3 +133,11 @@ test('empty country and city catalogs can be retried without refreshing page',()
   assert.match(source,/countries\.length===0&&<p role="status"[^\n]*setCountryRequestVersion\(v=>v\+1\)/);
   assert.match(source,/cities\.length===0&&<p role="status"[^\n]*setCityRequestVersion\(v=>v\+1\)/);
 });
+
+
+test('country and city lookup errors are associated with their form controls',()=>{
+  assert.match(source,/aria-invalid=\{error\} aria-describedby=\{error\?"geography-country-error":undefined\}/);
+  assert.match(source,/id="geography-country-error" role="status"/);
+  assert.match(source,/aria-invalid=\{cityError\} aria-describedby=\{cityError&&!queryPending\?"geography-city-error":undefined\}/);
+  assert.match(source,/id="geography-city-error" role="status"/);
+});
