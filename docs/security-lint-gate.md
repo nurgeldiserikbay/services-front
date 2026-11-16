@@ -42,3 +42,7 @@ The first seller inbox request is now scheduled outside the synchronous React ef
 ### Geography picker effect lint cleanup (2026-11-16)
 
 Country and city catalog requests are scheduled after the synchronous React effect callback. Each effect cancels an unstarted timer and aborts any already-started request on cleanup. City response generation checks, strict catalog parsing, loading indicators and explicit retry behavior remain in place. The `GeographyPicker.tsx` file-scoped `react-hooks/set-state-in-effect` exception was removed and tested. The remaining exception is `GuestRequestStatusCheck.tsx`; receipt-switch privacy and synchronous stale-status clearing must be preserved when refactoring it. CI acceptance is pending.
+
+### Final React Hooks exemption removal: guest receipt isolation (2026-11-16)
+
+GuestRequestStatusCheck now renders a keyed `ReceiptStatusView` for each request ID and service offer ID. React remounts that stateful subtree during a receipt switch, before rendering any previous guest's private status for the new receipt. A layout-effect cleanup aborts outstanding private reads without performing synchronous state resets; the original manual-only status fetch, bounded parser, deadline, stale response and monotonic-version checks stay in place. The final `react-hooks/set-state-in-effect` exception has been removed from `eslint.config.mjs`. Existing source-contract tests now assert zero hook rule overrides and keyed receipt isolation. Acceptance requires a full green CI run, not merely a static assertion.
