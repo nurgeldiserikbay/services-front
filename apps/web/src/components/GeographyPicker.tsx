@@ -25,6 +25,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [error,setError]=useState(false);
   const [busy,setBusy]=useState(true);
   const [citiesBusy,setCitiesBusy]=useState(false);
+  const [cityError,setCityError]=useState(false);
   useEffect(()=>{
     const controller=new AbortController();
     setError(false);
@@ -40,13 +41,13 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     const controller=new AbortController();
     setCitiesBusy(true);
     setCities([]);
-    setError(false);
+    setCityError(false);
     const query=new URLSearchParams({country_id:countryId});
     if(cityQuery.trim())query.set('q',cityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('cities unavailable');return r.json()})
       .then((data:{items?:City[]})=>{if(!controller.signal.aborted)setCities(Array.isArray(data.items)?data.items:[])})
-      .catch(()=>{if(!controller.signal.aborted)setError(true)})
+      .catch(()=>{if(!controller.signal.aborted)setCityError(true)})
       .finally(()=>{if(!controller.signal.aborted)setCitiesBusy(false)});
     return ()=>controller.abort();
   },[countryId,cityQuery]);
@@ -84,6 +85,6 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
         </select>
       </label>}
     </div>
-    {error&&<p role="status" className="geoError">{t.unavailable}</p>}
+    {(error||cityError)&&<p role="status" className="geoError">{t.unavailable}</p>}
   </fieldset>;
 }
