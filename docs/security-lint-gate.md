@@ -34,3 +34,7 @@ The initial inbox request is scheduled in a zero-delay timer instead of invoking
 ### Device sessions effect lint cleanup (2026-11-16)
 
 The initial device-sessions refresh now starts from a zero-delay timer scheduled by the effect, and the cleanup cancels that timer while invalidating the active request generation. The manual refresh/revoke handlers and server-confirmed revocation logic are unchanged. The `AccountDeviceSessions.tsx` file-scoped `react-hooks/set-state-in-effect` exception is removed, with a regression checking cancellation and server-confirmed refresh. The remaining exemptions are GeographyPicker, GuestRequestStatusCheck and SellerWorkspace, pending their separate migrations and CI acceptance.
+
+### Seller workspace effect lint cleanup (2026-11-16)
+
+The first seller inbox request is now scheduled outside the synchronous React effect callback and the cleanup cancels an unstarted request and invalidates any in-flight generation. The seller page's unauthorized-response clearing, stale-result rejection, retry and cursor safety checks remain unchanged. The file-scoped `react-hooks/set-state-in-effect` exception for `SellerWorkspace.tsx` has been removed; only `GeographyPicker.tsx` and `GuestRequestStatusCheck.tsx` remain excepted. A clean CI result is required to accept the change.
