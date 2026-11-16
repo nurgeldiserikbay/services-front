@@ -40,6 +40,12 @@ const config: NextConfig = {
             : []),
         ],
       },
+      ...['guest-requests','seller','account'].map(section=>({
+        // Route config headers take precedence over an API handler's headers.
+        // Override the public referrer policy for all private BFF endpoints.
+        source: '/api/'+section+'/:path*',
+        headers: [{key: 'Referrer-Policy', value: 'no-referrer'}],
+      })),
       ...['kk','ru'].flatMap(locale=>['account','seller'].map(section=>({
         // Private workspaces must never be cached or indexed, regardless of
         // which account feature flags are enabled at deployment time.
