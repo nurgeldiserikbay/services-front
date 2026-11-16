@@ -22,6 +22,7 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
   const [cityId,setCityId]=useState(initialCityId);
   const [scope,setScope]=useState<Scope>(initialScope);
   const [cityQuery,setCityQuery]=useState('');
+  const [debouncedCityQuery,setDebouncedCityQuery]=useState('');
   const [error,setError]=useState(false);
   const [busy,setBusy]=useState(true);
   const [citiesBusy,setCitiesBusy]=useState(false);
@@ -40,6 +41,10 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     return ()=>controller.abort();
   },[countryRequestVersion]);
   useEffect(()=>{
+    const timer=setTimeout(()=>setDebouncedCityQuery(cityQuery),250);
+    return ()=>clearTimeout(timer);
+  },[cityQuery]);
+  useEffect(()=>{
     if(!countryId){setCities([]);setCitiesBusy(false);setCityError(false);setCityResultsReady(false);return;}
     const controller=new AbortController();
     setCitiesBusy(true);
@@ -47,14 +52,14 @@ export function GeographyPicker({locale,initialCountryId,initialCityId,initialSc
     setCities([]);
     setCityError(false);
     const query=new URLSearchParams({country_id:countryId});
-    if(cityQuery.trim())query.set('q',cityQuery.trim().slice(0,140));
+    if(debouncedCityQuery.trim())query.set('q',debouncedCityQuery.trim().slice(0,140));
     fetch('/api/geography/cities?'+query,{signal:controller.signal})
       .then(r=>{if(!r.ok)throw new Error('cities unavailable');return r.json()})
       .then((data:{items?:City[]})=>{if(!controller.signal.aborted){setCities(Array.isArray(data.items)?data.items:[]);setCityResultsReady(true)}})
       .catch(()=>{if(!controller.signal.aborted)setCityError(true)})
       .finally(()=>{if(!controller.signal.aborted)setCitiesBusy(false)});
     return ()=>controller.abort();
-  },[countryId,cityQuery,cityRequestVersion]);
+  },[countryId,debouncedCityQuery,cityRequestVersion]);
   return <fieldset className="geoPicker">
     <legend>{t.region}</legend>
     <div className="geoControls">
