@@ -1,8 +1,9 @@
 import {readdirSync,readFileSync} from 'node:fs';
-import {extname,join,relative} from 'node:path';
+import {extname,join,relative,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const root=fileURLToPath(new URL('../src/',import.meta.url));
+// A directory argument is used only by regression fixtures; CI defaults to production source.
+const root=process.argv[2] ? resolve(process.argv[2]) : fileURLToPath(new URL('../src/',import.meta.url));
 const forbidden=[
   {name:'dynamic JavaScript execution',pattern:/\b(?:eval|Function)\s*\(/g},
   {name:'unsafe HTML injection',pattern:/\bdangerouslySetInnerHTML\s*=/g},
@@ -13,7 +14,7 @@ const forbidden=[
 let scanned=0;
 const failures=[];
 function walk(dir){
-  for(const item of readdirSync(dir,{withFileTypes:true})){
+  for(const item of readdirSync(dir,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){
     const path=join(dir,item.name);
     if(item.isDirectory()){walk(path);continue;}
     if(!item.isFile()||!['.ts','.tsx','.js','.jsx','.mjs'].includes(extname(path)))continue;
