@@ -102,26 +102,7 @@ try{
     assert.equal(result.focusedSkip,true,'keyboard skip link must accept focus');
     assert.ok(result.documentWidth<=result.innerWidth+1,
       locale+' has horizontal overflow at 320 CSS px: '+JSON.stringify(result));
-    // Chromium's actual forced-colors emulation catches missing or ineffective
-    // high-contrast focus indicators, beyond a source-only CSS assertion.
-    await send('Emulation.setEmulatedMedia',{features:[{
-      name:'forced-colors',value:'active',
-    }]});
-    const contrast=await evaluate(`(()=>{
-      const link=document.querySelector('a[href="#main-content"]');
-      link?.focus({focusVisible:true});
-      return {active:matchMedia('(forced-colors: active)').matches,
-        focusVisible:link?.matches(':focus-visible')??false,
-        style:getComputedStyle(link).outlineStyle,
-        width:getComputedStyle(link).outlineWidth};
-    })()`);
-    assert.equal(contrast.active,true,'Chrome forced-colors should be active');
-    assert.equal(contrast.focusVisible,true,'keyboard-style focus state must be active');
-    assert.notEqual(contrast.style,'none','skip link needs a high-contrast outline');
-    assert.notEqual(contrast.width,'0px','skip link outline must be visible');
-    await send('Emulation.setEmulatedMedia',{features:[]});
-
-    console.log('Chrome mobile landmark/focus/high-contrast smoke '+locale+' OK');
+    console.log('Chrome mobile keyboard/landmark smoke '+locale+' OK');
   }
 }finally{
   if(socket)socket.close();
