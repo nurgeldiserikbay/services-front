@@ -8,7 +8,38 @@ const types=new Set(['.ts','.tsx','.js','.jsx','.mjs']);
 const issues=[];
 let scanned=0;
 
+function staticProperty(node){
+  if(ts.isPropertyAccessExpression(node))return node.name.text;
+  if(ts.isElementAccessExpression(node)&&ts.isStringLiteral(node.argumentExpression))return node.argumentExpression.text;
+  return null;
+}
+function rootName(node){
+  if(ts.isIdentifier(node))return node.text;
+  if(ts.isPropertyAccessExpression(node)&&ts.isIdentifier(node.expression)&&
+    ['window','globalThis'].includes(node.expression.text))return node.name.text;
+  if(ts.isElementAccessExpression(node)&&ts.isIdentifier(node.expression)&&
+    ['window','globalThis'].includes(node.expression.text))return staticProperty(node);
+  return null;
+}
 function visit(source,node,file){
+  let rule=null;
+  if(ts.isCallExpression(node)){
+    const callee=node.expression;
+    if(rootName(callee)==='eval'||rootName(callee)==='Function')
+      rule='dynamic JavaScript execution';
+    else if((ts.isPropertyAccessExpression(callee)||ts.isElementAccessExpression(callee))&&
+      staticProperty(callee)==='setItem'&&
+      ['localStorage','sessionStorage'].includes(rootName(callee.expression)))
+      rule='client-side storage writes';
+  }
+  if(ts.isBinaryExpression(node)&&node.operatorToken.kind===ts.SyntaxKind.EqualsToken&&
+    (ts.isPropertyAccessExpression(node.left)||ts.isElementAccessExpression(node.left))&&
+    staticProperty(node.left)==='innerHTML')
+    rule='direct DOM HTML mutation';
+  if(rule){
+    const line=source.getLineAndCharacterOfPosition(node.getStart(source)).line+1;
+    issues.push(`${relative(root,file)}:${line}: ${rule}`);
+  }
   if(ts.isDebuggerStatement(node)){
     const line=source.getLineAndCharacterOfPosition(node.getStart(source)).line+1;
     issues.push(`${relative(root,file)}:${line}: debugger statement is not permitted`);
