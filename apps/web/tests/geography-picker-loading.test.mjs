@@ -83,7 +83,7 @@ test('late city responses cannot overwrite new input during debounce',()=>{
 
 
 test('retrying country lookup restores loading state until request settles',()=>{
-  assert.match(source,/setError\(false\);\s*setBusy\(true\);\s*fetch\('\/api\/geography\/countries'/);
+  assert.match(source,/setError\(false\);\s*setBusy\(true\);\s*setCountryResultsReady\(false\);\s*fetch\('\/api\/geography\/countries'/);
   assert.match(source,/\.finally\(\(\)=>\{if\(!controller\.signal\.aborted\)setBusy\(false\)\}\)/);
 });
 
@@ -113,4 +113,11 @@ test('failed city lookup cannot expose stale choices or accept a selection',()=>
   assert.match(source,/aria-disabled=\{citiesBusy\|\|queryPending\|\|cityError\}/);
   assert.match(source,/if\(citiesBusy\|\|queryPending\|\|cityError\)return/);
   assert.match(source,/!queryPending&&!cityError&&cities\.map/);
+});
+
+
+test('empty country directory is distinct from a request failure',()=>{
+  assert.match(source,/const \[countryResultsReady,setCountryResultsReady\]=useState\(false\)/);
+  assert.match(source,/setCountryResultsReady\(true\)/);
+  assert.match(source,/countryResultsReady&&!busy&&!error&&countries\.length===0&&<p role="status"/);
 });
