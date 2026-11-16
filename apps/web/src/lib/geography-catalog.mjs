@@ -2,6 +2,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const validName=value=>typeof value==='string'&&value.trim().length>0;
 export const isCountry=value=>isRecord(value)&&typeof value.id==='string'&&UUID.test(value.id)&&validName(value.name)&&typeof value.iso2==='string'&&/^[A-Za-z]{2}$/.test(value.iso2);
+export const isArea=value=>isRecord(value)&&typeof value.id==='string'&&UUID.test(value.id)&&typeof value.country_id==='string'&&UUID.test(value.country_id)&&validName(value.name)&&(value.code===null||(typeof value.code==='string'&&value.code.length>0));
 export const isCity=value=>isRecord(value)&&typeof value.id==='string'&&UUID.test(value.id)&&typeof value.country_id==='string'&&UUID.test(value.country_id)&&validName(value.name)&&typeof value.timezone==='string'&&value.timezone.length>0&&(value.area_id===null||(typeof value.area_id==='string'&&UUID.test(value.area_id)));
 
 export function parseCountries(value){
@@ -19,11 +20,15 @@ export function parseCities(value,countryId){
 /**
  * The public proxy returns only UI contract fields, never unrecognized
  * upstream object attributes (e.g. diagnostics, contact data or internal notes).
- * Areas are not transformed here because their schema is distinct.
+ * Areas follow their own documented backend contract (id, country_id, code, name).
  */
 export function projectPublicGeographyCatalog(kind, catalog){
-  if(kind!=='countries'&&kind!=='cities')return catalog;
+  if(kind!=='countries'&&kind!=='cities'&&kind!=='areas')throw new Error('invalid geography kind');
   if(!isRecord(catalog)||!Array.isArray(catalog.items))throw new Error('invalid geography catalog');
+  if(kind==='areas'){
+    if(!catalog.items.every(isArea))throw new Error('invalid area catalog');
+    return {items:catalog.items.map(({id,country_id,code,name})=>({id,country_id,code,name}))};
+  }
   if(kind==='countries'){
     if(!catalog.items.every(isCountry))throw new Error('invalid country catalog');
     return {items:catalog.items.map(({id,iso2,name})=>({id,iso2,name}))};
