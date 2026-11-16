@@ -52,3 +52,18 @@ test('frontend CI protects the cross-repository integration journey',()=>{
  assert.doesNotMatch(workflow,/curl\s+--insecure\b/);
  assert.equal((workflow.match(/curl --connect-timeout 2 --max-time 5/g) ?? []).length,3,'all readiness probes must have a request deadline');
 });
+
+test('CI summary includes all production private and browser acceptance smoke outcomes',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ for(const [id,label] of [
+  ['private_bff_e2e','Private frontend BFF live HTTP E2E'],
+  ['worker_isolation_e2e','Served worker isolation E2E'],
+  ['chrome_mobile_e2e','Chrome mobile and keyboard smoke'],
+  ['chrome_offline_e2e','Chrome service worker offline E2E'],
+ ]){
+  assert.ok(workflow.includes('id: '+id),'missing gate id '+id);
+  assert.ok(workflow.includes('steps.'+id+'.outcome'),'unreported gate '+id);
+  assert.ok(workflow.includes(label),'missing summary label '+label);
+ }
+ assert.match(workflow,/if: always\(\)/);
+});
