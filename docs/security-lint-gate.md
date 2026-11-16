@@ -26,3 +26,7 @@ The initial full ESLint run ([CI #43832617953](https://github.com/nurgeldiserikb
 ### Seller decision lint exception removal (2026-11-16)
 
 The seller decision action buttons now derive their disabled state from React state rather than reading the pending-key ref during render. The original submit handler retains the imperative idempotency guard. This removes the file-specific `react-hooks/refs` exception. Other existing effect-related exceptions remain tracked and must be addressed separately.
+
+### Notification inbox effect lint cleanup (2026-11-16)
+
+The initial inbox request is scheduled in a zero-delay timer instead of invoking the state-changing fetch directly in the React effect body; cleanup cancels a not-yet-started request and invalidates stale results. The `react-hooks/set-state-in-effect` exception for `AccountNotificationsInbox.tsx` has been removed, with a regression assertion for the cleanup behavior. The other four file-scoped effect exceptions still require migration. A green CI run remains required for acceptance.
