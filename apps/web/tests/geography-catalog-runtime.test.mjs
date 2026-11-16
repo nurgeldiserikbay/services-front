@@ -46,7 +46,19 @@ test('public country and city responses exclude nested unknown upstream fields',
   assert.throws(()=>projectPublicGeographyCatalog('cities',{items:[{...city,timezone:null}]}),/invalid city catalog/);
 });
 
-test('area catalog is retained until its distinct public DTO is specified',()=>{
-  const areas={items:[{id:B,country_id:A,name:'Region'}]};
-  assert.equal(projectPublicGeographyCatalog('areas',areas),areas);
+test('area directory enforces the backend DTO and drops unknown fields',()=>{
+  const area={id:B,country_id:A,code:'AST',name:'Region'};
+  const withExtras={...area,internal_notes:'private',credentials:{token:'secret'}};
+  assert.deepEqual(projectPublicGeographyCatalog('areas',{items:[withExtras],debug:'ignore'}),{items:[area]});
+  assert.deepEqual(projectPublicGeographyCatalog('areas',{items:[]}),{items:[]});
+  for(const invalid of [
+    {...area,id:'invalid'},
+    {...area,country_id:'invalid'},
+    {...area,code:3},
+    {...area,name:' '},
+    {...area,code:undefined},
+    null
+  ])assert.throws(()=>projectPublicGeographyCatalog('areas',{items:[invalid]}),/invalid area catalog/);
+  assert.deepEqual(projectPublicGeographyCatalog('areas',{items:[{...area,code:null}]}),{items:[{...area,code:null}]});
+  assert.throws(()=>projectPublicGeographyCatalog('unknown',{items:[]}),/invalid geography kind/);
 });
