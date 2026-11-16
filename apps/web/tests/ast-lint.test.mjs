@@ -37,3 +37,22 @@ test('AST lint rejects syntax errors',()=>{
   assert.equal(r.status,1);
   assert.match(r.stderr,/invalid JavaScript\/TypeScript syntax/);
 });
+
+test('AST lint rejects computed-property access bypasses',()=>{
+  const cases=[
+    ["localStorage['setItem']('token', secret);",'client-side storage writes'],
+    ['window["localStorage"]["setItem"]("token",secret);','client-side storage writes'],
+    ["element['innerHTML'] = dangerous;",'direct DOM HTML mutation'],
+    ["window['eval']('1+1');",'dynamic JavaScript execution'],
+    ["globalThis['Function']('return 1');",'dynamic JavaScript execution']
+  ];
+  for(const [source,rule] of cases){
+    const result=runFixture(source+'\n');
+    assert.equal(result.status,1,`${source}: ${result.stderr}`);
+    assert.ok(result.stderr.includes(rule),result.stderr);
+  }
+});
+test('AST lint permits safe computed-property reads',()=>{
+  const result=runFixture("const theme=localStorage['getItem']('theme');\nconst current=element['textContent'];\n");
+  assert.equal(result.status,0,result.stderr);
+});
