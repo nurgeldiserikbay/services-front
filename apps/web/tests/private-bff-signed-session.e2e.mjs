@@ -20,7 +20,7 @@ const hmacKey=Buffer.from(process.env.ACCOUNT_SESSION_HMAC_KEY??'','base64');
 assert.equal(hmacKey.length,32);
 const bearer=randomBytes(32).toString('base64url');
 const tokenHash=createHmac('sha256',hmacKey)
- .update('services-session:v1\\0'.replace('\\0','\0')).update(bearer).digest('hex');
+ .update('services-session:v1\0').update(bearer).digest('hex');
 const userId=randomUUID(),sessionId=randomUUID(),familyId=randomUUID();
 const sealed=sealAccountWebSession(key,bearer,600);
 const cookie='__Host-services_account_web='+sealed.cookie;
