@@ -151,13 +151,27 @@ test('country and city inputs expose accurate assistive busy and error states',(
 });
 
 test('malformed country response is an error rather than an empty successful directory',()=>{
-  assert.match(source,/if\(!Array\.isArray\(data\?\.items\)\)throw new Error\('invalid country catalog'\)/);
+  assert.match(source,/if\(!Array\.isArray\(data\?\.items\)\|\|!data\.items\.every\(isCountry\)\)throw new Error\('invalid country catalog'\)/);
   assert.match(source,/\.catch\(\(\)=>\{if\(!controller\.signal\.aborted\)setError\(true\)\}\)/);
   assert.match(source,/countryResultsReady&&!busy&&!error&&countries\.length===0/);
 });
 
 test('malformed city response is an error and cross-country options are filtered',()=>{
-  assert.match(source,/if\(!Array\.isArray\(data\?\.items\)\)throw new Error\('invalid city catalog'\)/);
+  assert.match(source,/if\(!Array\.isArray\(data\?\.items\)\|\|!data\.items\.every\(isCity\)\)throw new Error\('invalid city catalog'\)/);
   assert.match(source,/setCities\(data\.items\.filter\(city=>city\?\.country_id===countryId\)\)/);
   assert.match(source,/setCityError\(true\);setQueryPending\(false\)/);
+});
+
+test('country catalog entries require UUIDs, readable names and ISO2 codes',()=>{
+  assert.match(source,/const isCountry=\(value:unknown\):value is Country/);
+  assert.match(source,/uuid\.test\(value\.id\)/);
+  assert.match(source,/value\.name\.trim\(\)\.length>0/);
+  assert.match(source,/\^\[A-Za-z\]\{2\}\$/);
+});
+
+test('city catalog entries require valid IDs and mandatory location metadata',()=>{
+  assert.match(source,/const isCity=\(value:unknown\):value is City/);
+  assert.match(source,/uuid\.test\(value\.country_id\)/);
+  assert.match(source,/value\.timezone\.length>0/);
+  assert.match(source,/value\.area_id===null/);
 });
