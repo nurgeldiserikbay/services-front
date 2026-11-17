@@ -91,6 +91,10 @@ try{
  assert.equal(remoteRevoked.status,204,'authenticated remote device must be revocable');
  assert.match(remoteRevoked.headers.get('cache-control')??'',/no-store/i);
  assert.equal(remoteRevoked.headers.get('set-cookie'),null);
+ const replayRemote=await revokeRequest(remoteSessionId);
+ assert.equal(replayRemote.status,404,
+  'replay after remote revocation must not report a second successful logout');
+ assert.deepEqual(await replayRemote.json(),{code:'UNAVAILABLE'});
  const persistedRevocation=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',[remoteSessionId]);
  assert.ok(persistedRevocation.rows[0].revoked_at instanceof Date,
   'remote revocation must be committed in PostgreSQL');
@@ -157,6 +161,17 @@ try{
  await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
   VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
   [outsiderSessionId,outsiderId,outsiderHash,randomUUID()]);
+ // A different real account's session ID must never be revocable through
+ // this user's still-valid cookie, even if its UUID is known.
+ const foreignRevoke=await revokeRequest(outsiderSessionId);
+ assert.equal(foreignRevoke.status,404,
+  'foreign account session cannot be revoked through another account');
+ assert.deepEqual(await foreignRevoke.json(),{code:'UNAVAILABLE'});
+ assert.match(foreignRevoke.headers.get('cache-control')??'',/no-store/i);
+ const foreignUnchanged=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',
+  [outsiderSessionId]);
+ assert.equal(foreignUnchanged.rows[0].revoked_at,null,
+  'foreign session must remain active in PostgreSQL');
  const outsiderRead=await fetch(new URL('/api/seller/requests',base),{
   headers:{'Sec-Fetch-Site':'same-origin',Cookie:outsiderCookie},
   signal:AbortSignal.timeout(8000),redirect:'manual',
