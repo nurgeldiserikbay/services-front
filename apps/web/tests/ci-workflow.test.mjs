@@ -91,3 +91,15 @@ test('CI exercises real guest status capability allowlist and expiry against bac
  assert.match(workflow,/node apps\/web\/tests\/private-bff-guest-status\.e2e\.mjs/);
  assert.ok(workflow.includes('steps.guest_status_proof_e2e.outcome'));
 });
+
+test('CI requires OTP bootstrap with provider disabled and no public verification',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ assert.match(workflow,/SERVICES_WEB_ENABLE_GUEST_OTP_START_HTTP=enabled/);
+ assert.match(workflow,/SERVICES_WEB_ENABLE_GUEST_OTP_BFF=enabled/);
+ assert.match(workflow,/node apps\/web\/tests\/private-bff-otp-bootstrap\.e2e\.mjs/);
+ assert.ok(workflow.indexOf('Verify guest OTP bootstrap CSRF and unavailable-provider isolation')>
+  workflow.indexOf('Start isolated feature-enabled private BFF without real login'));
+ assert.ok(workflow.includes('steps.otp_bootstrap_e2e.outcome'));
+ assert.ok(!workflow.includes('SERVICES_ENABLE_GUEST_OTP_HTTP=enabled'));
+ assert.ok(!workflow.includes('SERVICES_WEB_ENABLE_GUEST_OTP_VERIFY_HTTP=enabled'));
+});
