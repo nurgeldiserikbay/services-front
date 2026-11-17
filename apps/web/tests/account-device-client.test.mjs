@@ -29,6 +29,8 @@ test('strict account inventory accepts exactly one current session, excludes ext
   {...page,items:[current,{...another,current:true}]},
   {...page,items:Array(51).fill(current)},
   {...page,items:[{...current,expiresAt:'tomorrow'}]},
+  {...page,items:[{...current,expiresAt:'2026-02-30T12:00:00.000Z'}]},
+  {...page,items:[{...current,lastUsedAt:'2026-11-17T24:00:00.000Z'}]},
  ]){
   assert.throws(()=>parseAccountDeviceInventory(invalid),AccountDeviceUnavailable);
  }
