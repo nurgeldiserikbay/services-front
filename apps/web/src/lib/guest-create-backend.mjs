@@ -69,11 +69,11 @@ function parseCommitted(raw,now){
  */
 export async function sendVerifiedGuestCreate({
   baseUrl,production=false,createCapability,idempotencyKey,body,
-  transport=fetch,now=Date.now(),
+  transport=fetch,now,
 }){
   if(typeof createCapability!=='string'||!CAPABILITY.test(createCapability)||
     typeof idempotencyKey!=='string'||!KEY.test(idempotencyKey)||
-    !Number.isSafeInteger(now))throw new GuestCreateUnavailable();
+    (now!==undefined&&!Number.isSafeInteger(now)))throw new GuestCreateUnavailable();
   const url=normalizeBackendUrl(baseUrl,production);
   const validated=validateBody(body);
   const deadline=AbortSignal.timeout(5000);
@@ -135,7 +135,11 @@ export async function sendVerifiedGuestCreate({
       for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
     }else throw new GuestCreateUnavailable();
     if(bytes.byteLength>LIMIT)throw new GuestCreateUnavailable();
-    return parseCommitted(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)),now);
+    // The backend starts a full 24-hour TTL only after this request arrives.
+    // Comparing with the time before network I/O wrongly rejects legitimate
+    // replies. Explicit injected `now` remains deterministic in unit tests.
+    const receivedAt=now===undefined?Date.now():now;
+    return parseCommitted(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)),receivedAt);
   }catch{throw new GuestCreateUnavailable();}
   finally{deadline.removeEventListener('abort',onAbort);}
 }
