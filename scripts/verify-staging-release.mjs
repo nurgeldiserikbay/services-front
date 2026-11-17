@@ -11,7 +11,31 @@ const EXPECTED_GATES = [
 ];
 const EXPECTED_REPOS = ['Backend', 'Frontend', 'Admin'];
 const SHA = /^[0-9a-f]{40}$/i;
-const CI_URL = /^https:\/\/github\.com\/[^/]+\/[^/]+\/actions\/runs\/\d+$/;
+const REPO_PATH = {
+  Backend: 'nurgeldiserikbay/services-back',
+  Frontend: 'nurgeldiserikbay/services-front',
+  Admin: 'nurgeldiserikbay/services-admin',
+};
+function validCiRun(url, repo) {
+  return typeof url === 'string' &&
+    new RegExp('^https://github\\.com/' + REPO_PATH[repo] + '/actions/runs/[1-9][0-9]*$').test(url);
+}
+function validEvidenceUrl(raw) {
+  if (typeof raw !== 'string' || raw.length > 2048 ||
+      !/^https:\/\/[^\s|]+$/i.test(raw) || raw.includes('TODO')) return false;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' && !!url.hostname &&
+      !url.username && !url.password &&
+      !url.hash && !url.search &&
+      url.port === '' && url.pathname !== '/TODO';
+  } catch { return false; }
+}
+function validUtcDate(raw) {
+  if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+  const parsed = new Date(raw + 'T00:00:00Z');
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw;
+}
 
 function rows(text, heading) {
   const escaped = heading.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&');
@@ -29,23 +53,31 @@ export function validateStagingRelease(text) {
   for (const repo of EXPECTED_REPOS) {
     const matching = revisions.filter(c => c[0] === repo);
     if (matching.length !== 1) { problems.push(repo + ': missing or duplicate revision'); continue; }
+    if (matching[0].length !== 5) problems.push(repo + ': invalid revision row format');
     const [, sha, url, reviewer, date] = matching[0];
     if (!SHA.test(sha ?? '')) problems.push(repo + ': missing immutable SHA');
-    if (!CI_URL.test(url ?? '')) problems.push(repo + ': missing GitHub Actions run');
+    if (!validCiRun(url,repo)) problems.push(repo + ': missing or unrelated GitHub Actions run');
     if (!reviewer || reviewer === 'TODO') problems.push(repo + ': missing reviewer');
-    if (!/^\d{4}-\d{2}-\d{2}/.test(date ?? '')) problems.push(repo + ': missing UTC date');
+    if (!validUtcDate(date)) problems.push(repo + ': missing valid UTC date');
+  }
+  for (const row of revisions) {
+    if (!EXPECTED_REPOS.includes(row[0])) problems.push('Unknown revision component: ' + row[0]);
   }
   const gates = rows(text, 'Required acceptance gates');
   for (const gate of EXPECTED_GATES) {
     const matching = gates.filter(c => c[0] === gate);
     if (matching.length !== 1) { problems.push(gate + ': missing or duplicate gate'); continue; }
     if (matching[0][2] !== 'PASS') problems.push(gate + ': not PASS');
-    if (!/^https:\/\/[^\s|]+$/i.test(matching[0][3] ?? '')) problems.push(gate + ': missing HTTPS evidence URL');
+    if (matching[0].length !== 4) problems.push(gate + ': missing HTTPS evidence URL (invalid row format)');
+    if (!validEvidenceUrl(matching[0][3])) problems.push(gate + ': missing HTTPS evidence URL');
+  }
+  for (const row of gates) {
+    if (!EXPECTED_GATES.includes(row[0])) problems.push('Unknown acceptance gate: ' + row[0]);
   }
   // A PASS table alone is insufficient: a reviewer must link a sanitized evidence bundle.
   const evidence = text.match(/^## Signed release evidence\s*\n([\s\S]*?)(?=^## |$(?![\s\S]))/m)?.[1] ?? '';
   const evidenceUrl = evidence.match(/^- Evidence bundle:\s*(https:\/\/\S+)/m)?.[1];
-  if (!evidenceUrl || evidenceUrl === 'https://TODO') problems.push('Missing signed evidence bundle URL');
+  if (!validEvidenceUrl(evidenceUrl)) problems.push('Missing signed evidence bundle URL');
   const approver = evidence.match(/^- Approved by:[ \t]*(.*)$/m)?.[1]?.trim();
   if (!approver || approver === 'TODO') problems.push('Missing owner approval');
   const approvedAt = evidence.match(/^- Approved at \(UTC\):[ \t]*(.*)$/m)?.[1]?.trim();
