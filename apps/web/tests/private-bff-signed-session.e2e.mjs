@@ -176,6 +176,34 @@ try{
   const notices=await db.query(`SELECT count(*)::integer AS n FROM notification_intents
    WHERE dedupe_key=$1`,['request-'+action+':guest:'+id]);
   assert.equal(notices.rows[0].n,1,'replay cannot duplicate notification intent');
+
+  // The outbox and notification are one committed logical action, not merely
+  // two independent counts. Verify the exact event/intent foreign key, guest
+  // recipient and external channel; replay must not duplicate either record.
+  const linked=await db.query(`
+   SELECT o.id::text AS event_id,o.topic,o.subject_kind,
+     o.subject_id::text AS subject_id,
+     n.id::text AS intent_id,n.domain_event_id::text AS linked_event_id,
+     n.guest_contact_id::text AS guest_contact_id,n.audience,n.channel,
+     n.dedupe_key,n.recipient_person_id
+   FROM domain_outbox_events o
+   JOIN notification_intents n ON n.domain_event_id=o.id
+   WHERE o.subject_id=$1::uuid
+  `,[id]);
+  assert.equal(linked.rows.length,1,
+   'decision and idempotent replay must produce exactly one linked outbox/intent pair');
+  const notification=linked.rows[0];
+  assert.equal(notification.event_id,notification.linked_event_id);
+  assert.equal(notification.topic,'service_request.'+
+   (action==='accept'?'accepted':'declined'));
+  assert.equal(notification.subject_kind,'ServiceRequest');
+  assert.equal(notification.subject_id,id);
+  assert.equal(notification.guest_contact_id,fixture.guestIds[index]);
+  assert.equal(notification.audience,'CLIENT');
+  assert.equal(notification.channel,'EMAIL');
+  assert.equal(notification.dedupe_key,'request-'+action+':guest:'+id);
+  assert.equal(notification.recipient_person_id,null);
+
   const stale=await decision(id,action,randomUUID());
   assert.equal(stale.status,409,'new key cannot reapply a finalized decision');
 
