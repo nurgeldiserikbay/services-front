@@ -174,8 +174,11 @@ jobs:
         run: |
           umask 077
           openssl rand -base64 32 > "$RUNNER_TEMP/services-guest-capability-hmac-key"
+          openssl rand -base64 32 > "$RUNNER_TEMP/services-guest-contact-encryption-key"
           (cd services-back && PORT=3101 \
             SERVICES_ENABLE_GUEST_STATUS_HTTP=enabled \
+            SERVICES_ENABLE_GUEST_CREATE_HTTP=enabled \
+            GUEST_CONTACT_ENCRYPTION_KEY="$(cat "$RUNNER_TEMP/services-guest-contact-encryption-key")" \
             GUEST_REQUEST_HMAC_KEY="$(cat "$RUNNER_TEMP/services-guest-capability-hmac-key")" \
             npm start > "$RUNNER_TEMP/services-back.log" 2>&1 &)
           for attempt in {1..30}; do
@@ -256,6 +259,7 @@ jobs:
           (
             cd apps/web
             SERVICES_WEB_ENABLE_GUEST_STATUS_HTTP=enabled \
+            SERVICES_WEB_ENABLE_GUEST_CREATE_HTTP=enabled \
             SERVICES_WEB_ENABLE_GUEST_OTP_START_HTTP=enabled \
             SERVICES_WEB_ENABLE_GUEST_OTP_BFF=enabled \
             SERVICES_WEB_ENABLE_SELLER_BFF=enabled \
