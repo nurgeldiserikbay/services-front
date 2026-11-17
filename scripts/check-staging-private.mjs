@@ -44,15 +44,15 @@ export async function checkPrivateStaging(origin,{fetchImpl=fetch}={}){
     assert.ok(seller?response.status===200:
       response.status===404||response.status===200,
       path+' unexpected anonymous response status');
-    assert.match(response.headers.get('cache-control')??'',/\\bprivate\\b/i,
+    assert.match(response.headers.get('cache-control')??'',/\bprivate\b/i,
       path+' must be private');
-    assert.match(response.headers.get('cache-control')??'',/\\bno-store\\b/i,
+    assert.match(response.headers.get('cache-control')??'',/\bno-store\b/i,
       path+' must not be cached');
-    assert.match(response.headers.get('x-robots-tag')??'',/\\bnoindex\\b/i,
+    assert.match(response.headers.get('x-robots-tag')??'',/\bnoindex\b/i,
       path+' must not be indexed');
     assert.equal(response.headers.get('set-cookie'),null,
       path+' must not mint an account session for an anonymous request');
-    assert.match(response.headers.get('content-type')??'',/text\\/html/i,
+    assert.match(response.headers.get('content-type')??'',/text\/html/i,
       path+' must respond with HTML');
     const html=await readBounded(response);
     if(seller){
