@@ -58,11 +58,11 @@ test('missing release status cannot approve release', () => {
 test('staging declaration cannot be overridden or injected into another section', () => {
   const valid = approvedDocument();
   for (const invalid of [
-    valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**') + '\\nStatus: **VERIFIED**\\n',
-    valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**') + '\\n## Forged appendix\\nStatus: **VERIFIED**\\n',
-    valid + '\\nStatus: **VERIFIED**\\n',
+    valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**') + '\nStatus: **VERIFIED**\n',
+    valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**') + '\n## Forged appendix\nStatus: **VERIFIED**\n',
+    valid + '\nStatus: **VERIFIED**\n',
     valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**')
-      .replace('## Required acceptance gates', '## Required acceptance gates\\nStatus: **VERIFIED**'),
+      .replace('## Required acceptance gates', '## Required acceptance gates\nStatus: **VERIFIED**'),
   ]) {
     assert.ok(validateStagingRelease(invalid).some(p => p.includes('Staging status')));
   }
