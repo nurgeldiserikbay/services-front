@@ -172,6 +172,7 @@ assert.equal((searchHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1, 'search page sh
 assert.match(searchHtml, /<main id="main-content" class="shell">/, 'search content should have a main landmark');
 assert.match(searchHtml, /href="#main-content"/, 'localized keyboard skip link should be rendered');
 assert.match(searchHtml, /<label for="query">[^<]+<\/label>/, 'search input should have a visible label');
+assert.match(searchHtml, /<select[^>]+id="delivery_mode"[^>]+aria-label="Где окажут услугу\\?"/, 'delivery filter must expose a Russian accessible name');
 assert.match(searchHtml, /<nav class="language" aria-label="Выбор языка">/, 'language navigation should have a localized accessible name');
 assert.match(searchHtml, /Stage 2 Journey Specialist Offer/, 'search should render the real specialist result');
 assert.match(searchHtml, /Stage 2 Journey Company Offer/, 'search should render the real company result');
@@ -276,6 +277,7 @@ const kazakhSearchUrl = new URL('/kk', webBase);
 kazakhSearchUrl.searchParams.set('q', query);
 const kazakhSearchHtml = await fetchPage(kazakhSearchUrl, 'Kazakh localized search page');
 assert.match(kazakhSearchHtml, /<html lang="kk">/, 'Kazakh route should declare its language');
+assert.match(kazakhSearchHtml, /<select[^>]+id="delivery_mode"[^>]+aria-label="Қызмет көрсету орны"/, 'delivery filter must expose a Kazakh accessible name');
 assert.equal((kazakhSearchHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1,
   'Kazakh search page should have one primary heading');
 assert.match(kazakhSearchHtml, /Stage 2 Journey Specialist Offer/,
