@@ -158,7 +158,15 @@ export function SellerWorkspace({locale}:{locale:Locale}){
        setStatus('unauthorized');
        return 'unauthorized' as const;
      }
-     if(response.status===403)return 'forbidden' as const;
+     if(response.status===403){
+       // Seller permission or organization scope may have changed since the
+       // last inbox read. Do not keep rendering that unverified snapshot.
+       generation.current++;
+       setItems([]);setCursor(null);setCsrf('');
+       seenCursors.current.clear();pendingKeys.current.clear();
+       setStatus('error');
+       return 'forbidden' as const;
+     }
      if(response.status===409)return 'conflict' as const;
      if(!response.ok)return 'unavailable' as const;
      const result=await readBoundedSellerUiJson(response,{maxBytes:1024});
