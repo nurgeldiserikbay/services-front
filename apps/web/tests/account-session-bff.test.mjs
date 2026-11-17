@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {
- listBackendAccountSessions,revokeBackendAccountSession,
+ listBackendAccountSessions,revokeBackendAccountSession,revokeBackendAccountSessionById,
  AccountSessionTransportUnavailable,
 } from '../src/lib/account-session-transport.mjs';
 const bearer=randomBytes(32).toString('base64url');
@@ -38,6 +38,28 @@ test('account inventory transport is bearer-only and does not leak secrets',asyn
   baseUrl:'http://insecure.test/v1',accountBearer:bearer,transport,
  }),AccountSessionTransportUnavailable);
  assert.equal(called,1);
+});
+
+test('account session transports reject ambiguous server URL before sending bearer',async()=>{
+ let calls=0;
+ const transport=async()=>{calls++;return new Response(null,{status:204});};
+ for(const unsafe of [
+  'https://api.example.test/v1/%2e%2e/private',
+  'https://api.example.test/v1/%61',
+  'https://api.example.test/v1//nested',
+  'https://api.example.test/v1\\nested',
+  'https://api.example.test/v1/./nested',
+  'https://api.example.test/v1/a.b',
+  'https://api.example.test/v1?token=secret',
+ ]){
+  for(const operation of [
+   ()=>listBackendAccountSessions({baseUrl:unsafe,accountBearer:bearer,transport}),
+   ()=>revokeBackendAccountSession({baseUrl:unsafe,accountBearer:bearer,transport}),
+   ()=>revokeBackendAccountSessionById({baseUrl:unsafe,accountBearer:bearer,
+    sessionId:validRow.id,transport}),
+  ])await assert.rejects(operation(),AccountSessionTransportUnavailable);
+ }
+ assert.equal(calls,0,'invalid URL configuration must never transmit backend bearer');
 });
 
 test('session inventory validates strict whitelist, size and JSON response',async()=>{
