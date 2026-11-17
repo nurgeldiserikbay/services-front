@@ -253,6 +253,25 @@ for (const [profilePath, offerId, title] of [
     'guest form must remain disabled without explicit rollout gates');
 }
 
+// A deterministic nonsense term must exercise the real backend empty state.
+// Both locales must announce emptiness without claiming a positive page count.
+for (const [locale, emptyMessage] of [
+  ['kk', 'Бұл сұрауға сәйкес нәтиже табылмады.'],
+  ['ru', 'По вашему запросу ничего не найдено.'],
+]) {
+  const url = new URL('/' + locale, webBase);
+  url.searchParams.set('q', 'ci-no-results-987654321012345');
+  const html = await fetchPage(url, locale + ' empty search state');
+  assert.ok(html.includes(emptyMessage),
+    locale + ' empty search must show localized empty feedback');
+  assert.doesNotMatch(html, /<li class="resultItem">/,
+    locale + ' empty search must not render a result card');
+  assert.doesNotMatch(html, locale === 'kk'
+    ? /Осы бетте [1-9][0-9]* нәтиже/
+    : /На этой странице результатов: [1-9][0-9]*/,
+  locale + ' empty search must not announce positive result counts');
+}
+
 const kazakhSearchUrl = new URL('/kk', webBase);
 kazakhSearchUrl.searchParams.set('q', query);
 const kazakhSearchHtml = await fetchPage(kazakhSearchUrl, 'Kazakh localized search page');
