@@ -139,7 +139,7 @@ try{
       })()`);
       assert.equal(focused,true,locale+' search input cannot receive keyboard focus');
       await send('Input.insertText',{text:'Stage 2 Journey'});
-      await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
       await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
       let found=false;
       for(let attempt=0;attempt<100;attempt++){
@@ -151,7 +151,13 @@ try{
         if(found)break;
         await pause(100);
       }
-      assert.equal(found,true,locale+' Enter submission did not navigate to seeded results');
+      const diagnostic=await evaluate(`(()=>({
+        href:location.href,
+        searchInput:document.querySelector('input#query')?.value??null,
+        resultCards:document.querySelectorAll('.resultItem').length,
+        activeTag:document.activeElement?.tagName??null
+      }))()`);
+      assert.equal(found,true,locale+' Enter submission did not navigate to seeded results: '+JSON.stringify(diagnostic));
       console.log('Chrome real keyboard Enter search '+locale+' OK');
     }
     console.log('Chrome responsive keyboard/landmark smoke '+locale+' '+width+'px OK');
