@@ -9,6 +9,7 @@ const origin='https://'+allowed;
 const templates={
   '/kk':['text/html; charset=utf-8','<html lang="kk"><main id="main-content"><h1>Қызметтер</h1></main></html>'],
   '/ru':['text/html; charset=utf-8','<html lang="ru"><main id="main-content"><h1>Услуги</h1></main></html>'],
+  '/robots.txt':['text/plain; charset=utf-8',"User-agent: *\nAllow: /\nAllow: /kk/professionals/\nAllow: /ru/professionals/\nAllow: /kk/organizations/\nAllow: /ru/organizations/\nAllow: /kk/services/\nAllow: /ru/services/\nDisallow: /api\nDisallow: /kk/account\nDisallow: /ru/account\nDisallow: /kk/seller\nDisallow: /ru/seller\nDisallow: /offline.html\nDisallow: /sw.js\nDisallow: /manifest.webmanifest\n"],
   '/manifest.webmanifest':['application/manifest+json',JSON.stringify({
     start_url:'/kk',scope:'/',display:'standalone',icons:[{src:'/icon.svg'}],
   })],
@@ -64,9 +65,9 @@ test('read-only staging smoke verifies both locales and public install/offline a
   const {fetchImpl,visited}=mockedFetch();
   const result=await checkPublicStaging(origin,{fetchImpl});
   assert.equal(result.kind,'public-staging-readiness-only');
-  assert.equal(result.checked.length,6);
+  assert.equal(result.checked.length,7);
   assert.deepEqual(visited.map(x=>x.path),[
-    '/kk','/ru','/manifest.webmanifest','/icon.svg','/offline.html','/sw.js',
+    '/kk','/ru','/robots.txt','/manifest.webmanifest','/icon.svg','/offline.html','/sw.js',
   ]);
   for(const {opts} of visited){
     assert.equal(opts.method,'GET');
@@ -90,6 +91,11 @@ test('staging smoke refuses redirects, broken localization and missing privacy h
     {'/icon.svg':{headers:{'cross-origin-opener-policy':'unsafe-none'}}},
     {'/offline.html':{headers:{'referrer-policy':'unsafe-url'}}},
     {'/sw.js':{headers:{'permissions-policy':'camera=(self), microphone=(), geolocation=()'}}},
+    {'/robots.txt':{type:'text/html'}},
+    {'/robots.txt':{body:'User-agent: *\nDisallow: /\n'}},
+    {'/robots.txt':{body:'User-agent: *\nAllow: /kk/services/\n'}},
+    {'/robots.txt':{body:"User-agent: *\nAllow: /\nAllow: /kk/professionals/\nAllow: /ru/professionals/\nAllow: /kk/organizations/\nAllow: /ru/organizations/\nAllow: /kk/services/\nAllow: /ru/services/\nDisallow: /api\nDisallow: /ru/account\nDisallow: /kk/seller\nDisallow: /ru/seller\nDisallow: /offline.html\nDisallow: /sw.js\nDisallow: /manifest.webmanifest\n"}},
+    {'/robots.txt':{body:"User-agent: *\nAllow: /\nAllow: /kk/professionals/\nAllow: /ru/professionals/\nAllow: /kk/organizations/\nAllow: /ru/organizations/\nAllow: /kk/services/\nDisallow: /api\nDisallow: /kk/account\nDisallow: /ru/account\nDisallow: /kk/seller\nDisallow: /ru/seller\nDisallow: /offline.html\nDisallow: /sw.js\nDisallow: /manifest.webmanifest\n"}},
     {'/kk':{headers:{'strict-transport-security':'max-age=0'}}},
     {'/ru':{headers:{'strict-transport-security':'max-age=86400'}}},
     {'/manifest.webmanifest':{headers:{'strict-transport-security':'max-age=31536000; preload'}}},
