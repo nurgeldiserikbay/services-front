@@ -122,6 +122,13 @@ try{
       assert.ok(control.width>0&&control.left>=-1&&control.right<=width+1,
         locale+' '+width+'px interactive control is clipped: '+JSON.stringify(control));
     }
+    // Inspect Chrome's computed accessibility tree, not only source-level
+    // aria-label attributes. Every locale must expose a named delivery select.
+    const accessibility=await send('Accessibility.getFullAXTree');
+    const selectName=locale==='kk'?'Қызмет көрсету орны':'Где окажут услугу?';
+    assert.ok(accessibility.nodes?.some(node=>
+      node.role?.value==='combobox'&&node.name?.value===selectName&&!node.ignored),
+      locale+' '+width+'px delivery filter has no named Chrome accessibility combobox');
     console.log('Chrome responsive keyboard/landmark smoke '+locale+' '+width+'px OK');
     }
   }
