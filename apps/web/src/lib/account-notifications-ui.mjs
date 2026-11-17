@@ -20,6 +20,7 @@ export async function readNotificationBrowserReply(response){
   for(;;){
    const {done,value}=await reader.read();
    if(done)break;
+   if(!(value instanceof Uint8Array))throw new Error('unavailable');
    size+=value.byteLength;
    if(size>MAX_BYTES)throw new Error('unavailable');
    chunks.push(value);

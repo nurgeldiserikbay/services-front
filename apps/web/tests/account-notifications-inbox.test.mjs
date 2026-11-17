@@ -85,6 +85,25 @@ test('notification backend URL rejects path ambiguity before network I/O',async(
  assert.equal(calls,0,'invalid configuration must never send bearer to a network target');
 });
 
+test('notification backend aborts infinite and nonbyte streams before storing secrets',async()=>{
+ for(const invalidChunk of [false,true]){
+  let cancelled=false;
+  let produced=0;
+  const stream=new ReadableStream({
+   pull(controller){
+    produced++;
+    controller.enqueue(invalidChunk?'unexpected-text':new Uint8Array(8192));
+   },
+   cancel(){cancelled=true;},
+  });
+  await assert.rejects(call(async()=>({
+   status:200,headers:new Headers({'content-type':'application/json'}),body:stream,
+  })),NotificationTransportUnavailable);
+  assert.equal(cancelled,true,'bad backend stream must be cancelled');
+  assert.ok(produced<=6,'unbounded backend stream must not be fully consumed');
+ }
+});
+
 test('notification route and page are private, gated and backend revalidated',()=>{
  const read=p=>readFileSync(new URL('../src/'+p,import.meta.url),'utf8');
  const route=read('app/api/account/notifications/route.ts');

@@ -22,6 +22,25 @@ test('browser notification reader rejects declared and actual unbounded response
  await assert.rejects(readNotificationBrowserReply(reply(
   JSON.stringify({items:[item]}),{'content-length':'not-a-number'})),/unavailable/);
 });
+test('browser notification reader cancels oversized and nonbyte response streams',async()=>{
+ for(const invalidChunk of [false,true]){
+  let cancelled=false;
+  let produced=0;
+  const stream=new ReadableStream({
+   pull(controller){
+    produced++;
+    controller.enqueue(invalidChunk?'invalid-chunk':new Uint8Array(8192));
+   },
+   cancel(){cancelled=true;},
+  });
+  await assert.rejects(readNotificationBrowserReply({
+   status:200,headers:new Headers({'content-type':'application/json'}),body:stream,
+  }),/unavailable/);
+  assert.equal(cancelled,true,'bad browser response stream must be cancelled');
+  assert.ok(produced<=7,'unbounded browser stream must not be fully consumed');
+ }
+});
+
 test('browser notification reader rejects forged and invalid data',async()=>{
  for(const result of [
   reply('{invalid'),

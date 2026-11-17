@@ -69,6 +69,7 @@ export async function fetchAccountNotifications({
    while(true){
     const {done,value}=await reader.read();
     if(done)break;
+    if(!(value instanceof Uint8Array))throw new NotificationTransportUnavailable();
     size+=value.byteLength;
     if(size>MAX_BYTES)throw new NotificationTransportUnavailable();
     chunks.push(value);
