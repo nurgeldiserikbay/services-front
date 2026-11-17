@@ -20,7 +20,7 @@ function fakeFetch(overrides={}){
       const path=url.pathname;
       const isApi=path.startsWith('/api/');
       const isSeller=seller.includes(path);
-      const spec=overrides[path]??overrides[url.pathname]??{};
+      const spec=overrides[url.pathname+url.search]??overrides[path]??{};
       const body=spec.body??(isApi?JSON.stringify({code:'UNAVAILABLE'}):isSeller?
         '<html><h1>'+(path.startsWith('/kk')?'Менің өтінімдерім':'Мои заявки')+'</h1></html>':
         '<html><p>404: This page could not be found</p></html>');
@@ -73,7 +73,7 @@ test('staging smoke rejects public caching, indexing, leaks and false authorizat
     {'/kk/account/requests':{body:'x'.repeat(257*1024)}},
     {'/kk/seller/requests':{status:302}},
     {'/api/account/notifications':{status:200,body:JSON.stringify({items:[]})}},
-    {'/api/seller/requests':{headers:{'cache-control':'public, max-age=3600'}}},
+    {'/api/seller/requests?limit=1':{headers:{'cache-control':'public, max-age=3600'}}},
     {'/api/account/notifications':{headers:{'referrer-policy':'unsafe-url'}}},
     {'/api/account/notifications':{headers:{'set-cookie':'session=forged'}}},
     {'/api/account/notifications':{body:JSON.stringify({code:'UNAVAILABLE',token:'secret'})}},
