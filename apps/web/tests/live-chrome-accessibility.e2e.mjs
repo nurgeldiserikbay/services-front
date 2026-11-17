@@ -173,7 +173,7 @@ try{
         await pause(100);
       }
       assert.equal(resetReady,true,locale+' clear-filters link cannot receive keyboard focus');
-      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\\r',unmodifiedText:'\\r'});
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
       await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
       let resetCompleted=false;
       for(let attempt=0;attempt<100;attempt++){
