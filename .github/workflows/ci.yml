@@ -319,6 +319,19 @@ jobs:
         run: |
           command -v google-chrome
           node apps/web/tests/live-chrome-accessibility.e2e.mjs
+      - name: Capture mobile Chrome lab web-vitals baseline
+        id: chrome_perf_baseline
+        run: |
+          command -v google-chrome
+          node apps/web/tests/live-chrome-web-vitals.e2e.mjs
+      - name: Upload Chrome lab performance baseline
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-chrome-lab-performance
+          path: artifacts/performance-baseline.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Verify real Chrome PWA worker offline and private cache isolation
         id: chrome_offline_e2e
         run: |
@@ -349,6 +362,7 @@ jobs:
           WORKER_ISOLATION_E2E: ${{ steps.worker_isolation_e2e.outcome }}
           CHROME_MOBILE_E2E: ${{ steps.chrome_mobile_e2e.outcome }}
           CHROME_OFFLINE_E2E: ${{ steps.chrome_offline_e2e.outcome }}
+          CHROME_PERF_BASELINE: ${{ steps.chrome_perf_baseline.outcome }}
           LIVE_E2E: ${{ steps.live_e2e.outcome }}
           SEARCH_FAILURE_E2E: ${{ steps.search_failure_e2e.outcome }}
         run: |
@@ -375,6 +389,7 @@ jobs:
             echo "| Private frontend BFF live HTTP E2E | $PRIVATE_BFF_E2E |"
             echo "| Served worker isolation E2E | $WORKER_ISOLATION_E2E |"
             echo "| Chrome mobile and keyboard smoke | $CHROME_MOBILE_E2E |"
+            echo "| Chrome mobile unthrottled lab Web Vitals baseline (not release SLO) | $CHROME_PERF_BASELINE |"
             echo "| Chrome service worker offline E2E | $CHROME_OFFLINE_E2E |"
             echo "| Live search-to-profile E2E | $LIVE_E2E |"
           } >> "$GITHUB_STEP_SUMMARY"
