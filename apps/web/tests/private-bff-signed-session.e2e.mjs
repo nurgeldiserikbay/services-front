@@ -166,6 +166,29 @@ try{
  assert.equal(denied.code,'AUTH_REQUIRED');
  assert.ok(!JSON.stringify(denied).includes(bearer));
  assert.equal(revoked.headers.get('set-cookie'),null);
+
+ // A web cookie that is still within its local expiry must not authorize a
+ // mutation after the backing PostgreSQL session is revoked. Verify that
+ // the denied request emits no new notification or outbox side effects.
+ const beforeRevokedDecision=await db.query(
+  'SELECT count(*)::integer AS n FROM notification_intents WHERE dedupe_key=$1',
+  ['request-accept:guest:'+fixture.requestIds[0]]);
+ const revokedDecision=await decision(fixture.requestIds[0],'accept',randomUUID(),2);
+ assert.equal(revokedDecision.status,401,
+  'revoked backend session must deny seller mutation even with valid CSRF');
+ assert.match(revokedDecision.headers.get('cache-control')??'',/no-store/i);
+ assert.match(revokedDecision.headers.get('x-robots-tag')??'',/noindex/i);
+ assert.equal(revokedDecision.headers.get('set-cookie'),null);
+ assert.deepEqual(await revokedDecision.json(),{code:'AUTH_REQUIRED'});
+ const afterRevokedDecision=await db.query(
+  'SELECT count(*)::integer AS n FROM notification_intents WHERE dedupe_key=$1',
+  ['request-accept:guest:'+fixture.requestIds[0]]);
+ assert.equal(afterRevokedDecision.rows[0].n,beforeRevokedDecision.rows[0].n,
+  'revoked seller mutation must not create a notification');
+ const unchangedAfterRevocation=await db.query(
+  'SELECT status,version FROM service_requests WHERE id=$1',[fixture.requestIds[0]]);
+ assert.deepEqual(unchangedAfterRevocation.rows[0],{status:'ACCEPTED',version:2});
+
  console.log('Signed web cookie -> actual backend empty seller inbox -> revoked bearer denied');
 }finally{
  if(userCreated){
