@@ -19,6 +19,12 @@ test('public responses have protective headers without global deindexing',()=>{
   assert.match(config,/source: '\/offline\.html'/);
 });
 
+test('production security policy enables host-only HSTS without preload',()=>{
+  assert.match(config,/key: 'Strict-Transport-Security', value: 'max-age=31536000'/);
+  assert.match(config,/process\.env\.NODE_ENV === 'production'/);
+  assert.doesNotMatch(config,/max-age=31536000;\s*(?:includeSubDomains|preload)/i);
+});
+
 test('production CSP restricts framing, forms, resources and mixed content',()=>{
   for(const directive of ["default-src 'self'","object-src 'none'",
     "frame-ancestors 'none'","form-action 'self'","base-uri 'self'",
