@@ -65,3 +65,9 @@ test('search announces only the current page result count in both locales',()=>{
   assert.match(page,/q && !error && items\.length > 0 && <p role="status" aria-live="polite">\{t\.resultsOnPage\(items\.length\)\}<\/p>/);
   assert.doesNotMatch(page,/resultsOnPage\(search\.result\?\.total/);
 });
+
+test('search filter dropdowns expose explicit localized accessible names',()=>{
+  const page=readFileSync(join(appDir,'[locale]','page.tsx'),'utf8');
+  assert.match(page,/<select id="profession_id" name="profession_id" aria-label=\{t\.profession\}/);
+  assert.match(page,/<select id="delivery_mode" name="delivery_mode" aria-label=\{t\.deliveryFilter\}/);
+});
