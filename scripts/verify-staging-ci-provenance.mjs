@@ -32,7 +32,7 @@ async function readJsonBounded(response){
       if(total>MAX_BYTES)throw Error('GitHub CI response oversized');
       chunks.push(Buffer.from(value));
     }
-  }finally{await reader.cancel().catch(()=>{});}
+  }finally{void reader.cancel().catch(()=>{});}
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
