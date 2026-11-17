@@ -274,6 +274,9 @@ jobs:
       - name: Verify signed web session reaches backend and revocation invalidates access
         id: signed_seller_session_e2e
         run: node apps/web/tests/private-bff-signed-session.e2e.mjs
+      - name: Verify live guest status scoped proof and foreign-request rejection
+        id: guest_status_proof_e2e
+        run: node apps/web/tests/private-bff-guest-status.e2e.mjs
       - name: Verify private frontend BFF routes remain default-off over live HTTP
         id: private_bff_e2e
         run: node apps/web/tests/private-bff-default-off.e2e.mjs
@@ -308,6 +311,7 @@ jobs:
           FRONTEND_BUILD: ${{ steps.frontend_build.outcome }}
           ENABLED_PRIVATE_DENIAL_E2E: ${{ steps.enabled_private_denial_e2e.outcome }}
           SIGNED_SELLER_SESSION_E2E: ${{ steps.signed_seller_session_e2e.outcome }}
+          GUEST_STATUS_PROOF_E2E: ${{ steps.guest_status_proof_e2e.outcome }}
           PRIVATE_BFF_E2E: ${{ steps.private_bff_e2e.outcome }}
           WORKER_ISOLATION_E2E: ${{ steps.worker_isolation_e2e.outcome }}
           CHROME_MOBILE_E2E: ${{ steps.chrome_mobile_e2e.outcome }}
@@ -330,6 +334,7 @@ jobs:
             echo "| Frontend production build | $FRONTEND_BUILD |"
             echo "| Enabled private BFF unauthorized proof rejection | $ENABLED_PRIVATE_DENIAL_E2E |"
             echo "| Signed seller web session and backend revocation | $SIGNED_SELLER_SESSION_E2E |"
+            echo "| Guest status scoped proof and expiry HTTP E2E | $GUEST_STATUS_PROOF_E2E |"
             echo "| Private frontend BFF live HTTP E2E | $PRIVATE_BFF_E2E |"
             echo "| Served worker isolation E2E | $WORKER_ISOLATION_E2E |"
             echo "| Chrome mobile and keyboard smoke | $CHROME_MOBILE_E2E |"
