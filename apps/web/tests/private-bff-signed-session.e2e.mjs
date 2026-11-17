@@ -87,6 +87,24 @@ try{
  assert.equal(wrongCsrfDenied.status,404,'invalid CSRF must not revoke another session');
  const notRevoked=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',[remoteSessionId]);
  assert.equal(notRevoked.rows[0].revoked_at,null,'CSRF rejection must leave session active');
+ const crossSiteDenied=await fetch(new URL('/api/account/sessions/'+remoteSessionId,base),{
+  method:'DELETE',redirect:'manual',signal:AbortSignal.timeout(8000),
+  headers:{'Sec-Fetch-Site':'cross-site',Cookie:cookie,
+   Origin:'https://services.example.test','x-services-csrf':sealed.csrf},
+ });
+ assert.equal(crossSiteDenied.status,404,
+  'cross-site DELETE cannot revoke another device even with a valid cookie and CSRF');
+ const foreignOriginDenied=await fetch(new URL('/api/account/sessions/'+remoteSessionId,base),{
+  method:'DELETE',redirect:'manual',signal:AbortSignal.timeout(8000),
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie,
+   Origin:'https://attacker.example.test','x-services-csrf':sealed.csrf},
+ });
+ assert.equal(foreignOriginDenied.status,404,
+  'untrusted Origin cannot revoke an account device');
+ const preAllowed=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',
+  [remoteSessionId]);
+ assert.equal(preAllowed.rows[0].revoked_at,null,
+  'cross-site and Origin rejection must cause no PostgreSQL mutation');
  const remoteRevoked=await revokeRequest(remoteSessionId);
  assert.equal(remoteRevoked.status,204,'authenticated remote device must be revocable');
  assert.match(remoteRevoked.headers.get('cache-control')??'',/no-store/i);
@@ -341,7 +359,25 @@ try{
  assert.equal(pendingPage.status,200);
  assert.deepEqual((await pendingPage.json()).items,[]);
 
+ // A still-active other device must remain safe if the browser's own
+ // backing PostgreSQL session is later revoked while its cookie remains valid.
+ const postRevocationTargetId=randomUUID();
+ const postRevocationBearer=randomBytes(32).toString('base64url');
+ const postRevocationHash=createHmac('sha256',hmacKey)
+  .update('services-session:v1\0').update(postRevocationBearer).digest('hex');
+ await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
+  VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
+  [postRevocationTargetId,userId,postRevocationHash,randomUUID()]);
  await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
+ const deniedRemoteFromRevoked=await revokeRequest(postRevocationTargetId);
+ assert.equal(deniedRemoteFromRevoked.status,503,
+  'expired backing auth must not revoke an active other session via sealed cookie');
+ assert.match(deniedRemoteFromRevoked.headers.get('cache-control')??'',/no-store/i);
+ assert.equal(deniedRemoteFromRevoked.headers.get('set-cookie'),null);
+ const activeOther=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',
+  [postRevocationTargetId]);
+ assert.equal(activeOther.rows[0].revoked_at,null,
+  'revoked actor cannot change another session in committed PostgreSQL state');
  const revokedDevices=await fetch(new URL('/api/account/sessions',base),{
   headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie},
   signal:AbortSignal.timeout(8000),redirect:'manual',
