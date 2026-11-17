@@ -172,6 +172,25 @@ for (const [locale, label] of [
     locale + ' filter-only page must not fabricate search results');
 }
 
+// Follow the actual clear-all link on a filter-only URL and verify the
+// resulting server page has no active filter selection or reset control.
+for (const locale of ['kk','ru']) {
+  const filteredUrl = new URL('/' + locale, webBase);
+  filteredUrl.searchParams.set('delivery_mode','online');
+  const filteredHtml = await fetchPage(filteredUrl, locale + ' reset navigation source');
+  const resetHref = [...filteredHtml.matchAll(/<a class="clearFilters" href="([^"]+)"/g)]
+    .map(match => match[1]);
+  assert.deepEqual(resetHref, ['/' + locale],
+    locale + ' reset must point to the canonical locale root without query parameters');
+  const resetUrl = new URL(resetHref[0],webBase);
+  assert.equal(resetUrl.search,'',locale + ' reset must clear URL search params');
+  const resetHtml = await fetchPage(resetUrl, locale + ' reset navigation destination');
+  assert.doesNotMatch(resetHtml,/class="clearFilters"/,
+    locale + ' reset destination must not retain the clear-all action');
+  assert.doesNotMatch(resetHtml,/option value="online" selected/,
+    locale + ' reset destination must not retain delivery selection');
+}
+
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
