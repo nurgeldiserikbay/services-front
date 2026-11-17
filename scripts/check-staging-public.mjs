@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 
 const MAX_BODY_BYTES=256*1024;
-const PUBLIC_PATHS=['/kk','/ru','/manifest.webmanifest','/icon.svg','/offline.html','/sw.js'];
+const PUBLIC_PATHS=['/kk','/ru','/robots.txt','/manifest.webmanifest','/icon.svg','/offline.html','/sw.js'];
 const isPublicHostname=host=>/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(host)&&
   !host.endsWith('.local')&&!host.endsWith('.internal')&&!host.endsWith('.localhost');
 
@@ -97,6 +97,23 @@ export async function checkPublicStaging(origin,{fetchImpl=fetch}={}){
       assert.match(body,new RegExp('<html lang="'+path.slice(1)+'"'));
       assert.match(body,/<main[^>]+id="main-content"/);
       assert.match(body,/<h1\b/);
+    }else if(path==='/robots.txt'){
+      assert.match(contentType,/^text\/plain\b/i,'robots must be plain text');
+      const lines=body.split(/\r?\n/).map(line=>line.trim());
+      assert.ok(lines.some(line=>/^User-agent:\s*\*$/i.test(line)),
+        'robots must explicitly define a wildcard crawler policy');
+      for(const route of ['/api','/kk/account','/ru/account','/kk/seller','/ru/seller',
+        '/offline.html','/sw.js','/manifest.webmanifest']){
+        assert.ok(lines.includes('Disallow: '+route),
+          'robots must exclude private and infrastructure route '+route);
+      }
+      for(const route of ['/kk/professionals/','/ru/professionals/',
+        '/kk/organizations/','/ru/organizations/','/kk/services/','/ru/services/']){
+        assert.ok(lines.includes('Allow: '+route),
+          'robots must keep public catalog discoverable '+route);
+      }
+      assert.ok(!lines.some(line=>/^Disallow:\s*\/$/i.test(line)),
+        'robots must not block the whole public site');
     }else if(path==='/manifest.webmanifest'){
       assert.match(contentType,/(?:application\/(?:manifest\+json|json))/i);
       const manifest=JSON.parse(body);
