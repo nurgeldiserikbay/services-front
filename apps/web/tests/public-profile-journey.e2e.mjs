@@ -172,7 +172,7 @@ assert.equal((searchHtml.match(/<h1(?:\s|>)/g) ?? []).length, 1, 'search page sh
 assert.match(searchHtml, /<main id="main-content" class="shell">/, 'search content should have a main landmark');
 assert.match(searchHtml, /href="#main-content"/, 'localized keyboard skip link should be rendered');
 assert.match(searchHtml, /<label for="query">[^<]+<\/label>/, 'search input should have a visible label');
-assert.match(searchHtml, /<select[^>]+id="delivery_mode"[^>]+aria-label="Где окажут услугу\\?"/, 'delivery filter must expose a Russian accessible name');
+assert.match(searchHtml, /<select[^>]+id="delivery_mode"[^>]+aria-label="Где окажут услугу\?"/, 'delivery filter must expose a Russian accessible name');
 assert.match(searchHtml, /<nav class="language" aria-label="Выбор языка">/, 'language navigation should have a localized accessible name');
 assert.match(searchHtml, /Stage 2 Journey Specialist Offer/, 'search should render the real specialist result');
 assert.match(searchHtml, /Stage 2 Journey Company Offer/, 'search should render the real company result');
