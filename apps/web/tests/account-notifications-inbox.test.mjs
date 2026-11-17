@@ -66,6 +66,25 @@ test('notification transport fails closed on revoked bearer, redirects and overl
   baseUrl:'http://example.test',accountBearer:token,
  }),NotificationTransportUnavailable);
 });
+test('notification backend URL rejects path ambiguity before network I/O',async()=>{
+ let calls=0;
+ const transport=async()=>{calls++;return response({items:[record]});};
+ for(const baseUrl of [
+  'https://backend.example.test/v1/%2e%2e/private',
+  'https://backend.example.test/v1/%61',
+  'https://backend.example.test/v1//nested',
+  'https://backend.example.test/v1\\nested',
+  'https://backend.example.test/v1/./nested',
+  'https://backend.example.test/v1/a.b',
+  'https://backend.example.test/v1?secret=x',
+ ]){
+  await assert.rejects(fetchAccountNotifications({
+   baseUrl,accountBearer:token,transport,
+  }),NotificationTransportUnavailable);
+ }
+ assert.equal(calls,0,'invalid configuration must never send bearer to a network target');
+});
+
 test('notification route and page are private, gated and backend revalidated',()=>{
  const read=p=>readFileSync(new URL('../src/'+p,import.meta.url),'utf8');
  const route=read('app/api/account/notifications/route.ts');
