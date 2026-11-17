@@ -81,7 +81,12 @@ try{
       await pause(100);
     }
     assert.ok(ready,locale+' page did not become ready in Chrome');
-    const result=await evaluate(`(()=>{
+    // Next.js may settle streamed navigation/layout after readyState becomes complete.
+    // Retry a bounded number of animation frames before treating zero-width links
+    // as a genuine clipping defect; never skip the final assertion.
+    let result;
+    for(let attempt=0;attempt<20;attempt++){
+    result=await evaluate(`(()=>{
       const skip=document.querySelector('a[href="#main-content"]');
       const main=document.querySelector('main#main-content');
       const viewport=document.querySelector('meta[name="viewport"]');
@@ -101,6 +106,10 @@ try{
           }),
       };
     })()`);
+    if(result.controlBounds.length>=4&&result.controlBounds.every(control=>
+      control.width>0&&control.left>=-1&&control.right<=width+1))break;
+    await pause(100);
+    }
     assert.equal(result.lang,locale);
     assert.match(result.viewport,/width=device-width/);
     assert.equal(result.main,true,'main landmark must exist');
