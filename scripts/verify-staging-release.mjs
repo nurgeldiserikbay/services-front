@@ -37,6 +37,12 @@ function validUtcDate(raw) {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw;
 }
 
+function validUtcTimestamp(raw) {
+  if (typeof raw !== 'string' || ! /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(raw)) return false;
+  const parsed = new Date(raw);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === raw.replace('Z', '.000Z');
+}
+
 function rows(text, heading) {
   const escaped = heading.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&');
   const match = text.match(new RegExp('^## ' + escaped + '\\s*\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))', 'm'));
@@ -48,7 +54,14 @@ function rows(text, heading) {
 
 export function validateStagingRelease(text) {
   const problems = [];
-  if (!/^Status: \*\*VERIFIED\*\*(?=\\s|[.!?]|$)/m.test(text)) problems.push('Staging status must be VERIFIED');
+  // The release decision is a single declaration in the introduction, not a
+  // marker that can be appended to an otherwise NOT VERIFIED document.
+  const declaredStatuses = [...text.matchAll(/^Status:[^\n]*$/gm)];
+  const introduction = text.split(/^## /m, 1)[0];
+  if (declaredStatuses.length !== 1 ||
+      !/^Status: \*\*VERIFIED\*\*(?:[.!?]|\s|$)/m.test(introduction)) {
+    problems.push('Staging status must be VERIFIED exactly once in the document introduction');
+  }
   const revisions = rows(text, 'Immutable revision record');
   for (const repo of EXPECTED_REPOS) {
     const matching = revisions.filter(c => c[0] === repo);
@@ -81,7 +94,7 @@ export function validateStagingRelease(text) {
   const approver = evidence.match(/^- Approved by:[ \t]*(.*)$/m)?.[1]?.trim();
   if (!approver || approver === 'TODO') problems.push('Missing owner approval');
   const approvedAt = evidence.match(/^- Approved at \(UTC\):[ \t]*(.*)$/m)?.[1]?.trim();
-  if (!approvedAt || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(approvedAt) || Number.isNaN(Date.parse(approvedAt))) problems.push('Missing valid UTC approval timestamp');
+  if (!validUtcTimestamp(approvedAt)) problems.push('Missing valid UTC approval timestamp');
   return problems;
 }
 
