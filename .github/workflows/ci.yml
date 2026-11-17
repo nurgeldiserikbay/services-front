@@ -172,7 +172,12 @@ jobs:
           SQL
       - name: Start backend test API
         run: |
-          (cd services-back && PORT=3101 npm start > "$RUNNER_TEMP/services-back.log" 2>&1 &)
+          umask 077
+          openssl rand -base64 32 > "$RUNNER_TEMP/services-guest-capability-hmac-key"
+          (cd services-back && PORT=3101 \
+            SERVICES_ENABLE_GUEST_STATUS_HTTP=enabled \
+            GUEST_REQUEST_HMAC_KEY="$(cat "$RUNNER_TEMP/services-guest-capability-hmac-key")" \
+            npm start > "$RUNNER_TEMP/services-back.log" 2>&1 &)
           for attempt in {1..30}; do
             if curl --connect-timeout 2 --max-time 5 --fail --silent http://127.0.0.1:3101/v1/professions >/dev/null; then exit 0; fi
             sleep 2
@@ -247,11 +252,12 @@ jobs:
         run: |
           umask 077
           openssl rand -base64 32 > "$RUNNER_TEMP/services-private-bff-account-key"
+          openssl rand -base64 32 > "$RUNNER_TEMP/services-private-bff-guest-key"
           (
             cd apps/web
             SERVICES_WEB_ENABLE_GUEST_STATUS_HTTP=enabled \
             SERVICES_WEB_ENABLE_SELLER_BFF=enabled \
-            SERVICES_WEB_GUEST_SESSION_KEY="$(openssl rand -base64 32)" \
+            SERVICES_WEB_GUEST_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-guest-key")" \
             SERVICES_WEB_ACCOUNT_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-account-key")" \
             SERVICES_WEB_ORIGIN=https://services.example.test \
             pnpm start --hostname 127.0.0.1 --port 3001 > "$RUNNER_TEMP/services-private-bff.log" 2>&1 &
