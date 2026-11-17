@@ -28,6 +28,16 @@ function mockedFetch(overrides={}){
       headers:{'content-type':data.type??type,
         ...(url.pathname==='/offline.html'?{'cache-control':'no-store','x-robots-tag':'noindex'}:{}),
         ...(url.pathname==='/sw.js'?{'cache-control':'no-store','service-worker-allowed':'/'}:{}),
+        'x-content-type-options':'nosniff',
+        'x-frame-options':'DENY',
+        'cross-origin-opener-policy':'same-origin',
+        'referrer-policy':'strict-origin-when-cross-origin',
+        'permissions-policy':'camera=(), microphone=(), geolocation=()',
+        'content-security-policy':[
+          "default-src 'self'","object-src 'none'","base-uri 'self'",
+          "form-action 'self'","frame-ancestors 'none'",
+          "upgrade-insecure-requests",
+        ].join('; '),
         ...data.headers,
       },
     });
@@ -73,6 +83,12 @@ test('staging smoke refuses redirects, broken localization and missing privacy h
     {'/manifest.webmanifest':{body:JSON.stringify({start_url:'/ru',scope:'/',display:'standalone',icons:[]})}},
     {'/offline.html':{headers:{'cache-control':'public, max-age=120'}}},
     {'/sw.js':{headers:{'service-worker-allowed':'/nested/'}}},
+    {'/kk':{headers:{'content-security-policy':"default-src 'self'; object-src 'none'"}}},
+    {'/ru':{headers:{'x-frame-options':'SAMEORIGIN'}}},
+    {'/manifest.webmanifest':{headers:{'x-content-type-options':'off'}}},
+    {'/icon.svg':{headers:{'cross-origin-opener-policy':'unsafe-none'}}},
+    {'/offline.html':{headers:{'referrer-policy':'unsafe-url'}}},
+    {'/sw.js':{headers:{'permissions-policy':'camera=(self), microphone=(), geolocation=()'}}},
   ]){
     await assert.rejects(checkPublicStaging(origin,{fetchImpl:mockedFetch(overrides).fetchImpl}));
   }
