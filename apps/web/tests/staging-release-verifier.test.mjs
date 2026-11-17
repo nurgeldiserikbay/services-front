@@ -6,7 +6,7 @@ import { validateStagingRelease } from '../../../scripts/verify-staging-release.
 
 const draft = readFileSync(new URL('../../../docs/staging-acceptance-evidence.md', import.meta.url), 'utf8');
 const sha = 'a'.repeat(40);
-const ciFor = repo => 'https://github.com/nurgeldiserikbay/services-' + repo.toLowerCase() + '/actions/runs/12345';
+const ciFor = repo => 'https://github.com/nurgeldiserikbay/services-' + ({Backend:'back',Frontend:'front',Admin:'admin'})[repo] + '/actions/runs/12345';
 
 function approvedDocument() {
   let text = draft.replace('Status: **NOT VERIFIED**', 'Status: **VERIFIED**');
