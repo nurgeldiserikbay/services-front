@@ -45,6 +45,8 @@ test('search field exposes native search keyboard and empty results are announce
   assert.match(page,/<input type="search" enterKeyHint="search"[^>]*id="query"/);
   assert.match(page,/items\.length === 0 && <p role="status" className="message">/);
   assert.match(page,/q && error && <div role="status"/);
+  assert.match(page,/const localeLink = \(next: 'kk' \| 'ru', preserveCursor = true\)/);
+  assert.match(page,/if \(cursor && preserveCursor\) query\.set\('cursor', cursor\)/);
   assert.match(page,/id="query" aria-controls="results-list" aria-describedby="results-title"/);
   assert.match(page,/<section id="results-list" className="results" aria-labelledby="results-title"/);
 });
@@ -102,7 +104,7 @@ test('loading announcement follows kk and ru route instead of combining language
 test('failed search exposes keyboard-accessible native retry with preserved filters',()=>{
   const page=readFileSync(join(appDir,'[locale]','page.tsx'),'utf8');
   const i18n=readFileSync(new URL('../src/lib/i18n.ts',import.meta.url),'utf8');
-  assert.match(page,/<a className="retrySearch" href=\{localeLink\(locale\)\}>\{t\.retrySearch\}<\/a>/);
+  assert.match(page,/<a className="retrySearch" href=\{localeLink\(locale, false\)\}>\{t\.retrySearch\}<\/a>/);
   assert.match(page,/q && error && <div role="status"/);
   assert.match(page,/if \(q\) query\.set\('q', q\)/);
   assert.match(page,/if \(professionId\) query\.set\('profession_id', professionId\)/);
