@@ -20,3 +20,15 @@ test('Chrome page assertions are not retried or silently skipped',()=>{
   assert.match(source.slice(pageStart),/Accessibility\.getFullAXTree/);
   assert.match(source.slice(pageStart),/keyboard clear-all did not reach pristine search/);
 });
+
+const swSource=readFileSync(new URL('./live-chrome-sw-offline.e2e.mjs',import.meta.url),'utf8');
+
+test('PWA Chrome startup has one clean-profile retry, without masking worker assertions',()=>{
+  assert.match(swSource,/for\\(let attempt=0;attempt<2&&!port;attempt\\+\\+\\)/);
+  assert.match(swSource,/dir=await mkdtemp\\(join\\(tmpdir\\(\\),'services-sw-chrome-'\\)\\)/);
+  assert.match(swSource,/assert\\.ok\\(port,'PWA Chrome did not expose DevTools after two startup attempts'\\)/);
+  const workerChecks=swSource.slice(swSource.indexOf('const targets=await'));
+  assert.match(workerChecks,/serviceWorker,'active service worker DevTools target must exist'/);
+  assert.match(workerChecks,/assert\\.deepEqual\\(after,before/);
+  assert.match(workerChecks,/private API requests must fail offline/);
+});
