@@ -12,6 +12,16 @@ Record the exact SHA and successful GitHub Actions run URL for each repository. 
 | Frontend | TODO | TODO | TODO | TODO |
 | Admin | TODO | TODO | TODO | TODO |
 
+## CI revision provenance (online pre-approval gate)
+
+After recording immutable Backend, Frontend and Admin SHAs and genuine successful GitHub Actions run URLs, run the read-only online provenance verifier:
+
+```bash
+node scripts/verify-staging-ci-provenance.mjs docs/staging-acceptance-evidence.md
+```
+
+It first requires the complete mechanical evidence record, then queries **only** GitHub Actions REST endpoints for the three approved project repositories. Every run must be HTTP 200, `completed`, `success`, belong to the expected repository and report `head_sha` exactly matching the staged revision. Rate limits, redirects, timeouts, malformed JSON or missing run status are **NO-GO**. The check performs no staging writes and sends no credentials. This does not prove which artifact was deployed, that manual gates were executed, or that the person listed as approver authorized release. Keep release status NOT VERIFIED until environment, security and operations sign-off.
+
 ## Required acceptance gates
 
 Each gate requires its own dated, reproducible evidence URL (HTTPS). A shared evidence bundle is not sufficient by itself. Do not mark PASS based only on source code, a green unit test, or a screenshot without an execution trace.
