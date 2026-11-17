@@ -167,3 +167,19 @@ test('Lighthouse CI captures pinned mobile kk/ru reports without unmeasured scor
  assert.match(validator,/not field Core Web Vitals/);
  assert.doesNotMatch(workflow,/--only-categories=.*pwa/);
 });
+
+test('production runtime HTTP header gate runs before browser journeys and is reported',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ const script=readFileSync(new URL('./live-response-security-headers.e2e.mjs',import.meta.url),'utf8');
+ const ready=workflow.indexOf('Start frontend production server');
+ const headers=workflow.indexOf('Verify live production Next.js response security headers');
+ const chrome=workflow.indexOf('Verify mobile keyboard and landmarks in headless Chrome');
+ assert.ok(ready>=0&&headers>ready&&chrome>headers,'runtime headers must be checked after server startup and before Chrome');
+ assert.match(workflow,/node apps\/web\/tests\/live-response-security-headers\.e2e\.mjs/);
+ assert.match(workflow,/steps\.live_security_headers\.outcome/);
+ for(const token of ['strict-transport-security','content-security-policy','x-frame-options',
+   'cross-origin-opener-policy','permissions-policy','cache-control','service-worker-allowed']){
+  assert.ok(script.includes(token),'missing live response header assertion: '+token);
+ }
+ assert.match(script,/not staging TLS|deployed staging TLS/);
+});
