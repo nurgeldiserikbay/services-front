@@ -69,7 +69,7 @@ export async function checkPublicStaging(origin,{fetchImpl=fetch}={}){
       path+' must enforce public referrer policy');
     const permissions=response.headers.get('permissions-policy')??'';
     for(const feature of ['camera','microphone','geolocation']){
-      assert.match(permissions,new RegExp('(?:^|,)\\\\s*'+feature+'=\\\\(\\\\)'),
+      assert.match(permissions,new RegExp('(?:^|,)\\s*'+feature+'=\\(\\)'),
         path+' must disable '+feature+' permissions');
     }
     if(path==='/kk'||path==='/ru'){
