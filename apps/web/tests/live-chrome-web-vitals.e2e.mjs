@@ -70,7 +70,7 @@ try {
   }
   async function evaluate(expression){
     const result=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});
-    if(result.exceptionDetails)throw Error(result.exceptionDetails.text);
+    if(result.exceptionDetails)throw Error(result.exceptionDetails.exception?.description??result.exceptionDetails.text);
     return result.result?.value;
   }
   await send('Page.enable');
@@ -102,6 +102,7 @@ try {
       await send('Page.navigate',{url:url.href});
       let snapshot;
       for(let attempt=0;attempt<120;attempt++){
+        try {
         snapshot=await evaluate(`(()=>{
           const navigation=performance.getEntriesByType('navigation')[0];
           const fcp=performance.getEntriesByName('first-contentful-paint')[0];
@@ -116,6 +117,13 @@ try {
             responseEndMs:navigation?.responseEnd??null,
           };
         })()`);
+        }catch(error){
+          // A navigation can replace Chrome's JS execution context while
+          // DevTools is evaluating; retry until the fresh document is ready.
+          if(attempt===119)throw error;
+          await pause(100);
+          continue;
+        }
         if(snapshot.ready&&snapshot.main&&snapshot.locale===locale&&snapshot.fcpMs>0&&snapshot.lcpMs>0)break;
         await pause(100);
       }
