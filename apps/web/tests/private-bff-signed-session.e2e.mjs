@@ -225,6 +225,54 @@ try{
  assert.equal(unauthorizedNotices.rows[0].n,0,
   'cross-account seller decision must emit no notification intent');
 
+ // Logout must never be a cross-site logout CSRF vector. Exercise the
+ // unrelated fixture account so the seller's lifecycle remains independently
+ // testable after its own authenticated session is revoked.
+ const outsiderLogout=async({csrf=outsiderPage.csrf_token,site='same-origin',
+  origin='https://services.example.test'}={})=>fetch(new URL('/api/account/logout',base),{
+  method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+  headers:{'Sec-Fetch-Site':site,Cookie:outsiderCookie,
+   Origin:origin,'x-services-csrf':csrf},
+ });
+ const crossSiteLogout=await outsiderLogout({site:'cross-site'});
+ assert.equal(crossSiteLogout.status,404,'cross-site request cannot force account logout');
+ assert.equal(crossSiteLogout.headers.get('set-cookie'),null,
+  'denied logout must not clear an existing browser session cookie');
+ const invalidCsrfLogout=await outsiderLogout({csrf:randomBytes(32).toString('base64url')});
+ assert.equal(invalidCsrfLogout.status,404,'invalid CSRF cannot force account logout');
+ assert.equal(invalidCsrfLogout.headers.get('set-cookie'),null);
+ const preLogout=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',
+  [outsiderSessionId]);
+ assert.equal(preLogout.rows[0].revoked_at,null,
+  'denied logout requests must never change PostgreSQL session state');
+ const confirmedLogout=await outsiderLogout();
+ assert.equal(confirmedLogout.status,204,'confirmed logout must revoke live backend session');
+ assert.match(confirmedLogout.headers.get('cache-control')??'',/no-store/i);
+ assert.match(confirmedLogout.headers.get('x-robots-tag')??'',/noindex/i);
+ const clearCookie=confirmedLogout.headers.get('set-cookie')??'';
+ assert.match(clearCookie,/__Host-services_account_web=/);
+ assert.match(clearCookie,/Max-Age=0/i);
+ assert.match(clearCookie,/HttpOnly/i);
+ assert.match(clearCookie,/Secure/i);
+ assert.ok(!clearCookie.includes(outsiderBearer),
+  'logout response must not expose backend bearer');
+ const loggedOutDb=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',
+  [outsiderSessionId]);
+ assert.ok(loggedOutDb.rows[0].revoked_at instanceof Date,
+  'successful logout must commit backend revocation before HTTP 204');
+ const loggedOutDevices=await fetch(new URL('/api/account/sessions',base),{
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:outsiderCookie},
+  signal:AbortSignal.timeout(8000),redirect:'manual',
+ });
+ assert.equal(loggedOutDevices.status,503,
+  'replayed old cookie must not authorize account inventory after logout');
+ assert.deepEqual(await loggedOutDevices.json(),{code:'UNAVAILABLE'});
+ const repeatLogout=await outsiderLogout();
+ assert.equal(repeatLogout.status,503,
+  'logout with stale cookie must not falsely report repeated backend success');
+ assert.match(repeatLogout.headers.get('set-cookie')??'',/Max-Age=0/i,
+  'failed backend logout still clears the local cookie');
+
  const populated=await inbox();
  assert.equal(populated.status,200,'seller must read only own committed requests');
  const page=await populated.json();
