@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {join} from 'node:path';
 import {sealGuestSession} from '../src/lib/guest-session-core.mjs';
+import {sealGuestRequestAccess} from '../src/lib/guest-request-access-core.mjs';
 
 // Live HTTP journey: an independently verified TEST fixture, not OTP bypass in
 // application code. All keys and rows are unique to disposable CI PostgreSQL.
@@ -115,6 +116,20 @@ try{
  'forged READ_CANCEL cookie');
  await denyStatus(await statusWith(randomUUID(),access),
   'valid READ_CANCEL cookie for a different request');
+
+ // The CREATE_REQUEST cookie and the READ_CANCEL cookie use distinct names,
+ // seals and authorization scopes even though both are issued by this BFF.
+ await denyStatus(await statusWith(createdId,cookie),
+  'CREATE_REQUEST cookie cannot read request status');
+ const switchedName='__Host-services_guest_request='+sealed.cookie;
+ await denyStatus(await statusWith(createdId,switchedName),
+  'renaming a CREATE_REQUEST seal cannot turn it into READ_CANCEL');
+ const expiredSeal=sealGuestRequestAccess(webKey,createdId,
+  randomBytes(32).toString('base64url'),Date.now()-1000,Date.now()-2000);
+ await denyStatus(await statusWith(createdId,
+  '__Host-services_guest_request='+expiredSeal.cookie),
+  'expired READ_CANCEL cookie must not read request status');
+
  await denyStatus(await statusWith(createdId,access,'cross-site'),
   'cross-site fetch with otherwise valid READ_CANCEL cookie');
  const preserved=await statusWith(createdId,access);
