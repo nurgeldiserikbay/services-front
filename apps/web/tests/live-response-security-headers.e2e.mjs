@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 // is HTTP: browsers only enforce HSTS when delivered via real HTTPS. This is
 // NOT deployed staging TLS or browser HSTS acceptance evidence.
 const base=process.env.WEB_BASE_URL??'http://127.0.0.1:3000';
-const paths=['/kk','/ru','/manifest.webmanifest','/icon.svg','/offline.html','/sw.js'];
+const paths=['/kk','/ru','/robots.txt','/manifest.webmanifest','/icon.svg','/offline.html','/sw.js'];
 const requiredPolicy=["default-src 'self'","object-src 'none'","base-uri 'self'",
   "form-action 'self'","frame-ancestors 'none'","upgrade-insecure-requests"];
 
@@ -34,6 +34,26 @@ for(const path of paths){
     for(const directive of requiredPolicy){
       assert.ok(directives.includes(directive),path+' missing production CSP '+directive);
     }
+  }
+  if(path==='/robots.txt'){
+    // The generated metadata route must be checked at the actual HTTP
+    // boundary: source-level rules alone do not prove crawler visibility.
+    assert.match(h.get('content-type')??'',/^text\/plain\b/i,'robots must be served as plain text');
+    const robots=await response.text();
+    assert.ok(robots.length<16*1024,'robots policy unexpectedly oversized');
+    assert.match(robots,/(?:^|\n)User-agent:\s*\*(?:\r?\n|$)/i);
+    for(const route of ['/api','/kk/account','/ru/account','/kk/seller','/ru/seller',
+      '/offline.html','/sw.js','/manifest.webmanifest']){
+      assert.ok(robots.split(/\r?\n/).some(line=>line.trim()==='Disallow: '+route),
+        'robots.txt must exclude private/internal path '+route);
+    }
+    for(const route of ['/kk/professionals/','/ru/professionals/',
+      '/kk/organizations/','/ru/organizations/','/kk/services/','/ru/services/']){
+      assert.ok(robots.split(/\r?\n/).some(line=>line.trim()==='Allow: '+route),
+        'robots.txt must preserve public catalog discovery '+route);
+    }
+    assert.doesNotMatch(robots,/(?:^|\n)Disallow:\s*\/(?:\r?\n|$)/i,
+      'robots.txt must not block the entire public catalog');
   }
   if(path==='/offline.html'){
     assert.match(h.get('cache-control')??'',/no-store/i);
