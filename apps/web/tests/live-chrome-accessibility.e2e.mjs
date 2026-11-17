@@ -115,6 +115,35 @@ try{
     assert.equal(result.main,true,'main landmark must exist');
     assert.equal(result.headings,1,'one primary heading required');
     assert.equal(result.focusedSkip,true,'keyboard skip link must accept focus');
+    // Press Enter on the actual skip link instead of accepting focus alone.
+    // The target must resolve to the main landmark in the same document.
+    if(width===375){
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
+      await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+      let jumped=false;
+      for(let attempt=0;attempt<40;attempt++){
+        jumped=await evaluate(`(()=>{
+          const target=document.querySelector('main#main-content');
+          return location.hash==='#main-content'&&
+            document.getElementById('main-content')===target;
+        })()`);
+        if(jumped)break;
+        await pause(100);
+      }
+      assert.equal(jumped,true,locale+' keyboard skip-link Enter must navigate to main landmark');
+      // A new navigation restores the pristine URL and focus for search tests.
+      await send('Page.navigate',{url:new URL('/'+locale,base).href});
+      let restored=false;
+      for(let attempt=0;attempt<60;attempt++){
+        restored=await evaluate(`document.readyState==='complete'&&
+          !location.hash&&document.documentElement.lang==='${locale}'&&
+          !!document.querySelector('input#query')`);
+        if(restored)break;
+        await pause(100);
+      }
+      assert.equal(restored,true,locale+' must restore search after skip-link navigation');
+    }
+
     assert.ok(result.documentWidth<=result.innerWidth+1,
       locale+' has horizontal overflow at '+width+' CSS px: '+JSON.stringify(result));
     assert.ok(result.controlBounds.length>=4,'expected visible search and navigation controls');
