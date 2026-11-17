@@ -90,7 +90,7 @@ test('approval cannot be forged with placeholder reviewer or malformed UTC time'
     assert.ok(validateStagingRelease(valid.replace('- Approved by: Release owner', '- Approved by: ' + bad))
       .some(p => p.includes('owner approval')));
   }
-  for (const bad of ['TODO', '2026-11-12', '2026-11-12T18:00:00+05:00', '2026-99-99T18:00:00Z']) {
+  for (const bad of ['TODO', '2026-11-12', '2026-11-12T18:00:00+05:00', '2026-99-99T18:00:00Z', '2026-02-30T18:00:00Z', '2026-11-12T24:00:00Z']) {
     assert.ok(validateStagingRelease(valid.replace('2026-11-12T18:00:00Z', bad))
       .some(p => p.includes('UTC approval timestamp')), bad);
   }
