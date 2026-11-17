@@ -68,5 +68,6 @@ const create=await fetch(new URL('/api/guest-requests',base),{
  headers:{...headers,'Origin':'https://services.example.test','Content-Type':'application/json'},
  body:'{}',
 });
-assert.equal(create.status,404,'guest create remains separately disabled');
+assert.equal(create.status,503,'enabled guest create without verified proof must fail closed');
+assert.equal(create.headers.get('set-cookie'),null,'unverified create must not issue request proof');
 console.log('Live OTP CSRF bootstrap works, no provider tokens leak, verify/create gates remain disabled');
