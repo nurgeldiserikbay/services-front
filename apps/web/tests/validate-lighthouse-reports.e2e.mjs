@@ -22,6 +22,10 @@ for(const locale of locales){
       locale+' missing Lighthouse '+name+' score');
     categories[name]=Math.round(category.score*100);
   }
+  // Original Lighthouse audit found two AA contrast violations:
+  // active language link and empty-results status copy. Fail if regressed.
+  assert.equal(report.audits?.['color-contrast']?.score,1,
+    locale+' Lighthouse must report no failing color-contrast elements');
   const metrics={};
   for(const [name,key] of [
     ['firstContentfulPaintMs','first-contentful-paint'],
