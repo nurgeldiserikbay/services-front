@@ -9,8 +9,10 @@ function endpoint(baseUrl,production,path){
  try{
   const u=new URL(baseUrl);
   if(!['https:','http:'].includes(u.protocol)||(production&&u.protocol!=='https:')||
-   u.username||u.password||u.search||u.hash||u.pathname.includes('..')||
-   u.pathname.endsWith('//'))throw new Error('invalid_url');
+   u.username||u.password||u.search||u.hash||
+   !/^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?\/?$/.test(u.pathname)||
+   baseUrl.includes('\\')||baseUrl.includes('%')||
+   /\/\.{1,2}(?:\/|$)/.test(baseUrl))throw new Error('invalid_url');
   u.pathname=u.pathname.replace(/\/$/,'')+path;
   return u.toString();
  }catch{throw new AccountSessionTransportUnavailable();}
