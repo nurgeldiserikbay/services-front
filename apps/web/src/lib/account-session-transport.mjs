@@ -19,6 +19,29 @@ function headers(token){
  if(typeof token!=='string'||!BEARER.test(token))throw new AccountSessionTransportUnavailable();
  return {Authorization:'Bearer '+token,Accept:'application/json'};
 }
+async function readBoundedJson(response){
+ if(!response.body)throw new AccountSessionTransportUnavailable();
+ const reader=response.body.getReader();
+ const decoder=new TextDecoder('utf-8',{fatal:true});
+ let bytes=0;
+ let text='';
+ let complete=false;
+ try{
+  while(true){
+   const {done,value}=await reader.read();
+   if(done){complete=true;break;}
+   if(!(value instanceof Uint8Array))throw new AccountSessionTransportUnavailable();
+   bytes+=value.byteLength;
+   if(bytes>MAX_BYTES)throw new AccountSessionTransportUnavailable();
+   text+=decoder.decode(value,{stream:true});
+  }
+  text+=decoder.decode();
+  return JSON.parse(text);
+ }finally{
+  if(!complete)await reader.cancel().catch(()=>{});
+  reader.releaseLock();
+ }
+}
 function validateList(payload){
  if(!payload||typeof payload!=='object'||Array.isArray(payload)||
   Object.keys(payload).sort().join(',')!=='items'||!Array.isArray(payload.items)||
@@ -50,9 +73,7 @@ export async function listBackendAccountSessions({
   const length=response.headers.get('content-length');
   if(length!==null&&(!/^\d+$/.test(length)||Number(length)>MAX_BYTES))
    throw new AccountSessionTransportUnavailable();
-  const body=await response.text();
-  if(Buffer.byteLength(body,'utf8')>MAX_BYTES)throw new AccountSessionTransportUnavailable();
-  return validateList(JSON.parse(body));
+  return validateList(await readBoundedJson(response));
  }catch{throw new AccountSessionTransportUnavailable();}
 }
 export async function revokeBackendAccountSession({
