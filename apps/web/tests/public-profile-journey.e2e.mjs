@@ -241,6 +241,29 @@ function findHref(html, path) {
   return href;
 }
 
+// Locale links must carry the active search and delivery filter into the
+// other language. Follow the rendered href, not a reconstructed route.
+for(const [sourceLocale,targetLocale] of [['kk','ru'],['ru','kk']]){
+  const filteredUrl=new URL('/'+sourceLocale,webBase);
+  filteredUrl.searchParams.set('q',query);
+  filteredUrl.searchParams.set('delivery_mode','online');
+  const filteredHtml=await fetchPage(filteredUrl,sourceLocale+' filtered language source');
+  const links=[...filteredHtml.matchAll(/href="([^"]+)"/g)]
+    .map(match=>new URL(match[1].replaceAll('&amp;','&'),webBase));
+  const switchUrl=links.find(url=>
+    url.origin===new URL(webBase).origin&&url.pathname==='/'+targetLocale&&
+    url.searchParams.get('q')===query);
+  assert.ok(switchUrl,sourceLocale+' must provide a translated search link');
+  assert.equal(switchUrl.searchParams.get('delivery_mode'),'online',
+    sourceLocale+' language switch must preserve the delivery filter');
+  assert.equal(switchUrl.searchParams.get('scope'),'global',
+    sourceLocale+' language switch must preserve the search scope');
+  const switchedHtml=await fetchPage(switchUrl,sourceLocale+' to '+targetLocale+' search');
+  assert.match(switchedHtml,new RegExp('<html lang="'+targetLocale+'">'));
+  assert.ok(switchedHtml.includes('value="'+query+'"'),
+    targetLocale+' search must retain the original query after switching language');
+}
+
 const professionalHref = findHref(searchHtml, '/ru/professionals/ci-stage2-specialist');
 assert.ok(professionalHref, 'search result should link to the specialist profile');
 const professionalHtml = await fetchPage(new URL(professionalHref, webBase), 'specialist profile');
