@@ -134,3 +134,69 @@ test('unexpected revision or acceptance gate cannot be smuggled into a verified 
   const extraGate=valid.replace(gate,gate+'\n'+gate.replace('| Authentication |','| Unexpected gate |'));
   assert.ok(validateStagingRelease(extraGate).some(p=>p.includes('Unknown acceptance gate')));
 });
+
+
+test('online staging CI provenance verifies successful runs at exactly the staged SHAs',async()=>{
+  const {verifyStagingCiProvenance}=await import('../../../scripts/verify-staging-ci-provenance.mjs');
+  const visited=[];
+  const fetchImpl=async(url,options)=>{
+    visited.push({url,options});
+    const repo=url.match(/repos\/(nurgeldiserikbay\/services-(?:back|front|admin))\//)?.[1];
+    assert.ok(repo,'unexpected repo API request');
+    return Response.json({
+      id:12345,head_sha:sha,status:'completed',conclusion:'success',
+      repository:{full_name:repo},
+    });
+  };
+  const problems=await verifyStagingCiProvenance(approvedDocument(),{fetchImpl});
+  assert.deepEqual(problems,[]);
+  assert.equal(visited.length,3);
+  for(const call of visited){
+    assert.ok(call.url.startsWith('https://api.github.com/repos/nurgeldiserikbay/services-'));
+    assert.equal(call.options.method,'GET');
+    assert.equal(call.options.credentials,'omit');
+    assert.equal(call.options.redirect,'manual');
+  }
+});
+
+test('online CI provenance does not request network for an unapproved staging draft',async()=>{
+  const {verifyStagingCiProvenance}=await import('../../../scripts/verify-staging-ci-provenance.mjs');
+  const problems=await verifyStagingCiProvenance(draft,{
+    fetchImpl:()=>{throw Error('must not fetch for incomplete evidence');},
+  });
+  assert.ok(problems.length>0);
+});
+
+test('online CI provenance fails on wrong SHA, repo, pending or unsuccessful runs',async()=>{
+  const {verifyStagingCiProvenance}=await import('../../../scripts/verify-staging-ci-provenance.mjs');
+  for(const mutation of [
+    {head_sha:'b'.repeat(40)},
+    {repository:{full_name:'nurgeldiserikbay/services-wrong'}},
+    {status:'in_progress'},
+    {conclusion:'failure'},
+    {id:54321},
+  ]){
+    const fetchImpl=async(url)=>{
+      const repo=url.match(/repos\/(nurgeldiserikbay\/services-(?:back|front|admin))\//)?.[1];
+      return Response.json({
+        id:12345,head_sha:sha,status:'completed',conclusion:'success',
+        repository:{full_name:repo},
+        ...mutation,
+      });
+    };
+    const problems=await verifyStagingCiProvenance(approvedDocument(),{fetchImpl});
+    assert.ok(problems.some(problem=>problem.includes('does not prove successful run')),JSON.stringify(mutation));
+  }
+});
+
+test('online CI provenance fails closed for rate limits, redirects and oversized reports',async()=>{
+  const {verifyStagingCiProvenance}=await import('../../../scripts/verify-staging-ci-provenance.mjs');
+  for(const response of [
+    new Response(null,{status:429}),
+    new Response(null,{status:302,headers:{location:'https://evil.example/test'}}),
+    new Response('x'.repeat(130*1024),{status:200}),
+  ]){
+    const problems=await verifyStagingCiProvenance(approvedDocument(),{fetchImpl:async()=>response.clone()});
+    assert.ok(problems.length>=1);
+  }
+});
