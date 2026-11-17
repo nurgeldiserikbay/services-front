@@ -264,6 +264,34 @@ for(const [sourceLocale,targetLocale] of [['kk','ru'],['ru','kk']]){
     targetLocale+' search must retain the original query after switching language');
 }
 
+// A syntactically valid but semantically invalid cursor is rejected by the
+// real backend (HTTP 400). Retry must remove only the broken page cursor,
+// preserving the query and other filters, so a user can recover.
+for (const [locale, label] of [
+  ['kk', 'Қайта іздеу'],
+  ['ru', 'Повторить поиск'],
+]) {
+  const invalidCursorUrl = new URL('/'+locale, webBase);
+  invalidCursorUrl.searchParams.set('q', query);
+  invalidCursorUrl.searchParams.set('scope','global');
+  invalidCursorUrl.searchParams.set('delivery_mode','online');
+  invalidCursorUrl.searchParams.set('cursor','invalid');
+  const errorHtml=await fetchPage(invalidCursorUrl,locale+' malformed cursor retry');
+  const retryMatch=errorHtml.match(/<a class="retrySearch" href="([^"]+)">([^<]+)<\/a>/);
+  assert.ok(retryMatch,locale+' invalid cursor must expose a retry link');
+  assert.equal(retryMatch[2],label,locale+' retry must be localized');
+  const retryUrl=new URL(retryMatch[1].replaceAll('&amp;','&'),webBase);
+  assert.equal(retryUrl.pathname,'/'+locale);
+  assert.equal(retryUrl.searchParams.get('q'),query);
+  assert.equal(retryUrl.searchParams.get('delivery_mode'),'online');
+  assert.equal(retryUrl.searchParams.get('scope'),'global');
+  assert.equal(retryUrl.searchParams.has('cursor'),false,
+    locale+' retry must discard the rejected pagination cursor');
+  const recoveredHtml=await fetchPage(retryUrl,locale+' recovered search without cursor');
+  assert.doesNotMatch(recoveredHtml,/class="retrySearch"/,
+    locale+' recovered search must not continue showing an error retry');
+}
+
 const professionalHref = findHref(searchHtml, '/ru/professionals/ci-stage2-specialist');
 assert.ok(professionalHref, 'search result should link to the specialist profile');
 const professionalHtml = await fetchPage(new URL(professionalHref, webBase), 'specialist profile');

@@ -39,7 +39,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
   const nextCursor: string | null = search.result?.next_cursor ?? null;
   const error = search.error;
   const hasSearchFilters = Boolean(q || countryId || cityId || professionId || deliveryMode !== 'any' || cursor);
-  const localeLink = (next: 'kk' | 'ru') => {
+  const localeLink = (next: 'kk' | 'ru', preserveCursor = true) => {
     const query = new URLSearchParams();
     if (q) query.set('q', q);
     query.set('scope', scope);
@@ -47,7 +47,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
     if (cityId) query.set('city_id', cityId);
     if (professionId) query.set('profession_id', professionId);
     if (deliveryMode !== 'any') query.set('delivery_mode', deliveryMode);
-    if (cursor) query.set('cursor', cursor);
+    if (cursor && preserveCursor) query.set('cursor', cursor);
     const suffix = query.size ? '?' + query.toString() : '';
     return '/' + next + suffix;
   };
@@ -117,7 +117,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
       <section id="results-list" className="results" aria-labelledby="results-title">
         <h2 id="results-title">{t.results}</h2>
         {!q && <p className="message">{t.waiting}</p>}
-        {q && error && <div role="status" className="message">{t.unavailable} <a className="retrySearch" href={localeLink(locale)}>{t.retrySearch}</a></div>}
+        {q && error && <div role="status" className="message">{t.unavailable} <a className="retrySearch" href={localeLink(locale, false)}>{t.retrySearch}</a></div>}
         {q && !error && items.length === 0 && <p role="status" className="message">{t.empty}</p>}
         {q && !error && items.length > 0 && <p role="status" aria-live="polite">{t.resultsOnPage(items.length)}</p>}
         {q && !error && items.length > 0 &&
