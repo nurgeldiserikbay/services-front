@@ -152,6 +152,26 @@ for(const path of ['/kk/account','/ru/account','/kk/seller','/ru/seller',
 }
 console.log('[journey] private workspace HTTP cache and index boundaries verified');
 
+// Clear-all must be available for filter-only URLs, without a search query.
+// The default unfiltered page must not show a redundant reset action.
+for (const [locale, label] of [
+  ['kk', 'Іздеуді және сүзгілерді тазарту'],
+  ['ru', 'Очистить поиск и фильтры'],
+]) {
+  const pristine = await fetchPage(new URL('/' + locale, webBase),
+    locale + ' unfiltered search');
+  assert.doesNotMatch(pristine, /class="clearFilters"/,
+    locale + ' must not display reset on the unfiltered landing page');
+
+  const filteredUrl = new URL('/' + locale, webBase);
+  filteredUrl.searchParams.set('delivery_mode', 'online');
+  const filtered = await fetchPage(filteredUrl, locale + ' filter-only search');
+  assert.ok(filtered.includes(`class="clearFilters" href="/${locale}">${label}</a>`),
+    locale + ' filter-only page must offer a locale-preserving clear-all link');
+  assert.doesNotMatch(filtered, /<li class="resultItem">/,
+    locale + ' filter-only page must not fabricate search results');
+}
+
 const searchUrl = new URL('/ru', webBase);
 searchUrl.searchParams.set('q', query);
 
