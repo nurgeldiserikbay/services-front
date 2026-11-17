@@ -18,7 +18,24 @@ const REPO_PATH = {
 };
 function validCiRun(url, repo) {
   return typeof url === 'string' &&
-    new RegExp('^https://github\\.com/' + REPO_PATH[repo] + '/actions/runs/[1-9][0-9]*
+    new RegExp('^https://github\\.com/' + REPO_PATH[repo] + '/actions/runs/[1-9][0-9]*$').test(url);
+}
+function validEvidenceUrl(raw) {
+  if (typeof raw !== 'string' || raw.length > 2048 ||
+      !/^https:\/\/[^\s|]+$/i.test(raw) || raw.includes('TODO')) return false;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' && !!url.hostname &&
+      !url.username && !url.password &&
+      !url.hash && !url.search &&
+      url.port === '' && url.pathname !== '/TODO';
+  } catch { return false; }
+}
+function validUtcDate(raw) {
+  if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+  const parsed = new Date(raw + 'T00:00:00Z');
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw;
+}
 
 function rows(text, heading) {
   const escaped = heading.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&');
