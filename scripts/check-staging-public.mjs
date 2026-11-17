@@ -57,6 +57,30 @@ export async function checkPublicStaging(origin,{fetchImpl=fetch}={}){
       signal:AbortSignal.timeout(10000),
     });
     assert.equal(response.status,200,path+' must return HTTP 200 with no redirects');
+    // Verify headers delivered over real staging HTTPS, not only checked in
+    // Next.js source tests. A CDN/proxy can silently drop these protections.
+    assert.equal(response.headers.get('x-content-type-options')?.toLowerCase(),'nosniff',
+      path+' must disable MIME sniffing');
+    assert.equal(response.headers.get('x-frame-options')?.toUpperCase(),'DENY',
+      path+' must prevent framing');
+    assert.equal(response.headers.get('cross-origin-opener-policy')?.toLowerCase(),'same-origin',
+      path+' must isolate the top-level browsing context');
+    assert.equal(response.headers.get('referrer-policy')?.toLowerCase(),'strict-origin-when-cross-origin',
+      path+' must enforce public referrer policy');
+    const permissions=response.headers.get('permissions-policy')??'';
+    for(const feature of ['camera','microphone','geolocation']){
+      assert.match(permissions,new RegExp('(?:^|,)\\\\s*'+feature+'=\\\\(\\\\)'),
+        path+' must disable '+feature+' permissions');
+    }
+    if(path==='/kk'||path==='/ru'){
+      const csp=response.headers.get('content-security-policy')??'';
+      for(const directive of ["default-src 'self'","object-src 'none'",
+        "base-uri 'self'","form-action 'self'","frame-ancestors 'none'",
+        "upgrade-insecure-requests"]){
+        assert.ok(csp.split(';').some(part=>part.trim()===directive),
+          path+' missing production CSP directive '+directive);
+      }
+    }
     const body=await readLimited(response);
     const contentType=response.headers.get('content-type')??'';
     if(path==='/kk'||path==='/ru'){
