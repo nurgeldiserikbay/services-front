@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 
 const MAX_BODY_BYTES=256*1024;
 const PUBLIC_PATHS=['/kk','/ru','/manifest.webmanifest','/icon.svg','/offline.html','/sw.js'];
-const isPublicHostname=host=>/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(host)&&
+const isPublicHostname=host=>/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(host)&&
   !host.endsWith('.local')&&!host.endsWith('.internal')&&!host.endsWith('.localhost');
 
 export function validateStagingOrigin(raw,allowHost){
@@ -60,26 +60,26 @@ export async function checkPublicStaging(origin,{fetchImpl=fetch}={}){
     const body=await readLimited(response);
     const contentType=response.headers.get('content-type')??'';
     if(path==='/kk'||path==='/ru'){
-      assert.match(contentType,/text\\/html/i);
+      assert.match(contentType,/text\/html/i);
       assert.match(body,new RegExp('<html lang="'+path.slice(1)+'"'));
       assert.match(body,/<main[^>]+id="main-content"/);
-      assert.match(body,/<h1\\b/);
+      assert.match(body,/<h1\b/);
     }else if(path==='/manifest.webmanifest'){
-      assert.match(contentType,/(?:application\\/(?:manifest\\+json|json))/i);
+      assert.match(contentType,/(?:application\/(?:manifest\+json|json))/i);
       const manifest=JSON.parse(body);
       assert.equal(manifest.start_url,'/kk');
       assert.equal(manifest.scope,'/');
       assert.equal(manifest.display,'standalone');
       assert.ok(manifest.icons?.some(icon=>icon.src==='/icon.svg'));
     }else if(path==='/icon.svg'){
-      assert.match(contentType,/image\\/svg\\+xml/i);
-      assert.match(body,/<svg\\b/);
+      assert.match(contentType,/image\/svg\+xml/i);
+      assert.match(body,/<svg\b/);
     }else if(path==='/offline.html'){
-      assert.match(contentType,/text\\/html/i);
+      assert.match(contentType,/text\/html/i);
       assert.match(response.headers.get('cache-control')??'',/no-store/i);
       assert.match(response.headers.get('x-robots-tag')??'',/noindex/i);
-      assert.match(body,/<a href="\\/kk">/);
-      assert.match(body,/<a href="\\/ru"/);
+      assert.match(body,/<a href="\/kk">/);
+      assert.match(body,/<a href="\/ru"/);
     }else if(path==='/sw.js'){
       assert.match(contentType,/(?:javascript|ecmascript)/i);
       assert.match(response.headers.get('cache-control')??'',/no-store/i);
