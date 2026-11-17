@@ -151,6 +151,26 @@ try{
   assert.equal(notices.rows[0].n,1,'replay cannot duplicate notification intent');
   const stale=await decision(id,action,randomUUID());
   assert.equal(stale.status,409,'new key cannot reapply a finalized decision');
+
+  // A finalized accept/decline cannot be reversed with a different
+  // idempotency key. This must neither mutate the canonical row nor create
+  // an opposite notification intent in the PostgreSQL-backed backend.
+  const opposite=action==='accept'?'decline':'accept';
+  const deniedOpposite=await decision(id,opposite,randomUUID());
+  assert.equal(deniedOpposite.status,409,
+   'finalized '+action+' must reject a conflicting '+opposite+' decision');
+  assert.deepEqual(await deniedOpposite.json(),{code:'CONFLICT'});
+  const unchangedDecision=await db.query(
+   'SELECT status,version FROM service_requests WHERE id=$1',[id]);
+  assert.deepEqual(unchangedDecision.rows[0],{
+   status:action==='accept'?'ACCEPTED':'DECLINED',version:2,
+  });
+  const oppositeNotice=await db.query(
+   'SELECT count(*)::integer AS n FROM notification_intents WHERE dedupe_key=$1',
+   ['request-'+opposite+':guest:'+id]);
+  assert.equal(oppositeNotice.rows[0].n,0,
+   'conflicting decision must not produce the opposite notification intent');
+
  }
  const pendingPage=await fetch(new URL('/api/seller/requests?state=pending',base),{
   headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie},redirect:'manual',
