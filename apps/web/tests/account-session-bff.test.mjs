@@ -47,6 +47,11 @@ test('session inventory validates strict whitelist, size and JSON response',asyn
   {items:Array(51).fill(validRow)},
   {items:[{...validRow,current:'yes'}]},
   {items:[{...validRow,deviceLabel:'x'.repeat(121)}]},
+  {items:[validRow,{...validRow,current:false}]},
+  {items:[{...validRow,expiresAt:'2026-02-30T12:00:00.000Z'}]},
+  {items:[{...validRow,expiresAt:'2026-11-17T24:00:00.000Z'}]},
+  {items:[{...validRow,lastUsedAt:'2026-02-30T12:00:00.000Z'}]},
+  {items:[{...validRow,expiresAt:'2026-11-17T12:00:00Z'}]},
   {other:[]},
  ]){
   await assert.rejects(listBackendAccountSessions({
