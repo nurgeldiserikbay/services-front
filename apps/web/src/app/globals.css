@@ -50,3 +50,6 @@ select:focus-visible,textarea:focus-visible,[role="button"]:focus-visible,[tabin
 /* Explicit navigation resets query, geography and all filters together. */
 .clearFilters{display:inline-flex;align-items:center;min-height:44px;margin-top:20px;padding:10px 14px;border:1px solid var(--accent);border-radius:12px;color:var(--accent);font-weight:700;text-decoration:underline;text-underline-offset:3px}
 @media(forced-colors:active){.clearFilters{border-color:LinkText;color:LinkText}}
+
+/* Retry is a keyboard and touch-accessible native link, even without JS. */
+.retrySearch{display:inline-flex;align-items:center;min-height:44px;padding:8px 12px;margin-inline-start:8px;border:1px solid currentColor;border-radius:10px;text-decoration:underline;text-underline-offset:3px}
