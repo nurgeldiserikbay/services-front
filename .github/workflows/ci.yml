@@ -256,6 +256,8 @@ jobs:
           (
             cd apps/web
             SERVICES_WEB_ENABLE_GUEST_STATUS_HTTP=enabled \
+            SERVICES_WEB_ENABLE_GUEST_OTP_START_HTTP=enabled \
+            SERVICES_WEB_ENABLE_GUEST_OTP_BFF=enabled \
             SERVICES_WEB_ENABLE_SELLER_BFF=enabled \
             SERVICES_WEB_GUEST_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-guest-key")" \
             SERVICES_WEB_ACCOUNT_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-account-key")" \
