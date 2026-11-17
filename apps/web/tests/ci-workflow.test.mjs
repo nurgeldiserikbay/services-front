@@ -131,3 +131,19 @@ test('Chrome outage retry accessibility gate requires isolated failed-API server
  assert.match(browser,/Accessibility\.getFullAXTree/);
  assert.match(browser,/retryState\.width>=44&&retryState\.height>=44/);
 });
+
+test('Chrome lab Web Vitals baseline runs on live production server and is saved as an artifact',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ const script=readFileSync(new URL('./live-chrome-web-vitals.e2e.mjs',import.meta.url),'utf8');
+ assert.ok(workflow.indexOf('Capture mobile Chrome lab web-vitals baseline')>
+  workflow.indexOf('Start frontend production server'));
+ assert.match(workflow,/node apps\/web\/tests\/live-chrome-web-vitals\.e2e\.mjs/);
+ assert.match(workflow,/uses: actions\/upload-artifact@v4/);
+ assert.match(workflow,/path: artifacts\/performance-baseline\.json/);
+ assert.ok(workflow.includes('steps.chrome_perf_baseline.outcome'));
+ for(const metric of ['first-contentful-paint','largest-contentful-paint','layout-shift']){
+  assert.ok(script.includes(metric),'Chrome lab collector must measure '+metric);
+ }
+ assert.match(script,/unthrottled-ci-lab-baseline/);
+ assert.match(script,/INP not measured/);
+});
