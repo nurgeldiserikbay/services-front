@@ -183,3 +183,21 @@ test('production runtime HTTP header gate runs before browser journeys and is re
  }
  assert.match(script,/not staging TLS|deployed staging TLS/);
 });
+
+test('private workspace live HTTP gate runs after isolated private BFF starts',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ const script=readFileSync(new URL('./live-private-workspace-response.e2e.mjs',import.meta.url),'utf8');
+ const start=workflow.indexOf('Start isolated feature-enabled private BFF without real login');
+ const probe=workflow.indexOf('Verify private workspace denial and no-store over live HTTP');
+ const tests=workflow.indexOf('Verify enabled private BFF still rejects missing and forged sessions');
+ assert.ok(start>=0&&probe>start&&tests>probe,'live private workspace check must run after isolated instance startup');
+ assert.match(workflow,/node apps\/web\/tests\/live-private-workspace-response\.e2e\.mjs/);
+ assert.match(workflow,/steps\.private_workspace_http_e2e\.outcome/);
+ for(const path of ['/kk/account/requests','/ru/account/requests','/kk/account/notifications',
+   '/ru/account/notifications','/kk/account/devices','/ru/account/devices']){
+  assert.ok(script.includes(path),'missing protected workspace route '+path);
+ }
+ for(const requirement of ['no-store','noindex','set-cookie','PRIVATE_BFF_TEST_BASE_URL']){
+  assert.ok(script.includes(requirement),'missing private workspace assertion '+requirement);
+ }
+});
