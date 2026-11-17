@@ -153,7 +153,7 @@ test('Lighthouse CI captures pinned mobile kk/ru reports without unmeasured scor
  const validator=readFileSync(new URL('./validate-lighthouse-reports.e2e.mjs',import.meta.url),'utf8');
  assert.ok(workflow.indexOf('Capture localized Lighthouse mobile audits')>
   workflow.indexOf('Start frontend production server'));
- assert.match(workflow,/lighthouse@13\.6\.0/);
+ assert.match(workflow,/lighthouse@13\.5\.0/);
  assert.match(workflow,/for attempt in 1 2 3; do/);
  assert.match(workflow,/grep -q 'NO_NAVSTART'/);
  assert.match(workflow,/\[ "\$attempt" = 3 \]/);

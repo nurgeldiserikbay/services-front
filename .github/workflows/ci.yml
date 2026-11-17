@@ -285,6 +285,7 @@ jobs:
             SERVICES_WEB_ENABLE_GUEST_OTP_START_HTTP=enabled \
             SERVICES_WEB_ENABLE_GUEST_OTP_BFF=enabled \
             SERVICES_WEB_ENABLE_SELLER_BFF=enabled \
+            SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF=enabled \
             SERVICES_WEB_GUEST_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-guest-key")" \
             SERVICES_WEB_ACCOUNT_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-account-key")" \
             SERVICES_WEB_ORIGIN=https://services.example.test \
@@ -343,7 +344,9 @@ jobs:
         run: |
           command -v google-chrome
           mkdir -p artifacts
-          # Pin Lighthouse to a reviewed stable version. No production dependency
+          # Pin Lighthouse to a previously published stable version; 13.6.0's npm
+          # dependency resolution failed with @sentry/server-utils@11.14.0 (ETARGET).
+          # No production dependency
           # or pnpm-lockfile changes for this CI-only instrument.
           for locale in kk ru; do
             succeeded=0
@@ -351,7 +354,7 @@ jobs:
               rm -f "artifacts/lighthouse-$locale-mobile.json"
               # Chrome may occasionally fail to start its navigation trace.
               # Retry ONLY NO_NAVSTART: never hide app/audit failures.
-              if npx --yes lighthouse@13.6.0 "http://127.0.0.1:3000/$locale" \
+              if npx --yes lighthouse@13.5.0 "http://127.0.0.1:3000/$locale" \
                 --chrome-flags="--headless=new --no-sandbox --disable-dev-shm-usage" \
                 --form-factor=mobile \
                 --only-categories=performance,accessibility,best-practices,seo \
