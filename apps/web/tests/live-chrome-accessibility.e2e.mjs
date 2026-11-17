@@ -68,10 +68,11 @@ try{
   }
   await send('Page.enable');
   await send('Runtime.enable');
-  await send('Emulation.setDeviceMetricsOverride',{
-    width:320,height:680,deviceScaleFactor:1,mobile:true,
-  });
-  for(const locale of ['kk','ru']){
+  for(const width of [320,375,768]){
+    await send('Emulation.setDeviceMetricsOverride',{
+      width,height:680,deviceScaleFactor:1,mobile:true,
+    });
+    for(const locale of ['kk','ru']){
     await send('Page.navigate',{url:new URL('/'+locale,base).href});
     let ready=false;
     for(let i=0;i<60;i++){
@@ -93,6 +94,11 @@ try{
         focusedSkip:document.activeElement===skip,
         documentWidth:document.documentElement.scrollWidth,
         innerWidth:innerWidth,
+        controlBounds:[...document.querySelectorAll('.searchRow input,.searchRow button,.language a,.geoControls select')]
+          .map(el=>{
+            const rect=el.getBoundingClientRect();
+            return {name:el.tagName,width:rect.width,left:rect.left,right:rect.right};
+          }),
       };
     })()`);
     assert.equal(result.lang,locale);
@@ -101,8 +107,14 @@ try{
     assert.equal(result.headings,1,'one primary heading required');
     assert.equal(result.focusedSkip,true,'keyboard skip link must accept focus');
     assert.ok(result.documentWidth<=result.innerWidth+1,
-      locale+' has horizontal overflow at 320 CSS px: '+JSON.stringify(result));
-    console.log('Chrome mobile keyboard/landmark smoke '+locale+' OK');
+      locale+' has horizontal overflow at '+width+' CSS px: '+JSON.stringify(result));
+    assert.ok(result.controlBounds.length>=4,'expected visible search and navigation controls');
+    for(const control of result.controlBounds){
+      assert.ok(control.width>0&&control.left>=-1&&control.right<=width+1,
+        locale+' '+width+'px interactive control is clipped: '+JSON.stringify(control));
+    }
+    console.log('Chrome responsive keyboard/landmark smoke '+locale+' '+width+'px OK');
+    }
   }
 }finally{
   if(socket)socket.close();
