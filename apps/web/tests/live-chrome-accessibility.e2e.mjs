@@ -129,6 +129,37 @@ try{
     assert.ok(accessibility.nodes?.some(node=>
       node.role?.value==='combobox'&&node.name?.value===selectName&&!node.ignored),
       locale+' '+width+'px delivery filter has no named Chrome accessibility combobox');
+    // Exercise an actual native keyboard submission instead of only checking
+    // the form's HTML. Focus the search input, type via Chrome, and press Enter.
+    if(width===375){
+      const focused=await evaluate(`(()=>{
+        const input=document.querySelector('input#query');
+        input?.focus();
+        return document.activeElement===input;
+      })()`);
+      assert.equal(focused,true,locale+' search input cannot receive keyboard focus');
+      await send('Input.insertText',{text:'Stage 2 Journey'});
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
+      await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+      let found=false;
+      for(let attempt=0;attempt<100;attempt++){
+        found=await evaluate(`(()=>{
+          const query=new URL(location.href).searchParams.get('q');
+          return query==='Stage 2 Journey'&&
+            document.querySelectorAll('.resultItem').length>=2;
+        })()`);
+        if(found)break;
+        await pause(100);
+      }
+      const diagnostic=await evaluate(`(()=>({
+        href:location.href,
+        searchInput:document.querySelector('input#query')?.value??null,
+        resultCards:document.querySelectorAll('.resultItem').length,
+        activeTag:document.activeElement?.tagName??null
+      }))()`);
+      assert.equal(found,true,locale+' Enter submission did not navigate to seeded results: '+JSON.stringify(diagnostic));
+      console.log('Chrome real keyboard Enter search '+locale+' OK');
+    }
     console.log('Chrome responsive keyboard/landmark smoke '+locale+' '+width+'px OK');
     }
   }
