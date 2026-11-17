@@ -43,7 +43,9 @@ export async function fetchAccountNotifications({
   if(!['https:','http:'].includes(url.protocol)||
    (production&&url.protocol!=='https:')||
    url.username||url.password||url.search||url.hash||
-   url.pathname.includes('..')||url.pathname.endsWith('//'))
+   !/^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?\/?$/.test(url.pathname)||
+   baseUrl.includes('\\')||baseUrl.includes('%')||
+   /\/\.{1,2}(?:\/|$)/.test(baseUrl))
    throw Error('unsafe_url');
   url.pathname=url.pathname.replace(/\/$/,'')+'/me/notifications';
   url.searchParams.set('limit',String(limit));
