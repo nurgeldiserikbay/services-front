@@ -175,6 +175,19 @@ assert.match(searchHtml, /<label for="query">[^<]+<\/label>/, 'search input shou
 assert.match(searchHtml, /<nav class="language" aria-label="Выбор языка">/, 'language navigation should have a localized accessible name');
 assert.match(searchHtml, /Stage 2 Journey Specialist Offer/, 'search should render the real specialist result');
 assert.match(searchHtml, /Stage 2 Journey Company Offer/, 'search should render the real company result');
+assertPageResultAnnouncement(searchHtml, 'ru');
+
+function assertPageResultAnnouncement(html, locale) {
+  // Assert the actual SSR output against the rendered result elements,
+  // not an assumed total count or a mocked API fixture.
+  const count = (html.match(/<li class="resultItem">/g) ?? []).length;
+  assert.ok(count > 0, locale + ' search fixture should render results');
+  const message = locale === 'kk'
+    ? `Осы бетте ${count} нәтиже`
+    : `На этой странице результатов: ${count}`;
+  assert.ok(html.includes(message),
+    locale + ' must announce its real current-page result count: ' + message);
+}
 
 function findHref(html, path) {
   const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
@@ -250,6 +263,7 @@ assert.match(kazakhSearchHtml, /Stage 2 Journey Specialist Offer/,
   'Kazakh search should render the specialist result');
 assert.match(kazakhSearchHtml, /Stage 2 Journey Company Offer/,
   'Kazakh search should render the company result');
+assertPageResultAnnouncement(kazakhSearchHtml, 'kk');
 findHref(kazakhSearchHtml, '/kk/professionals/ci-stage2-specialist');
 findHref(kazakhSearchHtml, '/kk/organizations/10000000-0000-4000-8000-000000000006');
 
