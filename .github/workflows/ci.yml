@@ -251,6 +251,25 @@ jobs:
           done
           cat "$RUNNER_TEMP/services-front.log"
           exit 1
+      # Error recovery must be verified against a real Next.js response, not
+      # source regex or mocked backend fetch. Keep this instance isolated from
+      # the healthy API and the feature-enabled private BFF.
+      - name: Start isolated search-upstream-failure production frontend
+        run: |
+          (
+            cd apps/web
+            SERVICES_API_BASE_URL=https://127.0.0.1:8444/v1 \
+            pnpm start --hostname 127.0.0.1 --port 3002 > "$RUNNER_TEMP/services-search-failure.log" 2>&1 &
+          )
+          for attempt in {1..30}; do
+            if curl --connect-timeout 2 --max-time 5 --fail --silent http://127.0.0.1:3002/ru >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/services-search-failure.log"
+          exit 1
+      - name: Verify search failure exposes localized retry on real HTTP
+        id: search_failure_e2e
+        run: node apps/web/tests/public-search-retry-failure.e2e.mjs
       - name: Start isolated feature-enabled private BFF without real login
         run: |
           umask 077
@@ -331,6 +350,7 @@ jobs:
           CHROME_MOBILE_E2E: ${{ steps.chrome_mobile_e2e.outcome }}
           CHROME_OFFLINE_E2E: ${{ steps.chrome_offline_e2e.outcome }}
           LIVE_E2E: ${{ steps.live_e2e.outcome }}
+          SEARCH_FAILURE_E2E: ${{ steps.search_failure_e2e.outcome }}
         run: |
           {
             echo '### Integration gate outcomes'
@@ -346,6 +366,7 @@ jobs:
             echo "| Frontend TypeScript | $FRONTEND_TYPECHECK |"
             echo "| Frontend unit tests | $FRONTEND_TESTS |"
             echo "| Frontend production build | $FRONTEND_BUILD |"
+            echo "| Localized search retry with isolated upstream outage | $SEARCH_FAILURE_E2E |"
             echo "| OTP CSRF bootstrap and unavailable-provider isolation | $OTP_BOOTSTRAP_E2E |"
             echo "| Enabled private BFF unauthorized proof rejection | $ENABLED_PRIVATE_DENIAL_E2E |"
             echo "| Signed seller web session and backend revocation | $SIGNED_SELLER_SESSION_E2E |"
