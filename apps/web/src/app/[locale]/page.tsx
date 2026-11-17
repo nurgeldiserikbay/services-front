@@ -86,7 +86,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
           {professionOptions.length > 0 ? (
             <fieldset className="professionPicker">
               <legend>{t.profession}</legend>
-              <select id="profession_id" name="profession_id" defaultValue={hasSelectedProfession ? professionId : ''}>
+              <select id="profession_id" name="profession_id" aria-label={t.profession} defaultValue={hasSelectedProfession ? professionId : ''}>
                 <option value="">{t.allProfessions}</option>
                 {professionOptions.map(option => (
                   <option key={option.id} value={option.id}>{option.name}</option>
@@ -101,7 +101,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
           )}
           <fieldset className="professionPicker">
             <legend>{t.deliveryFilter}</legend>
-            <select id="delivery_mode" name="delivery_mode" defaultValue={deliveryMode}>
+            <select id="delivery_mode" name="delivery_mode" aria-label={t.deliveryFilter} defaultValue={deliveryMode}>
               <option value="any">{t.anyDelivery}</option>
               <option value="at_location">{t.atLocation}</option>
               <option value="at_customer">{t.atCustomer}</option>
