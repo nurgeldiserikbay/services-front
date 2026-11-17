@@ -81,3 +81,9 @@ test('reset-search link clears all query and filters without a scripting depende
   assert.match(i18n,/clearFilters: 'Очистить поиск и фильтры'/);
   assert.match(css,/\.clearFilters\{display:inline-flex;align-items:center;min-height:44px/);
 });
+
+test('localized loading boundary retains keyboard skip target during streaming',()=>{
+  const loading=readFileSync(join(appDir,'[locale]','loading.tsx'),'utf8');
+  assert.match(loading,/<main id="main-content" className="shell publicDetail" aria-busy="true">/);
+  assert.match(loading,/<p role="status" aria-live="polite"/);
+});
