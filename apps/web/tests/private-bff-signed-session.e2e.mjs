@@ -113,6 +113,21 @@ try{
  const foreignRequest=await db.query('SELECT status,version FROM service_requests WHERE id=$1',
   [fixture.requestIds[0]]);
  assert.deepEqual(foreignRequest.rows[0],{status:'PENDING',version:1});
+
+ // A foreign account's forbidden write must not create an outbox event or
+ // notification for the target. PostgreSQL side effects are authoritative,
+ // independently of sanitized HTTP error content.
+ const unauthorizedEvents=await db.query(
+  'SELECT count(*)::integer AS n FROM domain_outbox_events WHERE subject_id=$1',
+  [fixture.requestIds[0]]);
+ assert.equal(unauthorizedEvents.rows[0].n,0,
+  'cross-account seller decision must emit no outbox event');
+ const unauthorizedNotices=await db.query(
+  'SELECT count(*)::integer AS n FROM notification_intents WHERE dedupe_key=$1',
+  ['request-accept:guest:'+fixture.requestIds[0]]);
+ assert.equal(unauthorizedNotices.rows[0].n,0,
+  'cross-account seller decision must emit no notification intent');
+
  const populated=await inbox();
  assert.equal(populated.status,200,'seller must read only own committed requests');
  const page=await populated.json();
@@ -136,6 +151,18 @@ try{
   [fixture.requestIds[0]]);
  assert.equal(untouched.rows[0].status,'PENDING');
  assert.equal(untouched.rows[0].version,1);
+
+ const csrfEvents=await db.query(
+  'SELECT count(*)::integer AS n FROM domain_outbox_events WHERE subject_id=$1',
+  [fixture.requestIds[0]]);
+ assert.equal(csrfEvents.rows[0].n,0,
+  'rejected CSRF must not create an outbox event');
+ const csrfNotices=await db.query(
+  'SELECT count(*)::integer AS n FROM notification_intents WHERE dedupe_key=$1',
+  ['request-accept:guest:'+fixture.requestIds[0]]);
+ assert.equal(csrfNotices.rows[0].n,0,
+  'rejected CSRF must not create a notification intent');
+
  for(const [index,action] of ['accept','decline'].entries()){
   const id=fixture.requestIds[index],key=randomUUID();
   const first=await decision(id,action,key);
