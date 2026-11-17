@@ -84,6 +84,11 @@ test('verify rejects extra secrets, bad/missing proof, expired and long-lived pr
     {...good,guest_capability:'bad'},
     {...good,expires_at:new Date(now-1000).toISOString()},
     {...good,expires_at:new Date(now+1800000).toISOString()},
+    {...good,expires_at:'2026-11-04T09:15:00Z'},
+    {...good,expires_at:'2026-11-04T09:15:00.000+00:00'},
+    {...good,expires_at:'2026-11-04T14:15:00.000+05:00'},
+    {...good,expires_at:'2026-11-04 09:15:00.000Z'},
+    {...good,expires_at:'2026-11-04T09:15:00.000z'},
     {expires_at:good.expires_at},
   ])await assert.rejects(verify({transport:async()=>json(data)}),
     GuestOtpUnavailable);
