@@ -103,3 +103,14 @@ test('CI requires OTP bootstrap with provider disabled and no public verificatio
  assert.ok(!workflow.includes('SERVICES_ENABLE_GUEST_OTP_HTTP=enabled'));
  assert.ok(!workflow.includes('SERVICES_WEB_ENABLE_GUEST_OTP_VERIFY_HTTP=enabled'));
 });
+
+test('guest creation and request-bound status are tested only with ephemeral CI secrets',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ assert.match(workflow,/SERVICES_ENABLE_GUEST_CREATE_HTTP=enabled/);
+ assert.match(workflow,/SERVICES_WEB_ENABLE_GUEST_CREATE_HTTP=enabled/);
+ assert.match(workflow,/services-guest-contact-encryption-key/);
+ assert.match(workflow,/node apps\/web\/tests\/private-bff-guest-create-journey\.e2e\.mjs/);
+ assert.ok(workflow.includes('steps.guest_create_status_e2e.outcome'));
+ assert.ok(workflow.indexOf('Verify verified-test guest creation returns scoped status cookie')>
+  workflow.indexOf('Start isolated feature-enabled private BFF without real login'));
+});
