@@ -191,12 +191,12 @@ test('online CI provenance fails on wrong SHA, repo, pending or unsuccessful run
 
 test('online CI provenance fails closed for rate limits, redirects and oversized reports',async()=>{
   const {verifyStagingCiProvenance}=await import('../../../scripts/verify-staging-ci-provenance.mjs');
-  for(const response of [
-    new Response(null,{status:429}),
-    new Response(null,{status:302,headers:{location:'https://evil.example/test'}}),
-    new Response('x'.repeat(130*1024),{status:200}),
+  for(const responseFactory of [
+    ()=>new Response(null,{status:429}),
+    ()=>new Response(null,{status:302,headers:{location:'https://evil.example/test'}}),
+    ()=>new Response('x'.repeat(130*1024),{status:200}),
   ]){
-    const problems=await verifyStagingCiProvenance(approvedDocument(),{fetchImpl:async()=>response.clone()});
+    const problems=await verifyStagingCiProvenance(approvedDocument(),{fetchImpl:async()=>responseFactory()});
     assert.ok(problems.length>=1);
   }
 });
