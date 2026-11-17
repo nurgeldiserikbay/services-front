@@ -71,3 +71,13 @@ test('search filter dropdowns expose explicit localized accessible names',()=>{
   assert.match(page,/<select id="profession_id" name="profession_id" aria-label=\{t\.profession\}/);
   assert.match(page,/<select id="delivery_mode" name="delivery_mode" aria-label=\{t\.deliveryFilter\}/);
 });
+
+test('reset-search link clears all query and filters without a scripting dependency',()=>{
+  const page=readFileSync(join(appDir,'[locale]','page.tsx'),'utf8');
+  const i18n=readFileSync(new URL('../src/lib/i18n.ts',import.meta.url),'utf8');
+  assert.match(page,/const hasSearchFilters = Boolean\(q \|\| countryId \|\| cityId \|\| professionId \|\| deliveryMode !== 'any' \|\| cursor\)/);
+  assert.match(page,/hasSearchFilters && <Link className="clearFilters" href=\{'\/' \+ locale\}>\{t\.clearFilters\}<\/Link>/);
+  assert.match(i18n,/clearFilters: 'Іздеуді және сүзгілерді тазарту'/);
+  assert.match(i18n,/clearFilters: 'Очистить поиск и фильтры'/);
+  assert.match(css,/\.clearFilters\{display:inline-flex;align-items:center;min-height:44px/);
+});
