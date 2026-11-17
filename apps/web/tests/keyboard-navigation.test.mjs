@@ -107,6 +107,7 @@ test('failed search exposes keyboard-accessible native retry with preserved filt
   assert.match(page,/if \(q\) query\.set\('q', q\)/);
   assert.match(page,/if \(professionId\) query\.set\('profession_id', professionId\)/);
   assert.match(page,/if \(deliveryMode !== 'any'\) query\.set\('delivery_mode', deliveryMode\)/);
+  assert.match(css,/\.retrySearch\{display:inline-flex;align-items:center;min-height:44px/);
   assert.match(i18n,/retrySearch: 'Қайта іздеу'/);
   assert.match(i18n,/retrySearch: 'Повторить поиск'/);
 });
