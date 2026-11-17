@@ -64,6 +64,41 @@ test('session inventory validates strict whitelist, size and JSON response',asyn
  }),AccountSessionTransportUnavailable);
 });
 
+test('session inventory cancels oversized streamed data before consuming the full response',async()=>{
+ let produced=0;
+ let cancelled=false;
+ const stream=new ReadableStream({
+  pull(controller){
+   produced++;
+   controller.enqueue(new Uint8Array(8192).fill(120));
+  },
+  cancel(){cancelled=true;},
+ });
+ await assert.rejects(listBackendAccountSessions({
+  baseUrl,accountBearer:bearer,
+  transport:async()=>new Response(stream,{status:200,headers:{'content-type':'application/json'}}),
+ }),AccountSessionTransportUnavailable);
+ assert.equal(cancelled,true,'oversized upstream response must be cancelled');
+ assert.ok(produced<=4,'must not read the entire unbounded upstream body');
+});
+
+test('session inventory accepts valid JSON with multibyte UTF-8 split across chunks',async()=>{
+ const payload=JSON.stringify({items:[{...validRow,deviceLabel:'Құрылғы'}]});
+ const bytes=new TextEncoder().encode(payload);
+ const chunks=Array.from(bytes,byte=>new Uint8Array([byte]));
+ const stream=new ReadableStream({
+  pull(controller){
+   if(chunks.length)controller.enqueue(chunks.shift());
+   else controller.close();
+  },
+ });
+ const result=await listBackendAccountSessions({
+  baseUrl,accountBearer:bearer,
+  transport:async()=>new Response(stream,{status:200,headers:{'content-type':'application/json'}}),
+ });
+ assert.equal(result.items[0].deviceLabel,'Құрылғы');
+});
+
 test('logout transport accepts 204 only, never a redirect or JSON success',async()=>{
  let called=0;
  assert.equal(await revokeBackendAccountSession({
