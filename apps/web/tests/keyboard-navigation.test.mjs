@@ -86,4 +86,15 @@ test('localized loading boundary retains keyboard skip target during streaming',
   const loading=readFileSync(join(appDir,'[locale]','loading.tsx'),'utf8');
   assert.match(loading,/<main id="main-content" className="shell publicDetail" aria-busy="true">/);
   assert.match(loading,/<p role="status" aria-live="polite"/);
+  assert.match(loading,/useParams\(\)/);
+  assert.match(loading,/dictionary\[locale\]\.loading/);
+});
+
+test('loading announcement follows kk and ru route instead of combining languages',()=>{
+  const loading=readFileSync(join(appDir,'[locale]','loading.tsx'),'utf8');
+  const i18n=readFileSync(new URL('../src/lib/i18n.ts',import.meta.url),'utf8');
+  assert.match(i18n,/loading: 'Жүктелуде…'/);
+  assert.match(i18n,/loading: 'Загрузка…'/);
+  assert.doesNotMatch(loading,/Жүктелуде… · Загружаем…/);
+  assert.match(loading,/isLocale\(rawLocale\)/);
 });
