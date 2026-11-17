@@ -46,6 +46,7 @@ export async function POST(request:NextRequest):Promise<NextResponse>{
  const response=backendOk
   ?new NextResponse(null,{status:204,headers:HEADERS})
   :NextResponse.json({code:'UNAVAILABLE'},{status:503,headers:HEADERS});
- response.cookies.set(clearAccountWebSession());
+ const cleared=clearAccountWebSession();
+ response.cookies.set(cleared.name,cleared.value,cleared.options);
  return response;
 }
