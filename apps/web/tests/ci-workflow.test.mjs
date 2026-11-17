@@ -177,6 +177,11 @@ test('production runtime HTTP header gate runs before browser journeys and is re
  assert.ok(ready>=0&&headers>ready&&chrome>headers,'runtime headers must be checked after server startup and before Chrome');
  assert.match(workflow,/node apps\/web\/tests\/live-response-security-headers\.e2e\.mjs/);
  assert.match(workflow,/steps\.live_security_headers\.outcome/);
+ assert.ok(script.includes("'/robots.txt'"),'runtime HTTP gate must exercise generated robots.txt');
+ for(const rule of ['Disallow: ','Allow: ','/kk/account','/ru/seller',
+   '/kk/professionals/','/ru/services/']){
+   assert.ok(script.includes(rule),'runtime robots policy must protect '+rule);
+ }
  for(const token of ['strict-transport-security','content-security-policy','x-frame-options',
    'cross-origin-opener-policy','permissions-policy','cache-control','service-worker-allowed']){
   assert.ok(script.includes(token),'missing live response header assertion: '+token);
