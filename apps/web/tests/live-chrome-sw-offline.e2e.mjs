@@ -8,28 +8,44 @@ import {join} from 'node:path';
 // Headless desktop Chrome does not establish Android installability.
 const base=process.env.WEB_BASE_URL??'http://127.0.0.1:3000';
 const origin=new URL(base).origin;
-const dir=await mkdtemp(join(tmpdir(),'services-sw-chrome-'));
-const proc=spawn(process.env.CHROME_BIN??'google-chrome',[
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const chrome=process.env.CHROME_BIN??'google-chrome';
+const launchArgs=profile=>[
  '--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage',
  '--no-first-run','--no-default-browser-check','--remote-debugging-port=0',
- '--user-data-dir='+dir,'about:blank',
-],{stdio:'ignore'});
-let exited=false;
-proc.once('exit',()=>{exited=true;});
-const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+ '--user-data-dir='+profile,'about:blank',
+];
+let proc;
+let dir;
+let exited=true;
 let ws;
 try{
  let port;
- for(let n=0;n<250;n++){
-  if(exited)throw Error('Chrome unexpectedly exited');
-  try{
-   const lines=(await readFile(join(dir,'DevToolsActivePort'),'utf8')).split('\n');
-   port=Number(lines[0]);
-   if(Number.isInteger(port)&&port>0)break;
-  }catch{}
-  await sleep(100);
+ // Retry a failed browser startup only. Never retry offline/cache assertions.
+ for(let attempt=0;attempt<2&&!port;attempt++){
+  dir=await mkdtemp(join(tmpdir(),'services-sw-chrome-'));
+  const child=spawn(chrome,launchArgs(dir),{stdio:'ignore'});
+  proc=child;
+  exited=false;
+  child.once('exit',()=>{if(proc===child)exited=true;});
+  child.once('error',()=>{if(proc===child)exited=true;});
+  for(let n=0;n<250;n++){
+   if(exited)break;
+   try{
+    const lines=(await readFile(join(dir,'DevToolsActivePort'),'utf8')).split('\n');
+    const candidate=Number(lines[0]);
+    if(Number.isInteger(candidate)&&candidate>0&&candidate<=65535){port=candidate;break;}
+   }catch{}
+   await sleep(100);
+  }
+  if(!port){
+   if(!exited)child.kill('SIGTERM');
+   await rm(dir,{recursive:true,force:true,maxRetries:5,retryDelay:100});
+   dir=undefined;
+   if(attempt===0)console.error('PWA Chrome DevTools startup failed; retrying with a clean profile');
+  }
  }
- assert.ok(port,'Chrome did not expose DevTools');
+ assert.ok(port,'PWA Chrome did not expose DevTools after two startup attempts');
  const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
  const tab=targets.find(x=>x.type==='page');
  assert.ok(tab?.webSocketDebuggerUrl);
@@ -115,6 +131,6 @@ try{
  console.log('Real Chrome SW: registered, controlled, public offline fallback, private failures, no cache leakage, and recovery');
 }finally{
  if(ws)ws.close();
- if(!exited)proc.kill('SIGTERM');
- await rm(dir,{recursive:true,force:true,maxRetries:5,retryDelay:100});
+ if(proc&&!exited)proc.kill('SIGTERM');
+ if(dir)await rm(dir,{recursive:true,force:true,maxRetries:5,retryDelay:100});
 }
