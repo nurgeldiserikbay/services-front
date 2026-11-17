@@ -139,6 +139,10 @@ test('account BFF routes are server-only default-off and never accept browser be
  assert.match(inventory,/getAccountWebSessions/);
  assert.match(logout,/authenticateAccountWebMutation/);
  assert.match(logout,/clearAccountWebSession/);
+ assert.match(logout,/response\.cookies\.set\(cleared\.name,cleared\.value,cleared\.options\)/,
+  'Next.js cookie setter must receive expiration, HttpOnly and Secure options');
+ assert.doesNotMatch(logout,/response\.cookies\.set\(clearAccountWebSession\(\)\)/);
+
  assert.match(server,/import 'server-only'/);
  assert.match(server,/revokeBackendAccountSession/);
  assert.match(server,/listBackendAccountSessions/);
