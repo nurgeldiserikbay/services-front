@@ -56,3 +56,12 @@ test('geography retry uses native keyboard buttons and inherits visible focus st
   assert.match(css,/\.geoError button\{min-height:44px;min-width:44px/);
   assert.doesNotMatch(geo,/onKeyDown=\{[^}]*preventDefault/);
 });
+
+test('search announces only the current page result count in both locales',()=>{
+  const i18n=readFileSync(new URL('../src/lib/i18n.ts',import.meta.url),'utf8');
+  const page=readFileSync(join(appDir,'[locale]','page.tsx'),'utf8');
+  assert.match(i18n,/resultsOnPage: \(count: number\) => `Осы бетте \$\{count\} нәтиже`/);
+  assert.match(i18n,/resultsOnPage: \(count: number\) => `На этой странице результатов: \$\{count\}`/);
+  assert.match(page,/q && !error && items\.length > 0 && <p role="status" aria-live="polite">\{t\.resultsOnPage\(items\.length\)\}<\/p>/);
+  assert.doesNotMatch(page,/resultsOnPage\(search\.result\?\.total/);
+});

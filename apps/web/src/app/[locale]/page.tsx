@@ -117,6 +117,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
         {!q && <p className="message">{t.waiting}</p>}
         {q && error && <p role="status" className="message">{t.unavailable}</p>}
         {q && !error && items.length === 0 && <p role="status" className="message">{t.empty}</p>}
+        {q && !error && items.length > 0 && <p role="status" aria-live="polite">{t.resultsOnPage(items.length)}</p>}
         {q && !error && items.length > 0 &&
           <ul className="resultList">{items.map(item => (
             <li key={item.kind + ':' + item.id} className="resultItem">
