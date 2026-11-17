@@ -202,6 +202,11 @@ test('private workspace live HTTP gate runs after isolated private BFF starts',(
    '/ru/account/notifications','/kk/account/devices','/ru/account/devices']){
   assert.ok(script.includes(path),'missing protected workspace route '+path);
  }
+ for(const path of ['/kk/seller/requests','/ru/seller/requests']){
+   assert.ok(script.includes(path),'missing anonymous seller shell check '+path);
+ }
+ assert.ok(script.includes('must not embed seller inbox or session data'),
+   'seller shell must assert absence of private SSR payload');
  for(const requirement of ['no-store','noindex','set-cookie','PRIVATE_BFF_TEST_BASE_URL']){
   assert.ok(script.includes(requirement),'missing private workspace assertion '+requirement);
  }
