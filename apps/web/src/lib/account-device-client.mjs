@@ -9,7 +9,7 @@ export class AccountDeviceAuthenticationRequired extends Error{
 }
 function validDate(value){
  return typeof value==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)&&
-  Number.isFinite(Date.parse(value));
+  Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;
 }
 export function parseAccountDeviceInventory(data){
  if(!data||typeof data!=='object'||Array.isArray(data)||
