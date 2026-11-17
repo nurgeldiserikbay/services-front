@@ -328,3 +328,16 @@ test('backend receipt TTL never exceeds sealed guest access 24-hour limit',async
     })}),GuestCreateUnavailable);
   }
 });
+
+test('live backend-issued full-day proof is checked at response time, not transport start',async()=>{
+ const actual=await sendVerifiedGuestCreate({
+  baseUrl:'https://backend.example/v1',production:true,createCapability,
+  idempotencyKey,body,
+  transport:async()=>{
+   await new Promise(resolve=>setTimeout(resolve,15));
+   return json({...result,expires_at:new Date(Date.now()+86400000).toISOString()});
+  },
+ });
+ assert.equal(actual.id,id);
+ assert.ok(Date.parse(actual.expiresAt)>Date.now());
+});
