@@ -332,6 +332,51 @@ jobs:
           path: artifacts/performance-baseline.json
           if-no-files-found: warn
           retention-days: 14
+      - name: Capture localized Lighthouse mobile audits
+        id: lighthouse_mobile
+        run: |
+          command -v google-chrome
+          mkdir -p artifacts
+          # Pin Lighthouse to a reviewed stable version. No production dependency
+          # or pnpm-lockfile changes for this CI-only instrument.
+          for locale in kk ru; do
+            succeeded=0
+            for attempt in 1 2 3; do
+              rm -f "artifacts/lighthouse-$locale-mobile.json"
+              # Chrome may occasionally fail to start its navigation trace.
+              # Retry ONLY NO_NAVSTART: never hide app/audit failures.
+              if npx --yes lighthouse@13.6.0 "http://127.0.0.1:3000/$locale" \
+                --chrome-flags="--headless=new --no-sandbox --disable-dev-shm-usage" \
+                --form-factor=mobile \
+                --only-categories=performance,accessibility,best-practices,seo \
+                --output=json --output-path="artifacts/lighthouse-$locale-mobile.json" \
+                --quiet > "$RUNNER_TEMP/lighthouse-$locale.log" 2>&1; then
+                succeeded=1
+                break
+              fi
+              cat "$RUNNER_TEMP/lighthouse-$locale.log"
+              if ! grep -q 'NO_NAVSTART' "$RUNNER_TEMP/lighthouse-$locale.log" || [ "$attempt" = 3 ]; then
+                echo "::error::Lighthouse $locale audit failed (not a recoverable navigation trace)"
+                exit 1
+              fi
+              echo "::warning::Lighthouse $locale transient NO_NAVSTART; retry $attempt of 3"
+              sleep 3
+            done
+            test "$succeeded" = 1
+            test -s "artifacts/lighthouse-$locale-mobile.json"
+          done
+          node apps/web/tests/validate-lighthouse-reports.e2e.mjs
+      - name: Upload localized Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-lighthouse-mobile-audits
+          path: |
+            artifacts/lighthouse-kk-mobile.json
+            artifacts/lighthouse-ru-mobile.json
+            artifacts/lighthouse-mobile-summary.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Verify real Chrome PWA worker offline and private cache isolation
         id: chrome_offline_e2e
         run: |
@@ -363,6 +408,7 @@ jobs:
           CHROME_MOBILE_E2E: ${{ steps.chrome_mobile_e2e.outcome }}
           CHROME_OFFLINE_E2E: ${{ steps.chrome_offline_e2e.outcome }}
           CHROME_PERF_BASELINE: ${{ steps.chrome_perf_baseline.outcome }}
+          LIGHTHOUSE_MOBILE: ${{ steps.lighthouse_mobile.outcome }}
           LIVE_E2E: ${{ steps.live_e2e.outcome }}
           SEARCH_FAILURE_E2E: ${{ steps.search_failure_e2e.outcome }}
         run: |
@@ -390,6 +436,7 @@ jobs:
             echo "| Served worker isolation E2E | $WORKER_ISOLATION_E2E |"
             echo "| Chrome mobile and keyboard smoke | $CHROME_MOBILE_E2E |"
             echo "| Chrome mobile unthrottled lab Web Vitals baseline (not release SLO) | $CHROME_PERF_BASELINE |"
+            echo "| Lighthouse mobile lab audits (not field SLO) | $LIGHTHOUSE_MOBILE |"
             echo "| Chrome service worker offline E2E | $CHROME_OFFLINE_E2E |"
             echo "| Live search-to-profile E2E | $LIVE_E2E |"
           } >> "$GITHUB_STEP_SUMMARY"

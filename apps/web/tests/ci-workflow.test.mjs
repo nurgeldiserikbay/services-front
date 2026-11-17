@@ -147,3 +147,23 @@ test('Chrome lab Web Vitals baseline runs on live production server and is saved
  assert.match(script,/unthrottled-ci-lab-baseline/);
  assert.match(script,/INP not measured/);
 });
+
+test('Lighthouse CI captures pinned mobile kk/ru reports without unmeasured score gates',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ const validator=readFileSync(new URL('./validate-lighthouse-reports.e2e.mjs',import.meta.url),'utf8');
+ assert.ok(workflow.indexOf('Capture localized Lighthouse mobile audits')>
+  workflow.indexOf('Start frontend production server'));
+ assert.match(workflow,/lighthouse@13\.6\.0/);
+ assert.match(workflow,/for attempt in 1 2 3; do/);
+ assert.match(workflow,/grep -q 'NO_NAVSTART'/);
+ assert.match(workflow,/\[ "\$attempt" = 3 \]/);
+ assert.match(workflow,/test -s "artifacts\/lighthouse-\$locale-mobile\.json"/);
+ assert.match(workflow,/--form-factor=mobile/);
+ assert.match(workflow,/--only-categories=performance,accessibility,best-practices,seo/);
+ assert.match(workflow,/node apps\/web\/tests\/validate-lighthouse-reports\.e2e\.mjs/);
+ assert.match(workflow,/name: frontend-lighthouse-mobile-audits/);
+ assert.match(workflow,/steps\.lighthouse_mobile\.outcome/);
+ assert.ok(validator.includes("readFile('artifacts/lighthouse-'+locale+'-mobile.json'"), 'validator must load each locale report');
+ assert.match(validator,/not field Core Web Vitals/);
+ assert.doesNotMatch(workflow,/--only-categories=.*pwa/);
+});
