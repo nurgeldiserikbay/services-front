@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 
 // Live HTTP negative-path checks against the pinned PostgreSQL-backed backend.
-// These are safe even when the guest / seller workflows remain default off.
+// Backend guest status is explicitly enabled ONLY in this isolated CI run;
+// missing READ_CANCEL proof must produce strict 403 instead of default-off 404.
 const api='http://127.0.0.1:3101/v1';
 const id='10000000-0000-4000-8000-000000000099';
 const forgedBearer='Bearer '+randomBytes(32).toString('base64url');
 const checks=[
- {label:'guest status without proof',url:`${api}/requests/${id}`,init:{method:'GET'},allowed:[404]},
+ {label:'guest status without proof',url:`${api}/requests/${id}`,init:{method:'GET'},allowed:[403]},
  {label:'seller inbox without session',url:`${api}/me/seller-requests`,init:{method:'GET'},allowed:[401]},
  {label:'accept without seller session',url:`${api}/requests/${id}/accept`,init:{method:'POST'},allowed:[401]},
  {label:'decline without seller session',url:`${api}/requests/${id}/decline`,init:{method:'POST'},allowed:[401]},
