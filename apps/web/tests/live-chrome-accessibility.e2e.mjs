@@ -24,10 +24,13 @@ try{
   // runners. Retry the browser *startup only*, never failed a11y assertions.
   for(let attempt=0;attempt<2&&!port;attempt++){
     dir=await mkdtemp(join(tmpdir(),'services-chrome-'));
-    proc=spawn(chrome,launchArgs(dir),{stdio:'ignore'});
+    const child=spawn(chrome,launchArgs(dir),{stdio:'ignore'});
+    proc=child;
     closed=false;
-    proc.once('exit',()=>{closed=true;});
-    proc.once('error',()=>{closed=true;});
+    // An earlier attempt may exit after the replacement starts.
+    // Never let its late event mark the new browser process as closed.
+    child.once('exit',()=>{if(proc===child)closed=true;});
+    child.once('error',()=>{if(proc===child)closed=true;});
     for(let i=0;i<250;i++){
       if(closed)break;
       try{
