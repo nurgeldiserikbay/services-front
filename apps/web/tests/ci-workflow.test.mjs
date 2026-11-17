@@ -82,3 +82,12 @@ test('CI proves signed temporary seller web session reaches backend and is revok
   workflow.indexOf('Start isolated feature-enabled private BFF without real login'));
  assert.ok(workflow.includes('steps.signed_seller_session_e2e.outcome'));
 });
+
+test('CI exercises real guest status capability allowlist and expiry against backend',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ assert.match(workflow,/SERVICES_ENABLE_GUEST_STATUS_HTTP=enabled/);
+ assert.match(workflow,/GUEST_REQUEST_HMAC_KEY="\$\(cat "\$RUNNER_TEMP\/services-guest-capability-hmac-key"\)"/);
+ assert.match(workflow,/SERVICES_WEB_GUEST_SESSION_KEY="\$\(cat "\$RUNNER_TEMP\/services-private-bff-guest-key"\)"/);
+ assert.match(workflow,/node apps\/web\/tests\/private-bff-guest-status\.e2e\.mjs/);
+ assert.ok(workflow.includes('steps.guest_status_proof_e2e.outcome'));
+});
