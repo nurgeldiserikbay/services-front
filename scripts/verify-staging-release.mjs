@@ -53,6 +53,7 @@ export function validateStagingRelease(text) {
   for (const repo of EXPECTED_REPOS) {
     const matching = revisions.filter(c => c[0] === repo);
     if (matching.length !== 1) { problems.push(repo + ': missing or duplicate revision'); continue; }
+    if (matching[0].length !== 5) problems.push(repo + ': invalid revision row format');
     const [, sha, url, reviewer, date] = matching[0];
     if (!SHA.test(sha ?? '')) problems.push(repo + ': missing immutable SHA');
     if (!validCiRun(url,repo)) problems.push(repo + ': missing or unrelated GitHub Actions run');
@@ -67,6 +68,7 @@ export function validateStagingRelease(text) {
     const matching = gates.filter(c => c[0] === gate);
     if (matching.length !== 1) { problems.push(gate + ': missing or duplicate gate'); continue; }
     if (matching[0][2] !== 'PASS') problems.push(gate + ': not PASS');
+    if (matching[0].length !== 4) problems.push(gate + ': missing HTTPS evidence URL (invalid row format)');
     if (!validEvidenceUrl(matching[0][3])) problems.push(gate + ': missing HTTPS evidence URL');
   }
   for (const row of gates) {
