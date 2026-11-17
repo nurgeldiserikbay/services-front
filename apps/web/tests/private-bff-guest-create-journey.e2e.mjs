@@ -141,6 +141,29 @@ try{
  const replay=await request(csrf);
  assert.equal(replay.status,201,'same-key retry must succeed after consumed CREATE_REQUEST proof');
  assert.deepEqual(await replay.json(),receipt);
+ // A consumed CREATE_REQUEST capability is replayable only for the
+ // original committed idempotency key. The exact same payload with a fresh
+ // key must not create a second request or mint another READ_CANCEL cookie.
+ const freshKeyDenied=await fetch(new URL('/api/guest-requests',base),{
+  method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+  headers:{
+   'Sec-Fetch-Site':'same-origin',Origin:'https://services.example.test',
+   'Content-Type':'application/json',Cookie:cookie,
+  },
+  body:JSON.stringify({
+   csrf_token:csrf,idempotency_key:randomUUID(),
+   service_offer_id:offerId,consent_to_contact:true,
+   note:'CI-only private note',
+  }),
+ });
+ assert.equal(freshKeyDenied.status,503,
+  'consumed CREATE_REQUEST proof cannot authorize a different idempotency key');
+ assert.match(freshKeyDenied.headers.get('cache-control')??'',/no-store/i);
+ assert.equal(freshKeyDenied.headers.get('set-cookie'),null,
+  'rejected second create must not mint another request-scoped cookie');
+ assert.deepEqual(await freshKeyDenied.json(),{
+  code:'UNAVAILABLE',message:'Guest request temporarily unavailable',
+ });
  // The request-scoped READ_CANCEL cookie must not authorize a new create.
  // Renaming the same encrypted cookie to CREATE_REQUEST must not escalate it.
  const createWithCookie=async rawCookie=>fetch(new URL('/api/guest-requests',base),{
