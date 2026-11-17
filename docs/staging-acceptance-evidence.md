@@ -4,7 +4,7 @@ Status: **NOT VERIFIED**. This checklist does not authorize production deploymen
 
 ## Immutable revision record
 
-Record the exact SHA and successful GitHub Actions run URL for each repository. The known cross-repository CI pair is documented in [integration-release-gates.md](integration-release-gates.md); it is not a substitute for staging acceptance.
+Record the exact SHA and successful GitHub Actions run URL for each repository. The mechanical verifier requires CI links in the **matching** `nurgeldiserikbay/services-back`, `services-front`, and `services-admin` repositories; revision dates must be real UTC calendar dates (YYYY-MM-DD), not free-form timestamps. Evidence URLs must be HTTPS without credentials, tokens in query strings or fragments. These format checks do **not** verify that a run actually succeeded or tested the recorded SHA: the release owner must independently inspect each run, SHA, artifact, environment and approval before switching the status to VERIFIED. The known cross-repository CI pair is documented in [integration-release-gates.md](integration-release-gates.md); it is not a substitute for staging acceptance.
 
 | Component | Staging SHA | CI run URL | Verified by | Date (UTC) |
 | --- | --- | --- | --- | --- |
