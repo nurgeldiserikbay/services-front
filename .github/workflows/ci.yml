@@ -270,6 +270,9 @@ jobs:
           done
           cat "$RUNNER_TEMP/services-private-bff.log"
           exit 1
+      - name: Verify guest OTP bootstrap CSRF and unavailable-provider isolation
+        id: otp_bootstrap_e2e
+        run: node apps/web/tests/private-bff-otp-bootstrap.e2e.mjs
       - name: Verify enabled private BFF still rejects missing and forged sessions
         id: enabled_private_denial_e2e
         run: node apps/web/tests/private-bff-enabled-denial.e2e.mjs
@@ -311,6 +314,7 @@ jobs:
           FRONTEND_LINT: ${{ steps.frontend_lint.outcome }}
           FRONTEND_TESTS: ${{ steps.frontend_tests.outcome }}
           FRONTEND_BUILD: ${{ steps.frontend_build.outcome }}
+          OTP_BOOTSTRAP_E2E: ${{ steps.otp_bootstrap_e2e.outcome }}
           ENABLED_PRIVATE_DENIAL_E2E: ${{ steps.enabled_private_denial_e2e.outcome }}
           SIGNED_SELLER_SESSION_E2E: ${{ steps.signed_seller_session_e2e.outcome }}
           GUEST_STATUS_PROOF_E2E: ${{ steps.guest_status_proof_e2e.outcome }}
@@ -334,6 +338,7 @@ jobs:
             echo "| Frontend TypeScript | $FRONTEND_TYPECHECK |"
             echo "| Frontend unit tests | $FRONTEND_TESTS |"
             echo "| Frontend production build | $FRONTEND_BUILD |"
+            echo "| OTP CSRF bootstrap and unavailable-provider isolation | $OTP_BOOTSTRAP_E2E |"
             echo "| Enabled private BFF unauthorized proof rejection | $ENABLED_PRIVATE_DENIAL_E2E |"
             echo "| Signed seller web session and backend revocation | $SIGNED_SELLER_SESSION_E2E |"
             echo "| Guest status scoped proof and expiry HTTP E2E | $GUEST_STATUS_PROOF_E2E |"
