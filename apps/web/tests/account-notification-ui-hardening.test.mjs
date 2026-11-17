@@ -60,6 +60,19 @@ test('known event titles are localized, unknown topics never shown raw',()=>{
  assert.equal(notificationTopicLabel('ru','<script>alert(1)</script>'),'Обновление по заявке');
  assert.equal(notificationTopicLabel('en','service_request.accepted'),'');
 });
+test('private notification refresh hides stale account data before revalidation',()=>{
+ const source=readFileSync(new URL('../src/components/AccountNotificationsInbox.tsx',import.meta.url),'utf8');
+ const start=source.indexOf('const load=useCallback(async()=>{');
+ const request=source.indexOf("fetch('/api/account/notifications'",start);
+ const clear=source.indexOf('setItems(null)',start);
+ assert.ok(start>=0&&clear>start&&request>clear,
+  'refresh must clear stale private notification rows before fetching');
+ assert.match(source,/if\(current===generation\.current\)setItems\(result\.items\)/,
+  'only current request may render revalidated notifications');
+ assert.match(source,/if\(current===generation\.current\)\{\s*setItems\(null\)/,
+  'authorization and transport failures must leave no stale notifications');
+});
+
 test('account pages cross-link only when related private feature is enabled',()=>{
  const read=p=>readFileSync(new URL('../src/app/[locale]/account/'+p+'/page.tsx',import.meta.url),'utf8');
  const seller=read('requests'),notifications=read('notifications');
