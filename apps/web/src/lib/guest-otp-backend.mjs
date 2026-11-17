@@ -97,7 +97,9 @@ export async function verifyGuestOtpChallenge({
     typeof data.guest_capability!=='string'||!PROOF.test(data.guest_capability)||
     typeof data.expires_at!=='string')throw new GuestOtpUnavailable();
   const expiry=Date.parse(data.expires_at);
-  if(!Number.isFinite(expiry)||expiry<=now||expiry>now+900000+5000)
+  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(data.expires_at)||
+    !Number.isFinite(expiry)||new Date(expiry).toISOString()!==data.expires_at||
+    expiry<=now||expiry>now+900000+5000)
     throw new GuestOtpUnavailable();
   return {createCapability:data.guest_capability,
     expiresInSeconds:Math.min(900,Math.floor((expiry-now)/1000))};
