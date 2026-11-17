@@ -8,28 +8,43 @@ import {join} from 'node:path';
 // runner and the Chrome DevTools Protocol. Missing Chrome is a failed gate.
 const chrome=process.env.CHROME_BIN??'google-chrome';
 const base=process.env.WEB_BASE_URL??'http://127.0.0.1:3000';
-const dir=await mkdtemp(join(tmpdir(),'services-chrome-'));
-const proc=spawn(chrome,[
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const launchArgs=dir=>[
   '--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage',
   '--no-first-run','--no-default-browser-check',
   '--remote-debugging-port=0','--user-data-dir='+dir,'about:blank',
-],{stdio:'ignore'});
-let closed=false;
-proc.once('exit',()=>{closed=true;});
-const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+];
+let proc;
+let dir;
+let closed=true;
 let socket;
 try{
   let port;
-  for(let i=0;i<250;i++){
-    if(closed)throw Error('headless Chrome exited before DevTools became ready');
-    try{
-      const data=await readFile(join(dir,'DevToolsActivePort'),'utf8');
-      port=Number(data.split('\n')[0]);
-      if(Number.isInteger(port)&&port>0)break;
-    }catch{}
-    await pause(100);
+  // Chrome sometimes fails before it creates DevToolsActivePort on shared CI
+  // runners. Retry the browser *startup only*, never failed a11y assertions.
+  for(let attempt=0;attempt<2&&!port;attempt++){
+    dir=await mkdtemp(join(tmpdir(),'services-chrome-'));
+    proc=spawn(chrome,launchArgs(dir),{stdio:'ignore'});
+    closed=false;
+    proc.once('exit',()=>{closed=true;});
+    proc.once('error',()=>{closed=true;});
+    for(let i=0;i<250;i++){
+      if(closed)break;
+      try{
+        const data=await readFile(join(dir,'DevToolsActivePort'),'utf8');
+        const candidate=Number(data.split('\\n')[0]);
+        if(Number.isInteger(candidate)&&candidate>0&&candidate<=65535){port=candidate;break;}
+      }catch{}
+      await pause(100);
+    }
+    if(!port){
+      if(!closed)proc.kill('SIGTERM');
+      await rm(dir,{recursive:true,force:true,maxRetries:5,retryDelay:100});
+      dir=undefined;
+      if(attempt===0)console.error('Chrome DevTools startup failed; retrying once with a clean profile');
+    }
   }
-  assert.ok(port,'Chrome DevTools endpoint was not available');
+  assert.ok(port,'Chrome DevTools endpoint was not available after two startup attempts');
   const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
   const target=targets.find(item=>item.type==='page');
   assert.ok(target?.webSocketDebuggerUrl,'Chrome tab target is required');
@@ -297,6 +312,6 @@ try{
   }
 }finally{
   if(socket)socket.close();
-  if(!closed)proc.kill('SIGTERM');
-  await rm(dir,{recursive:true,force:true,maxRetries:5,retryDelay:100});
+  if(proc&&!closed)proc.kill('SIGTERM');
+  if(dir)await rm(dir,{recursive:true,force:true,maxRetries:5,retryDelay:100});
 }
