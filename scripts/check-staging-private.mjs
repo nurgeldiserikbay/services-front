@@ -9,6 +9,8 @@ const accountPaths=['/kk/account/requests','/ru/account/requests',
   '/kk/account/notifications','/ru/account/notifications',
   '/kk/account/devices','/ru/account/devices'];
 const sellerPaths=['/kk/seller/requests','/ru/seller/requests'];
+const privateApiPaths=['/api/account/notifications','/api/seller/requests?limit=1',
+  '/api/guest-requests/00000000-0000-4000-8000-000000000000/status'];
 const notFound=['NEXT_HTTP_ERROR_FALLBACK;404','NEXT_NOT_FOUND',
   'This page could not be found','404: This page could not be found'];
 const privateMarkers=['SERVICES / WORKSPACE','Сессияларды басқару',
@@ -66,6 +68,35 @@ export async function checkPrivateStaging(origin,{fetchImpl=fetch}={}){
       'serviceOfferId','desiredStartAt','__Host-services_account_web=']){
       assert.ok(!html.includes(marker),path+' leaked a private workspace marker');
     }
+    checked.push({path,status:response.status});
+  }
+  for(const path of privateApiPaths){
+    const response=await fetchImpl(new URL(path,origin),{
+      method:'GET',redirect:'manual',credentials:'omit',
+      headers:{Accept:'application/json','Sec-Fetch-Site':'same-origin'},
+      signal:AbortSignal.timeout(10000),
+    });
+    assert.ok(response.status===401||response.status===404,
+      path+' must reject anonymous API access without relying on a network error');
+    assert.match(response.headers.get('cache-control')??'',/\bprivate\b/i);
+    assert.match(response.headers.get('cache-control')??'',/\bno-store\b/i);
+    assert.match(response.headers.get('x-robots-tag')??'',/\bnoindex\b/i);
+    assert.equal(response.headers.get('referrer-policy'),'no-referrer',
+      path+' must not expose private URLs through referrers');
+    assert.equal(response.headers.get('set-cookie'),null,
+      path+' denied anonymous API must not issue cookies');
+    assert.match(response.headers.get('content-type')??'',/application\/json/i);
+    const body=await readBounded(response);
+    assert.ok(Buffer.byteLength(body,'utf8')<=2048,path+' error body too large');
+    const parsed=JSON.parse(body);
+    assert.ok(parsed&&typeof parsed==='object'&&!Array.isArray(parsed),
+      path+' requires a sanitized JSON error');
+    assert.ok(typeof parsed.code==='string'&&parsed.code.length<=64,
+      path+' missing bounded error code');
+    assert.ok(Object.keys(parsed).every(key=>key==='code'||key==='message'),
+      path+' exposed a non-allowlisted private field');
+    if('message' in parsed)assert.ok(typeof parsed.message==='string'&&
+      parsed.message.length<=256,path+' unexpected error message');
     checked.push({path,status:response.status});
   }
   return {kind:'anonymous-private-staging-http-only',checked,
