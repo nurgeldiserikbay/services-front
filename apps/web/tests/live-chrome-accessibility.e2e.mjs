@@ -173,6 +173,25 @@ try{
         await pause(100);
       }
       assert.equal(resetReady,true,locale+' clear-filters link cannot receive keyboard focus');
+
+      const resetTarget=await evaluate(`(()=>{
+        const link=document.querySelector('a.clearFilters');
+        const bounds=link?.getBoundingClientRect();
+        return {height:bounds?.height??0,width:bounds?.width??0,
+          label:link?.textContent?.trim()??'',visible:!!link&&getComputedStyle(link).visibility!=='hidden'};
+      })()`);
+      const expectedResetLabel=locale==='kk'
+        ? 'Іздеуді және сүзгілерді тазарту'
+        : 'Очистить поиск и фильтры';
+      assert.equal(resetTarget.label,expectedResetLabel,
+        locale+' reset link must have a localized visible label');
+      assert.ok(resetTarget.visible&&resetTarget.height>=44&&resetTarget.width>=44,
+        locale+' reset must be a visible 44 CSS px touch/keyboard target: '+JSON.stringify(resetTarget));
+      const resetAx=await send('Accessibility.getFullAXTree');
+      assert.ok(resetAx.nodes?.some(node=>
+        node.role?.value==='link'&&node.name?.value===expectedResetLabel&&!node.ignored),
+        locale+' reset link must expose an accessible name in Chrome');
+
       await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
       await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
       let resetCompleted=false;
