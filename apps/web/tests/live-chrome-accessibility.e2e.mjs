@@ -32,7 +32,7 @@ try{
       if(closed)break;
       try{
         const data=await readFile(join(dir,'DevToolsActivePort'),'utf8');
-        const candidate=Number(data.split('\\n')[0]);
+        const candidate=Number(data.split('\n')[0]);
         if(Number.isInteger(candidate)&&candidate>0&&candidate<=65535){port=candidate;break;}
       }catch{}
       await pause(100);
