@@ -154,6 +154,10 @@ test('Lighthouse CI captures pinned mobile kk/ru reports without unmeasured scor
  assert.ok(workflow.indexOf('Capture localized Lighthouse mobile audits')>
   workflow.indexOf('Start frontend production server'));
  assert.match(workflow,/lighthouse@13\.6\.0/);
+ assert.match(workflow,/for attempt in 1 2 3; do/);
+ assert.match(workflow,/grep -q 'NO_NAVSTART'/);
+ assert.match(workflow,/\[ "\$attempt" = 3 \]/);
+ assert.match(workflow,/test -s "artifacts\/lighthouse-\$locale-mobile\.json"/);
  assert.match(workflow,/--form-factor=mobile/);
  assert.match(workflow,/--only-categories=performance,accessibility,best-practices,seo/);
  assert.match(workflow,/node apps\/web\/tests\/validate-lighthouse-reports\.e2e\.mjs/);
