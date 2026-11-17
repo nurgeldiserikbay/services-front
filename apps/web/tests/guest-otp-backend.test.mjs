@@ -88,6 +88,42 @@ test('verify rejects extra secrets, bad/missing proof, expired and long-lived pr
   ])await assert.rejects(verify({transport:async()=>json(data)}),
     GuestOtpUnavailable);
 });
+test('OTP issue and verify stop oversized streams without buffering unlimited bytes',async()=>{
+  for(const invoke of [issue,verify]){
+    let produced=0;
+    let cancelled=false;
+    const stream=new ReadableStream({
+      pull(controller){
+        produced++;
+        controller.enqueue(new Uint8Array(1024).fill(120));
+      },
+      cancel(){cancelled=true;},
+    });
+    await assert.rejects(invoke({transport:async()=>new Response(stream,{
+      status:invoke===issue?202:200,
+      headers:{'content-type':'application/json'},
+    })}),GuestOtpUnavailable);
+    assert.equal(cancelled,true,'oversized upstream body must be cancelled');
+    assert.ok(produced<=4,'must stop reading after 2048 bytes');
+  }
+});
+
+test('OTP streaming parser accepts valid one-byte UTF-8 chunks',async()=>{
+  const payload=JSON.stringify({challenge_id:challengeId});
+  const encoded=new TextEncoder().encode(payload);
+  let i=0;
+  const stream=new ReadableStream({
+    pull(controller){
+      if(i<encoded.byteLength)controller.enqueue(encoded.subarray(i,i++ +1));
+      else controller.close();
+    },
+  });
+  const result=await issue({transport:async()=>new Response(stream,{
+    status:202,headers:{'content-type':'application/json'},
+  })});
+  assert.equal(result.challengeId,challengeId);
+});
+
 test('provider errors never expose contact, code or bearer secrets',async()=>{
   for(const p of [
     issue({transport:async()=>{throw new Error('secret +77001234567');}}),

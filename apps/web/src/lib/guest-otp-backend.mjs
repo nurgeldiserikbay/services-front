@@ -36,9 +36,27 @@ async function postJson(url,payload,expectedStatus,transport){
     const length=response.headers.get('content-length');
     if(length!==null&&(!/^\d+$/.test(length)||Number(length)>LIMIT))
       throw new GuestOtpUnavailable();
-    const value=await response.text();
-    if(Buffer.byteLength(value,'utf8')>LIMIT)throw new GuestOtpUnavailable();
-    return JSON.parse(value);
+    if(!response.body)throw new GuestOtpUnavailable();
+    const reader=response.body.getReader();
+    const decoder=new TextDecoder('utf-8',{fatal:true});
+    let bytes=0;
+    let value='';
+    let complete=false;
+    try{
+      while(true){
+        const {done, value:chunk}=await reader.read();
+        if(done){complete=true;break;}
+        if(!(chunk instanceof Uint8Array))throw new GuestOtpUnavailable();
+        bytes+=chunk.byteLength;
+        if(bytes>LIMIT)throw new GuestOtpUnavailable();
+        value+=decoder.decode(chunk,{stream:true});
+      }
+      value+=decoder.decode();
+      return JSON.parse(value);
+    }finally{
+      if(!complete)await reader.cancel().catch(()=>{});
+      reader.releaseLock();
+    }
   }catch{throw new GuestOtpUnavailable();}
 }
 
