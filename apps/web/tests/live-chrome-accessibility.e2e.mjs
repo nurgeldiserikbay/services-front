@@ -171,10 +171,19 @@ try{
     }
     // Inspect Chrome's computed accessibility tree, not only source-level
     // aria-label attributes. Every locale must expose a named delivery select.
-    const accessibility=await send('Accessibility.getFullAXTree');
     const selectName=locale==='kk'?'Қызмет көрсету орны':'Где окажут услугу?';
-    assert.ok(accessibility.nodes?.some(node=>
-      node.role?.value==='combobox'&&node.name?.value===selectName&&!node.ignored),
+    let namedCombobox=false;
+    // The AX tree may lag the restored Next.js navigation after readyState
+    // completes. Wait for the actual named and exposed Chrome AX node;
+    // never accept a DOM-only aria label or skip the accessibility gate.
+    for(let attempt=0;attempt<30;attempt++){
+      const accessibility=await send('Accessibility.getFullAXTree');
+      namedCombobox=!!accessibility.nodes?.some(node=>
+        node.role?.value==='combobox'&&node.name?.value===selectName&&!node.ignored);
+      if(namedCombobox)break;
+      await pause(100);
+    }
+    assert.ok(namedCombobox,
       locale+' '+width+'px delivery filter has no named Chrome accessibility combobox');
     // Exercise an actual native keyboard submission instead of only checking
     // the form's HTML. Focus the search input, type via Chrome, and press Enter.

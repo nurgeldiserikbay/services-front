@@ -13,7 +13,9 @@ function endpoint(base,suffix,production){
     if(!['https:','http:'].includes(url.protocol)||
       (production&&url.protocol!=='https:')||
       url.username||url.password||url.search||url.hash||
-      url.pathname.includes('..')||url.pathname.endsWith('//'))
+      !/^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?\/?$/.test(url.pathname)||
+      base.includes('\\')||base.includes('%')||
+      /\/\.{1,2}(?:\/|$)/.test(base))
       throw new GuestOtpUnavailable();
     url.pathname=url.pathname.replace(/\/$/,'')+
       '/guest-requests/challenges'+suffix;

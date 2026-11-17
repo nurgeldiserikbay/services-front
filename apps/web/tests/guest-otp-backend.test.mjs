@@ -59,10 +59,18 @@ test('invalid inputs and insecure URL fail before sending any network request',a
     {contact:'x'.repeat(321)},{baseUrl:'http://api.example/v1'},
     {baseUrl:'https://user:pass@api.example/v1'},
     {baseUrl:'https://api.example/v1?x=1'},
+    {baseUrl:'https://api.example/v1/%2e%2e/hidden'},
+    {baseUrl:'https://api.example/v1/%61'},
+    {baseUrl:'https://api.example/v1//nested'},
+    {baseUrl:'https://api.example/v1\\nested'},
+    {baseUrl:'https://api.example/v1/./nested'},
+    {baseUrl:'https://api.example/v1/a.b'},
   ])await assert.rejects(issue({...x,transport}),GuestOtpUnavailable);
   for(const x of [
     {challengeId:'bad'},{code:'12345'},{code:'x'.repeat(6)},
     {baseUrl:'http://api.example/v1'},
+    {baseUrl:'https://api.example/v1/%2f'},
+    {baseUrl:'https://api.example/v1//nested'},
   ])await assert.rejects(verify({...x,transport}),GuestOtpUnavailable);
   assert.equal(calls,0);
 });
