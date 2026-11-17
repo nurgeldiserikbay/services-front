@@ -85,7 +85,7 @@ try{
  await deny(keys.request,undefined,'no cookie');
  await deny(keys.request,'__Host-services_guest_request='+cap(),'forged cookie');
  const old=sealGuestRequestAccess(webKey,keys.request,proofs.valid,
-  Date.now()+1000,Date.now()-2000).cookie;
+  Date.now()-1000,Date.now()-2000).cookie;
  await deny(keys.request,'__Host-services_guest_request='+old,'expired web cookie');
  console.log('Live scoped guest status returns safe DTO; foreign, expired, consumed and forged access denied');
 }finally{
