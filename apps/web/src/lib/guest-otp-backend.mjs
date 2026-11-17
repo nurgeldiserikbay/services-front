@@ -14,7 +14,8 @@ function endpoint(base,suffix,production){
       (production&&url.protocol!=='https:')||
       url.username||url.password||url.search||url.hash||
       !/^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?\/?$/.test(url.pathname)||
-      base.includes('\\')||base.includes('%'))
+      base.includes('\\')||base.includes('%')||
+      /\/\.{1,2}(?:\/|$)/.test(base))
       throw new GuestOtpUnavailable();
     url.pathname=url.pathname.replace(/\/$/,'')+
       '/guest-requests/challenges'+suffix;
