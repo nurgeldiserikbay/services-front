@@ -26,7 +26,9 @@ export function AccountNotificationsInbox({locale}:{locale:Locale}){
  const lock=useRef(false);
  const load=useCallback(async()=>{
   if(lock.current)return;
-  lock.current=true;setBusy(true);setError('');
+  // Never keep an old account's private inbox visible while the backend
+  // revalidates the current cookie (including after session revocation).
+  lock.current=true;setItems(null);setBusy(true);setError('');
   const current=++generation.current;
   try{
    const response=await fetch('/api/account/notifications',{
