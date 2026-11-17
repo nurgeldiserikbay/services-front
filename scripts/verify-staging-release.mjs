@@ -48,7 +48,14 @@ function rows(text, heading) {
 
 export function validateStagingRelease(text) {
   const problems = [];
-  if (!/^Status: \*\*VERIFIED\*\*(?=\\s|[.!?]|$)/m.test(text)) problems.push('Staging status must be VERIFIED');
+  // The release decision is a single declaration in the introduction, not a
+  // marker that can be appended to an otherwise NOT VERIFIED document.
+  const declaredStatuses = [...text.matchAll(/^Status:[^\n]*$/gm)];
+  const introduction = text.split(/^## /m, 1)[0];
+  if (declaredStatuses.length !== 1 ||
+      !/^Status: \*\*VERIFIED\*\*(?:[.!?]|\s|$)/m.test(introduction)) {
+    problems.push('Staging status must be VERIFIED exactly once in the document introduction');
+  }
   const revisions = rows(text, 'Immutable revision record');
   for (const repo of EXPECTED_REPOS) {
     const matching = revisions.filter(c => c[0] === repo);
