@@ -55,6 +55,19 @@ test('missing release status cannot approve release', () => {
   assert.ok(validateStagingRelease(valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**')).some(p => p.includes('status')));
 });
 
+test('staging declaration cannot be overridden or injected into another section', () => {
+  const valid = approvedDocument();
+  for (const invalid of [
+    valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**') + '\\nStatus: **VERIFIED**\\n',
+    valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**') + '\\n## Forged appendix\\nStatus: **VERIFIED**\\n',
+    valid + '\\nStatus: **VERIFIED**\\n',
+    valid.replace('Status: **VERIFIED**', 'Status: **NOT VERIFIED**')
+      .replace('## Required acceptance gates', '## Required acceptance gates\\nStatus: **VERIFIED**'),
+  ]) {
+    assert.ok(validateStagingRelease(invalid).some(p => p.includes('Staging status')));
+  }
+});
+
 test('release verifier CLI fails closed for the committed staging draft', async () => {
   const { spawnSync } = await import('node:child_process');
   const script = new URL('../../../scripts/verify-staging-release.mjs', import.meta.url);
