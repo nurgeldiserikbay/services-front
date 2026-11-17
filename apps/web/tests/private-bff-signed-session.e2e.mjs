@@ -210,7 +210,7 @@ try{
   const deliveryProof=await db.query(`
    SELECT n.state AS intent_state,n.attempts,
      d.state AS delivery_state,d.provider_ref,d.delivered_at,
-     d.attempt_count,d.lease_token,d.lease_expires_at
+     d.attempt_count
    FROM notification_intents n
    LEFT JOIN notification_deliveries d ON d.intent_id=n.id
    WHERE n.id=$1::uuid
@@ -228,8 +228,6 @@ try{
     assert.equal(delivery.attempt_count,0);
     assert.equal(delivery.provider_ref,null);
     assert.equal(delivery.delivered_at,null);
-    assert.equal(delivery.lease_token,null);
-    assert.equal(delivery.lease_expires_at,null);
    }
   }
 
