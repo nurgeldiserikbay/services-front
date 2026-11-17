@@ -34,3 +34,15 @@ test('decision 401 invalidates all seller-scoped state and pending nonce keys',(
  assert.match(decide,/pendingKeys\.current\.set\(key,idempotencyKey\)/);
  assert.doesNotMatch(decide,/localStorage|sessionStorage|Authorization|document\.cookie/);
 });
+
+test('decision 403 invalidates previously authorized seller rows before refresh',()=>{
+ const decide=ui.split('const decide=useCallback')[1].split('const message=')[0];
+ const forbidden=decide.split('if(response.status===403)')[1]?.split('if(response.status===409)')[0]??'';
+ assert.ok(forbidden,'seller decisions must explicitly handle permission revocation');
+ assert.match(forbidden,/generation\.current\+\+/);
+ assert.match(forbidden,/setItems\(\[\]\);setCursor\(null\);setCsrf\(''\)/);
+ assert.match(forbidden,/seenCursors\.current\.clear\(\);pendingKeys\.current\.clear\(\)/);
+ assert.match(forbidden,/setStatus\('error'\)/);
+ assert.match(forbidden,/return 'forbidden' as const/);
+ assert.doesNotMatch(forbidden,/setStatus\('ready'\)/);
+});
