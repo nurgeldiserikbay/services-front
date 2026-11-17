@@ -23,8 +23,11 @@ for(const base of bases){
         headers:withCookie?{Cookie:'__Host-services_account_web='+forged}:{},
         signal:AbortSignal.timeout(10000),
       });
-      assert.equal(response.status,404,
-        base.label+' '+path+' must not show private workspace without verified login');
+      // App Router may stream the HTTP shell before notFound() resolves, so a
+      // streamed denial can carry status 200. Never treat status 200 by itself
+      // as proof of authorization or a failed denial.
+      assert.ok(response.status===404||response.status===200,
+        base.label+' '+path+' must not redirect or return an unexpected status');
       const cache=response.headers.get('cache-control')??'';
       const robots=response.headers.get('x-robots-tag')??'';
       assert.match(cache,/\bprivate\b/i,path+' must be private');
@@ -38,6 +41,20 @@ for(const base of bases){
       const body=await response.text();
       assert.ok(body.length<256*1024,path+' denied response unusually large');
       assert.ok(!body.includes(forged),path+' echoed forged session cookie');
+      const notFoundSignals=[
+        'NEXT_HTTP_ERROR_FALLBACK;404','NEXT_NOT_FOUND',
+        'This page could not be found','404: This page could not be found',
+      ];
+      if(response.status===200){
+        assert.ok(notFoundSignals.some(marker=>body.includes(marker)),
+          base.label+' '+path+' streamed 200 must contain a Next.js not-found signal');
+      }
+      // These are server-rendered only after a verified account session.
+      // Even when Next.js streams a 200 shell they must never appear.
+      for(const privateLabel of ['SERVICES / WORKSPACE','Сессияларды басқару',
+        'Управление сеансами','Өтінімдерге өту','К заявкам']){
+        assert.ok(!body.includes(privateLabel),path+' leaked a private workspace label');
+      }
       console.log('[private-workspace] '+base.label+' '+path+
         (withCookie?' forged-cookie':' cookie-free')+' denied with no-store/noindex');
     }
