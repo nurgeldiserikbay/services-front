@@ -42,18 +42,25 @@ async function readBoundedJson(response){
   reader.releaseLock();
  }
 }
+function validUtcDate(value){
+ return typeof value==='string'&&
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)&&
+  Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;
+}
 function validateList(payload){
  if(!payload||typeof payload!=='object'||Array.isArray(payload)||
   Object.keys(payload).sort().join(',')!=='items'||!Array.isArray(payload.items)||
   payload.items.length>50)throw new AccountSessionTransportUnavailable();
+ const seen=new Set();
  return {items:payload.items.map(row=>{
   if(!row||typeof row!=='object'||Array.isArray(row)||
     Object.keys(row).sort().join(',')!=='current,deviceLabel,expiresAt,id,lastUsedAt'||
-    typeof row.id!=='string'||!UUID.test(row.id)||
+    typeof row.id!=='string'||!UUID.test(row.id)||seen.has(row.id.toLowerCase())||
     !(row.deviceLabel===null||(typeof row.deviceLabel==='string'&&row.deviceLabel.length<=120))||
-    !(row.lastUsedAt===null||(typeof row.lastUsedAt==='string'&&!Number.isNaN(Date.parse(row.lastUsedAt))))||
-    typeof row.expiresAt!=='string'||Number.isNaN(Date.parse(row.expiresAt))||
+    !(row.lastUsedAt===null||validUtcDate(row.lastUsedAt))||
+    !validUtcDate(row.expiresAt)||
     typeof row.current!=='boolean')throw new AccountSessionTransportUnavailable();
+  seen.add(row.id.toLowerCase());
   return {id:row.id,deviceLabel:row.deviceLabel,lastUsedAt:row.lastUsedAt,
     expiresAt:row.expiresAt,current:row.current};
  })};
