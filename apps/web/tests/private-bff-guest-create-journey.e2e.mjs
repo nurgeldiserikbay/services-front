@@ -164,6 +164,30 @@ try{
  assert.deepEqual(await freshKeyDenied.json(),{
   code:'UNAVAILABLE',message:'Guest request temporarily unavailable',
  });
+ // A retry using the ORIGINAL idempotency key but a DIFFERENT body
+ // is not a valid replay. No alternate request may be committed and no
+ // fresh scoped cookie should be issued from a conflicting payload.
+ const changedPayloadDenied=await fetch(new URL('/api/guest-requests',base),{
+  method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+  headers:{
+   'Sec-Fetch-Site':'same-origin',Origin:'https://services.example.test',
+   'Content-Type':'application/json',Cookie:cookie,
+  },
+  body:JSON.stringify({
+   csrf_token:csrf,idempotency_key:idempotencyKey,
+   service_offer_id:offerId,consent_to_contact:true,
+   note:'Different valid message under the original key',
+  }),
+ });
+ assert.equal(changedPayloadDenied.status,503,
+  'same idempotency key with changed payload must not replay a receipt');
+ assert.match(changedPayloadDenied.headers.get('cache-control')??'',/no-store/i);
+ assert.match(changedPayloadDenied.headers.get('x-robots-tag')??'',/noindex/i);
+ assert.equal(changedPayloadDenied.headers.get('set-cookie'),null,
+  'conflicting replay must not mint or clear a scoped session cookie');
+ assert.deepEqual(await changedPayloadDenied.json(),{
+  code:'UNAVAILABLE',message:'Guest request temporarily unavailable',
+ });
  // The request-scoped READ_CANCEL cookie must not authorize a new create.
  // Renaming the same encrypted cookie to CREATE_REQUEST must not escalate it.
  const createWithCookie=async rawCookie=>fetch(new URL('/api/guest-requests',base),{
