@@ -72,9 +72,9 @@ for(const base of bases){
         signal:AbortSignal.timeout(10000),
       });
       assert.equal(response.status,200,path+' must return only its public shell');
-      assert.match(response.headers.get('cache-control')??'',/\\bprivate\\b/i);
-      assert.match(response.headers.get('cache-control')??'',/\\bno-store\\b/i);
-      assert.match(response.headers.get('x-robots-tag')??'',/\\bnoindex\\b/i);
+      assert.match(response.headers.get('cache-control')??'',/\bprivate\b/i);
+      assert.match(response.headers.get('cache-control')??'',/\bno-store\b/i);
+      assert.match(response.headers.get('x-robots-tag')??'',/\bnoindex\b/i);
       assert.equal(response.headers.get('set-cookie'),null,
         path+' must not mint a session on public shell render');
       const body=await response.text();
