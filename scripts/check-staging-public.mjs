@@ -67,6 +67,15 @@ export async function checkPublicStaging(origin,{fetchImpl=fetch}={}){
       path+' must isolate the top-level browsing context');
     assert.equal(response.headers.get('referrer-policy')?.toLowerCase(),'strict-origin-when-cross-origin',
       path+' must enforce public referrer policy');
+    // HSTS must survive HTTPS termination at the staging reverse proxy.
+    // Require six months of coverage without assuming subdomain ownership
+    // or forcing preload, which could lock unrelated deployments.
+    const hsts=response.headers.get('strict-transport-security')??'';
+    const maxAge=hsts.match(/(?:^|;)\s*max-age=(\d+)(?:\s*;|\s*$)/i);
+    assert.ok(maxAge&&Number(maxAge[1])>=15552000,
+      path+' must serve at least six months of HSTS max-age');
+    assert.doesNotMatch(hsts,/\bpreload\b/i,
+      path+' must not preload staging without explicit domain approval');
     const permissions=response.headers.get('permissions-policy')??'';
     for(const feature of ['camera','microphone','geolocation']){
       assert.match(permissions,new RegExp('(?:^|,)\\s*'+feature+'=\\(\\)'),

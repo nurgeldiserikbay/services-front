@@ -28,6 +28,7 @@ function mockedFetch(overrides={}){
       headers:{'content-type':data.type??type,
         ...(url.pathname==='/offline.html'?{'cache-control':'no-store','x-robots-tag':'noindex'}:{}),
         ...(url.pathname==='/sw.js'?{'cache-control':'no-store','service-worker-allowed':'/'}:{}),
+        'strict-transport-security':'max-age=31536000',
         'x-content-type-options':'nosniff',
         'x-frame-options':'DENY',
         'cross-origin-opener-policy':'same-origin',
@@ -89,6 +90,9 @@ test('staging smoke refuses redirects, broken localization and missing privacy h
     {'/icon.svg':{headers:{'cross-origin-opener-policy':'unsafe-none'}}},
     {'/offline.html':{headers:{'referrer-policy':'unsafe-url'}}},
     {'/sw.js':{headers:{'permissions-policy':'camera=(self), microphone=(), geolocation=()'}}},
+    {'/kk':{headers:{'strict-transport-security':'max-age=0'}}},
+    {'/ru':{headers:{'strict-transport-security':'max-age=86400'}}},
+    {'/manifest.webmanifest':{headers:{'strict-transport-security':'max-age=31536000; preload'}}},
   ]){
     await assert.rejects(checkPublicStaging(origin,{fetchImpl:mockedFetch(overrides).fetchImpl}));
   }

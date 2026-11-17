@@ -36,7 +36,12 @@ const config: NextConfig = {
         headers: [
           ...securityHeaders,
           ...(process.env.NODE_ENV === 'production'
-            ? [{key: 'Content-Security-Policy', value: productionCsp}]
+            ? [
+                {key: 'Content-Security-Policy', value: productionCsp},
+                // Host-only HSTS: do not force HTTPS on unrelated subdomains
+                // or preload a staging hostname without a deployment review.
+                {key: 'Strict-Transport-Security', value: 'max-age=31536000'},
+              ]
             : []),
         ],
       },
