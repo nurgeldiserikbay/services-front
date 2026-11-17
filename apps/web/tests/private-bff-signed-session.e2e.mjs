@@ -50,6 +50,28 @@ try{
  await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
    VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
   [sessionId,userId,tokenHash,familyId]);
+ // The isolated BFF must revalidate the account session against the live
+ // backend rather than trusting an encrypted but potentially stale cookie.
+ const devices=await fetch(new URL('/api/account/sessions',base),{
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie},
+  signal:AbortSignal.timeout(8000),redirect:'manual',
+ });
+ assert.equal(devices.status,200,'valid backing session must list devices over live HTTP');
+ assert.match(devices.headers.get('cache-control')??'',/no-store/i);
+ assert.match(devices.headers.get('x-robots-tag')??'',/noindex/i);
+ assert.equal(devices.headers.get('set-cookie'),null);
+ const inventory=await devices.json();
+ assert.ok(Array.isArray(inventory.items));
+ assert.ok(inventory.items.some(item=>item.id===sessionId&&item.current===true),
+  'real backend must identify the caller current session');
+ assert.equal(inventory.csrf_token,sealed.csrf);
+ assert.ok(!JSON.stringify(inventory).includes(bearer));
+ assert.ok(!JSON.stringify(inventory).includes(tokenHash));
+ const wrongOrigin=await fetch(new URL('/api/account/sessions',base),{
+  headers:{'Sec-Fetch-Site':'cross-site',Cookie:cookie},
+  signal:AbortSignal.timeout(8000),redirect:'manual',
+ });
+ assert.equal(wrongOrigin.status,404,'cross-site inventory read must not reach session data');
  const good=await inbox();
  assert.equal(good.status,200,'active backend bearer must reach seller inbox');
  assert.match(good.headers.get('cache-control')??'',/no-store/i);
@@ -263,6 +285,15 @@ try{
  assert.deepEqual((await pendingPage.json()).items,[]);
 
  await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
+ const revokedDevices=await fetch(new URL('/api/account/sessions',base),{
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie},
+  signal:AbortSignal.timeout(8000),redirect:'manual',
+ });
+ assert.equal(revokedDevices.status,503,
+  'revoked backing session must not grant device inventory despite a valid web cookie');
+ assert.match(revokedDevices.headers.get('cache-control')??'',/no-store/i);
+ assert.equal(revokedDevices.headers.get('set-cookie'),null);
+ assert.deepEqual(await revokedDevices.json(),{code:'UNAVAILABLE'});
  const revoked=await inbox();
  assert.equal(revoked.status,401,'revocation must defeat still-valid web cookie');
  const denied=await revoked.json();
