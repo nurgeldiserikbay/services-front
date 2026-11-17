@@ -56,7 +56,7 @@ try{
  const remoteSessionId=randomUUID();
  const remoteBearer=randomBytes(32).toString('base64url');
  const remoteHash=createHmac('sha256',hmacKey)
-  .update('services-session:v1\\0').update(remoteBearer).digest('hex');
+  .update('services-session:v1\0').update(remoteBearer).digest('hex');
  await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
    VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
   [remoteSessionId,userId,remoteHash,randomUUID()]);
