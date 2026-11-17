@@ -159,6 +159,43 @@ try{
       }))()`);
       assert.equal(found,true,locale+' Enter submission did not navigate to seeded results: '+JSON.stringify(diagnostic));
       console.log('Chrome real keyboard Enter search '+locale+' OK');
+      // Continue the keyboard-only journey: activate the visible reset link
+      // using Enter and verify a truly clean locale-root search state.
+      let resetReady=false;
+      for(let attempt=0;attempt<30;attempt++){
+        resetReady=await evaluate(`(()=>{
+          const link=document.querySelector('a.clearFilters');
+          if(!link)return false;
+          link.focus();
+          return document.activeElement===link;
+        })()`);
+        if(resetReady)break;
+        await pause(100);
+      }
+      assert.equal(resetReady,true,locale+' clear-filters link cannot receive keyboard focus');
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
+      await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+      let resetCompleted=false;
+      for(let attempt=0;attempt<100;attempt++){
+        resetCompleted=await evaluate(`(()=>{
+          const url=new URL(location.href);
+          return url.pathname==='/${locale}'&&url.search===''&&
+            document.querySelector('input#query')?.value===''&&
+            !document.querySelector('a.clearFilters')&&
+            document.querySelectorAll('.resultItem').length===0;
+        })()`);
+        if(resetCompleted)break;
+        await pause(100);
+      }
+      const resetDiagnostic=await evaluate(`(()=>({
+        href:location.href,
+        query:document.querySelector('input#query')?.value??null,
+        resetLink:!!document.querySelector('a.clearFilters'),
+        resultCards:document.querySelectorAll('.resultItem').length
+      }))()`);
+      assert.equal(resetCompleted,true,locale+' keyboard clear-all did not reach pristine search: '+JSON.stringify(resetDiagnostic));
+      console.log('Chrome keyboard Enter clear-filters '+locale+' OK');
+
     }
     console.log('Chrome responsive keyboard/landmark smoke '+locale+' '+width+'px OK');
     }
