@@ -46,3 +46,7 @@ select:focus-visible,textarea:focus-visible,[role="button"]:focus-visible,[tabin
 .geoError button{min-height:44px;min-width:44px;padding:10px 16px;line-height:1.4;max-width:100%;white-space:normal}
 @media(max-width:360px){.geoError button{width:100%}}
 @media(forced-colors:active){.geoError button{border:1px solid ButtonText}}
+
+/* Explicit navigation resets query, geography and all filters together. */
+.clearFilters{display:inline-flex;align-items:center;min-height:44px;margin-top:20px;padding:10px 14px;border:1px solid var(--accent);border-radius:12px;color:var(--accent);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+@media(forced-colors:active){.clearFilters{border-color:LinkText;color:LinkText}}

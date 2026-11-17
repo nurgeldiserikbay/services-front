@@ -176,6 +176,8 @@ assert.match(searchHtml, /<select[^>]+id="delivery_mode"[^>]+aria-label="Где 
 assert.match(searchHtml, /<nav class="language" aria-label="Выбор языка">/, 'language navigation should have a localized accessible name');
 assert.match(searchHtml, /Stage 2 Journey Specialist Offer/, 'search should render the real specialist result');
 assert.match(searchHtml, /Stage 2 Journey Company Offer/, 'search should render the real company result');
+assert.match(searchHtml, /<a class="clearFilters" href="\/ru">Очистить поиск и фильтры<\/a>/,
+  'Russian search reset should navigate to unfiltered localized search');
 assertPageResultAnnouncement(searchHtml, 'ru');
 
 function assertPageResultAnnouncement(html, locale) {
@@ -284,6 +286,8 @@ assert.match(kazakhSearchHtml, /Stage 2 Journey Specialist Offer/,
   'Kazakh search should render the specialist result');
 assert.match(kazakhSearchHtml, /Stage 2 Journey Company Offer/,
   'Kazakh search should render the company result');
+assert.match(kazakhSearchHtml, /<a class="clearFilters" href="\/kk">Іздеуді және сүзгілерді тазарту<\/a>/,
+  'Kazakh search reset should navigate to unfiltered localized search');
 assertPageResultAnnouncement(kazakhSearchHtml, 'kk');
 findHref(kazakhSearchHtml, '/kk/professionals/ci-stage2-specialist');
 findHref(kazakhSearchHtml, '/kk/organizations/10000000-0000-4000-8000-000000000006');
