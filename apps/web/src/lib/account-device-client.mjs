@@ -41,11 +41,28 @@ async function boundedResponse(response){
  const len=response.headers.get('content-length');
  if(len!==null&&(!/^\d+$/.test(len)||Number(len)>MAX_RESPONSE_BYTES))
   throw new AccountDeviceUnavailable();
- const body=await response.text();
- if(new TextEncoder().encode(body).length>MAX_RESPONSE_BYTES)
-  throw new AccountDeviceUnavailable();
- try{return parseAccountDeviceInventory(JSON.parse(body));}
- catch{throw new AccountDeviceUnavailable();}
+ if(!response.body)throw new AccountDeviceUnavailable();
+ const reader=response.body.getReader();
+ const decoder=new TextDecoder('utf-8',{fatal:true});
+ let bytes=0;
+ let body='';
+ let complete=false;
+ try{
+  while(true){
+   const {done,value}=await reader.read();
+   if(done){complete=true;break;}
+   if(!(value instanceof Uint8Array))throw new AccountDeviceUnavailable();
+   bytes+=value.byteLength;
+   if(bytes>MAX_RESPONSE_BYTES)throw new AccountDeviceUnavailable();
+   body+=decoder.decode(value,{stream:true});
+  }
+  body+=decoder.decode();
+  return parseAccountDeviceInventory(JSON.parse(body));
+ }catch{throw new AccountDeviceUnavailable();}
+ finally{
+  if(!complete)await reader.cancel().catch(()=>{});
+  reader.releaseLock();
+ }
 }
 /** Browser calls only the same-origin BFF, never the backend bearer API. */
 export async function loadAccountDevices({transport=fetch}={}){

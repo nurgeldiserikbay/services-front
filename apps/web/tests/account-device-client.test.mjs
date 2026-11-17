@@ -50,6 +50,36 @@ test('browser inventory fetch uses only same-origin cookie and no-store',async()
   transport:async()=>new Response(null,{status:503}),
  }),AccountDeviceUnavailable);
 });
+test('device inventory cancels an unbounded stream once 16 KiB is exceeded',async()=>{
+ let pulled=0;
+ let cancelled=false;
+ const stream=new ReadableStream({
+  pull(controller){pulled++;controller.enqueue(new Uint8Array(8192).fill(120));},
+  cancel(){cancelled=true;},
+ });
+ await assert.rejects(loadAccountDevices({
+  transport:async()=>new Response(stream,{status:200,headers:{'content-type':'application/json'}}),
+ }),AccountDeviceUnavailable);
+ assert.equal(cancelled,true,'oversized device response must cancel upstream');
+ assert.ok(pulled<=4,'must not consume the unbounded response');
+});
+
+test('device inventory handles split multibyte UTF-8 without truncation',async()=>{
+ const payload=JSON.stringify({items:[{...current,deviceLabel:'Құрылғы'}],csrf_token:csrf});
+ const encoded=new TextEncoder().encode(payload);
+ let index=0;
+ const stream=new ReadableStream({
+  pull(controller){
+   if(index<encoded.length)controller.enqueue(encoded.subarray(index,index++ +1));
+   else controller.close();
+  },
+ });
+ const value=await loadAccountDevices({
+  transport:async()=>new Response(stream,{status:200,headers:{'content-type':'application/json'}}),
+ });
+ assert.equal(value.items[0].deviceLabel,'Құрылғы');
+});
+
 test('remote logout sends only CSRF to same-origin BFF and accepts confirmed 204',async()=>{
  assert.equal(await revokeOtherAccountDevice({sessionId:other,csrf,
   transport:async(url,options)=>{
