@@ -61,6 +61,19 @@ Replace the example hostname with the **approved, exact staging DNS hostname**. 
 
 Record the staging origin (not any credential), test timestamp, frontend SHA, command, result and sanitized trace in the evidence record below. A green result is only **public frontend readiness evidence**, not proof of authentication, account isolation, security approvals, installed Android PWA, screen reader, Core Web Vitals, backend migrations, data residency or release sign-off. The gate remains **NOT RUN** until executed against the real approved staging environment and separately reviewed.
 
+## Read-only anonymous private workspace HTTPS smoke (pre-acceptance)
+
+After the **same exact staging origin and approved DNS allowlist** are available, an operator may run:
+
+```bash
+STAGING_ALLOWED_HOST=staging.example.kz \
+  node scripts/check-staging-private.mjs https://staging.example.kz
+```
+
+Replace the example with the reviewed staging host. This separate script issues only bounded, anonymous GET requests **without cookies, tokens or credentials** to kk/ru account requests, notifications, devices and seller request pages. It rejects redirects, publicly cacheable or indexable responses, unexpected cookies, personal request markers and SSR private workspace contents. App Router can stream a status-200 not-found shell; the script requires an explicit not-found signal in that case. The legacy seller page is deliberately a public, data-free client shell; its 200 response is acceptable only with private no-store/noindex and without embedded seller data. Result reports route and status only; failures redact server response text.
+
+Record the actual timestamp, host, SHAs and sanitized trace. This smoke checks **unauthenticated denial only** and cannot prove authenticated login, cross-account ACL, real account sessions, provider OTP, mobile installation, staging data safety or release sign-off. It does not replace the F1/F2 authenticated browser journeys and does not satisfy the staging release gate by itself.
+
 ## Evidence record template
 
 - Gate:
