@@ -36,6 +36,21 @@ test('server notification transport validates strict schema and private backend 
   assert.throws(()=>validateNotificationInbox(other),NotificationTransportUnavailable);
  }
 });
+test('notification inbox rejects repeated IDs, including UUID case aliases',async()=>{
+ const upper=record.id.toUpperCase();
+ for(const items of [
+  [record,record],
+  [record,{...record,topic:'service_request.declined'}],
+  [record,{...record,id:upper,subject_id:randomUUID()}],
+ ]){
+  assert.throws(()=>validateNotificationInbox({items}),NotificationTransportUnavailable);
+  await assert.rejects(call(async()=>response({items})),NotificationTransportUnavailable);
+ }
+ // Distinct notification IDs may legitimately refer to one request.
+ const second={...record,id:randomUUID()};
+ assert.deepEqual(validateNotificationInbox({items:[record,second]}),{items:[record,second]});
+});
+
 test('notification transport fails closed on revoked bearer, redirects and overlarge content',async()=>{
  await assert.rejects(call(async()=>response({code:'AUTH_REQUIRED'},401)),
   NotificationTransportUnauthorized);

@@ -12,6 +12,7 @@ export function validateNotificationInbox(value){
  if(!value||typeof value!=='object'||Array.isArray(value)||
   Object.keys(value).join(',')!=='items'||!Array.isArray(value.items)||
   value.items.length>50)throw new NotificationTransportUnavailable();
+ const seen=new Set();
  return {items:value.items.map(item=>{
   if(!item||typeof item!=='object'||Array.isArray(item)||
    Object.keys(item).sort().join(',')!=='created_at,id,subject_id,topic'||
@@ -22,6 +23,9 @@ export function validateNotificationInbox(value){
    !Number.isFinite(Date.parse(item.created_at))||
    new Date(item.created_at).toISOString()!==item.created_at)
    throw new NotificationTransportUnavailable();
+  const id=item.id.toLowerCase();
+  if(seen.has(id))throw new NotificationTransportUnavailable();
+  seen.add(id);
   return {id:item.id,topic:item.topic,subject_id:item.subject_id,
    created_at:item.created_at};
  })};
