@@ -52,6 +52,14 @@ try{
   [sessionId,userId,tokenHash,familyId]);
  // The isolated BFF must revalidate the account session against the live
  // backend rather than trusting an encrypted but potentially stale cookie.
+ // A second live session for the same user behaves like another device.
+ const remoteSessionId=randomUUID();
+ const remoteBearer=randomBytes(32).toString('base64url');
+ const remoteHash=createHmac('sha256',hmacKey)
+  .update('services-session:v1\\0').update(remoteBearer).digest('hex');
+ await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
+   VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
+  [remoteSessionId,userId,remoteHash,randomUUID()]);
  const devices=await fetch(new URL('/api/account/sessions',base),{
   headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie},
   signal:AbortSignal.timeout(8000),redirect:'manual',
@@ -65,6 +73,40 @@ try{
  assert.ok(inventory.items.some(item=>item.id===sessionId&&item.current===true),
   'real backend must identify the caller current session');
  assert.equal(inventory.csrf_token,sealed.csrf);
+ assert.ok(inventory.items.some(item=>item.id===remoteSessionId&&!item.current),
+  'same-account other session must be visible to the active user');
+ const revokeRequest=async(id,csrf=sealed.csrf)=>fetch(new URL('/api/account/sessions/'+id,base),{
+  method:'DELETE',redirect:'manual',signal:AbortSignal.timeout(8000),
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie,
+   Origin:'https://services.example.test','x-services-csrf':csrf},
+ });
+ const currentDenied=await revokeRequest(sessionId);
+ assert.equal(currentDenied.status,409,'remote revoke must not target current session');
+ assert.deepEqual(await currentDenied.json(),{code:'CURRENT_SESSION'});
+ const wrongCsrfDenied=await revokeRequest(remoteSessionId,randomBytes(32).toString('base64url'));
+ assert.equal(wrongCsrfDenied.status,404,'invalid CSRF must not revoke another session');
+ const notRevoked=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',[remoteSessionId]);
+ assert.equal(notRevoked.rows[0].revoked_at,null,'CSRF rejection must leave session active');
+ const remoteRevoked=await revokeRequest(remoteSessionId);
+ assert.equal(remoteRevoked.status,204,'authenticated remote device must be revocable');
+ assert.match(remoteRevoked.headers.get('cache-control')??'',/no-store/i);
+ assert.equal(remoteRevoked.headers.get('set-cookie'),null);
+ const persistedRevocation=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',[remoteSessionId]);
+ assert.ok(persistedRevocation.rows[0].revoked_at instanceof Date,
+  'remote revocation must be committed in PostgreSQL');
+ const stillCurrent=await db.query('SELECT revoked_at FROM sessions WHERE id=$1',[sessionId]);
+ assert.equal(stillCurrent.rows[0].revoked_at,null,
+  'other-device logout must not revoke the active web session');
+ const afterRemoteRevoke=await fetch(new URL('/api/account/sessions',base),{
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:cookie},
+  signal:AbortSignal.timeout(8000),redirect:'manual',
+ });
+ assert.equal(afterRemoteRevoke.status,200);
+ const afterRemoteInventory=await afterRemoteRevoke.json();
+ assert.ok(afterRemoteInventory.items.some(item=>item.id===sessionId&&item.current));
+ assert.equal(afterRemoteInventory.items.some(item=>item.id===remoteSessionId),false,
+  'revoked device must disappear from refreshed backend inventory');
+
  assert.ok(!JSON.stringify(inventory).includes(bearer));
  assert.ok(!JSON.stringify(inventory).includes(tokenHash));
  const wrongOrigin=await fetch(new URL('/api/account/sessions',base),{
@@ -349,7 +391,7 @@ try{
   await db.query('DELETE FROM persons WHERE id=$1',[fixture.personId]).catch(()=>{});
   await db.query('DELETE FROM sessions WHERE id=$1',[outsiderSessionId]).catch(()=>{});
   await db.query('DELETE FROM users WHERE id=$1',[outsiderId]).catch(()=>{});
-  await db.query('DELETE FROM sessions WHERE id=$1',[sessionId]).catch(()=>{});
+  await db.query('DELETE FROM sessions WHERE user_id=$1',[userId]).catch(()=>{});
   await db.query('DELETE FROM users WHERE id=$1',[userId]).catch(()=>{});
  }
  await db.end();
