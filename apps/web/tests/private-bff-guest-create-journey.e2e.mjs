@@ -92,6 +92,36 @@ try{
  assert.equal(state.version,1);
  assert.ok(!JSON.stringify(state).includes('CI-only private note'));
 
+ // The newly issued READ_CANCEL proof is scoped to this request. Exercise
+ // negative permissions against the same committed CI-created row so a
+ // successful request creation cannot accidentally widen subsequent reads.
+ const statusWith=async(requestId,headerCookie,fetchSite='same-origin')=>fetch(
+  new URL('/api/guest-requests/'+requestId+'/status',base),{
+   headers:{'Sec-Fetch-Site':fetchSite,...(headerCookie?{Cookie:headerCookie}:{})},
+   redirect:'manual',signal:AbortSignal.timeout(8000),
+  });
+ const denyStatus=async(response,label)=>{
+  assert.equal(response.status,404,label+' must not access private guest status');
+  assert.match(response.headers.get('cache-control')??'',/no-store/i);
+  assert.match(response.headers.get('x-robots-tag')??'',/noindex/i);
+  assert.equal(response.headers.get('set-cookie'),null);
+  assert.deepEqual(await response.json(),{
+   code:'NOT_FOUND',message:'Guest request status unavailable',
+  });
+ };
+ await denyStatus(await statusWith(createdId,null),'missing READ_CANCEL cookie');
+ await denyStatus(await statusWith(createdId,
+  '__Host-services_guest_request='+randomBytes(32).toString('base64url')),
+ 'forged READ_CANCEL cookie');
+ await denyStatus(await statusWith(randomUUID(),access),
+  'valid READ_CANCEL cookie for a different request');
+ await denyStatus(await statusWith(createdId,access,'cross-site'),
+  'cross-site fetch with otherwise valid READ_CANCEL cookie');
+ const preserved=await statusWith(createdId,access);
+ assert.equal(preserved.status,200,'denied probes must not revoke authorized read');
+ assert.deepEqual(await preserved.json(),state);
+
+
  // The same retry key must return the committed receipt, not another request.
  const replay=await request(csrf);
  assert.equal(replay.status,201,'same-key retry must succeed after consumed CREATE_REQUEST proof');
