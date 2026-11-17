@@ -44,7 +44,7 @@ test('search field exposes native search keyboard and empty results are announce
   assert.match(page,/<form role="search" className="searchForm"/);
   assert.match(page,/<input type="search" enterKeyHint="search"[^>]*id="query"/);
   assert.match(page,/items\.length === 0 && <p role="status" className="message">/);
-  assert.match(page,/q && error && <p role="status"/);
+  assert.match(page,/q && error && <div role="status"/);
   assert.match(page,/id="query" aria-controls="results-list" aria-describedby="results-title"/);
   assert.match(page,/<section id="results-list" className="results" aria-labelledby="results-title"/);
 });
@@ -97,4 +97,17 @@ test('loading announcement follows kk and ru route instead of combining language
   assert.match(i18n,/loading: 'Загрузка…'/);
   assert.doesNotMatch(loading,/Жүктелуде… · Загружаем…/);
   assert.match(loading,/isLocale\(rawLocale\)/);
+});
+
+test('failed search exposes keyboard-accessible native retry with preserved filters',()=>{
+  const page=readFileSync(join(appDir,'[locale]','page.tsx'),'utf8');
+  const i18n=readFileSync(new URL('../src/lib/i18n.ts',import.meta.url),'utf8');
+  assert.match(page,/<a className="retrySearch" href=\{localeLink\(locale\)\}>\{t\.retrySearch\}<\/a>/);
+  assert.match(page,/q && error && <div role="status"/);
+  assert.match(page,/if \(q\) query\.set\('q', q\)/);
+  assert.match(page,/if \(professionId\) query\.set\('profession_id', professionId\)/);
+  assert.match(page,/if \(deliveryMode !== 'any'\) query\.set\('delivery_mode', deliveryMode\)/);
+  assert.match(css,/\.retrySearch\{display:inline-flex;align-items:center;min-height:44px/);
+  assert.match(i18n,/retrySearch: 'Қайта іздеу'/);
+  assert.match(i18n,/retrySearch: 'Повторить поиск'/);
 });

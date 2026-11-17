@@ -117,7 +117,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
       <section id="results-list" className="results" aria-labelledby="results-title">
         <h2 id="results-title">{t.results}</h2>
         {!q && <p className="message">{t.waiting}</p>}
-        {q && error && <p role="status" className="message">{t.unavailable}</p>}
+        {q && error && <div role="status" className="message">{t.unavailable} <a className="retrySearch" href={localeLink(locale)}>{t.retrySearch}</a></div>}
         {q && !error && items.length === 0 && <p role="status" className="message">{t.empty}</p>}
         {q && !error && items.length > 0 && <p role="status" aria-live="polite">{t.resultsOnPage(items.length)}</p>}
         {q && !error && items.length > 0 &&
