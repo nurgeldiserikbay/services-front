@@ -120,3 +120,14 @@ test('guest creation and request-bound status are tested only with ephemeral CI 
  assert.ok(workflow.indexOf('Verify verified-test guest creation returns scoped status cookie')>
   workflow.indexOf('Start isolated feature-enabled private BFF without real login'));
 });
+
+test('Chrome outage retry accessibility gate requires isolated failed-API server',()=>{
+ const workflow=readFileSync(new URL('../../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ const browser=readFileSync(new URL('./live-chrome-accessibility.e2e.mjs',import.meta.url),'utf8');
+ assert.ok(workflow.indexOf('Start isolated search-upstream-failure production frontend')<
+  workflow.indexOf('Verify mobile keyboard and landmarks in headless Chrome'));
+ assert.match(browser,/http:\/\/127\.0\.0\.1:3002/);
+ assert.match(browser,/a\.retrySearch/);
+ assert.match(browser,/Accessibility\.getFullAXTree/);
+ assert.match(browser,/retryState\.width>=44&&retryState\.height>=44/);
+});

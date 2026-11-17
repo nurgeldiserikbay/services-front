@@ -219,6 +219,53 @@ try{
     console.log('Chrome responsive keyboard/landmark smoke '+locale+' '+width+'px OK');
     }
   }
+  // Use the separately launched outage server to check the actual error
+  // recovery control in Chrome's accessibility tree at a mobile viewport.
+  await send('Emulation.setDeviceMetricsOverride',{
+    width:375,height:680,deviceScaleFactor:1,mobile:true,
+  });
+  for(const [locale,label] of [
+    ['kk','Қайта іздеу'],
+    ['ru','Повторить поиск'],
+  ]){
+    const outageUrl=new URL('/'+locale,process.env.FAILURE_WEB_BASE_URL??'http://127.0.0.1:3002');
+    outageUrl.searchParams.set('q','Stage 2 Journey');
+    outageUrl.searchParams.set('delivery_mode','online');
+    await send('Page.navigate',{url:outageUrl.href});
+    let retryState;
+    for(let attempt=0;attempt<100;attempt++){
+      retryState=await evaluate(`(()=>{
+        const a=document.querySelector('a.retrySearch');
+        const rect=a?.getBoundingClientRect();
+        return {
+          lang:document.documentElement.lang,
+          href:a?.href??null,
+          name:a?.textContent?.trim()??null,
+          focused:(a?.focus(),document.activeElement===a),
+          width:rect?.width??0,
+          height:rect?.height??0,
+          resultCount:document.querySelectorAll('.resultItem').length,
+          hasErrorStatus:!!document.querySelector('[role="status"].message'),
+        };
+      })()`);
+      if(retryState.lang===locale&&retryState.href&&retryState.width>0)break;
+      await pause(100);
+    }
+    assert.equal(retryState.lang,locale);
+    assert.equal(retryState.name,label,locale+' retry must be localized');
+    assert.equal(new URL(retryState.href).searchParams.get('q'),'Stage 2 Journey');
+    assert.equal(new URL(retryState.href).searchParams.get('delivery_mode'),'online');
+    assert.equal(retryState.focused,true,locale+' retry must be focusable');
+    assert.ok(retryState.width>=44&&retryState.height>=44,
+      locale+' retry must provide at least 44x44 CSS px target: '+JSON.stringify(retryState));
+    assert.equal(retryState.hasErrorStatus,true,locale+' outage must announce error status');
+    assert.equal(retryState.resultCount,0,locale+' outage must not fabricate result cards');
+    const ax=await send('Accessibility.getFullAXTree');
+    assert.ok(ax.nodes?.some(node=>
+      !node.ignored&&node.role?.value==='link'&&node.name?.value===label),
+      locale+' retry must expose an accessible link name in real Chrome');
+    console.log('Chrome outage retry a11y '+locale+' 375px OK');
+  }
 }finally{
   if(socket)socket.close();
   if(!closed)proc.kill('SIGTERM');
