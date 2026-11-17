@@ -37,6 +37,12 @@ function validUtcDate(raw) {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw;
 }
 
+function validUtcTimestamp(raw) {
+  if (typeof raw !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$/.test(raw)) return false;
+  const parsed = new Date(raw);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === raw.replace('Z', '.000Z');
+}
+
 function rows(text, heading) {
   const escaped = heading.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&');
   const match = text.match(new RegExp('^## ' + escaped + '\\s*\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))', 'm'));
@@ -88,7 +94,7 @@ export function validateStagingRelease(text) {
   const approver = evidence.match(/^- Approved by:[ \t]*(.*)$/m)?.[1]?.trim();
   if (!approver || approver === 'TODO') problems.push('Missing owner approval');
   const approvedAt = evidence.match(/^- Approved at \(UTC\):[ \t]*(.*)$/m)?.[1]?.trim();
-  if (!approvedAt || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(approvedAt) || Number.isNaN(Date.parse(approvedAt))) problems.push('Missing valid UTC approval timestamp');
+  if (!validUtcTimestamp(approvedAt)) problems.push('Missing valid UTC approval timestamp');
   return problems;
 }
 
