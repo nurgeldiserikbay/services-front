@@ -38,7 +38,7 @@ function validUtcDate(raw) {
 }
 
 function validUtcTimestamp(raw) {
-  if (typeof raw !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$/.test(raw)) return false;
+  if (typeof raw !== 'string' || ! /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(raw)) return false;
   const parsed = new Date(raw);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === raw.replace('Z', '.000Z');
 }
