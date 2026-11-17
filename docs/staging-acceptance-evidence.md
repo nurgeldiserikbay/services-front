@@ -38,6 +38,19 @@ Each gate requires its own dated, reproducible evidence URL (HTTPS). A shared ev
 8. Run an approved rollback rehearsal and validate health, metrics and alert delivery.
 9. Attach evidence links, owner approvals and remaining risks before any production go/no-go decision.
 
+## Read-only public HTTPS staging smoke (pre-acceptance)
+
+When an isolated non-production HTTPS staging environment actually exists, an operator can run the non-destructive public readiness check from a trusted workstation:
+
+```bash
+STAGING_ALLOWED_HOST=staging.example.kz \
+  node scripts/check-staging-public.mjs https://staging.example.kz
+```
+
+Replace the example hostname with the **approved, exact staging DNS hostname**. The script refuses HTTP, local/IP hosts, redirects, embedded credentials, non-root URLs, and missing host approval. It sends only bounded, unauthenticated **GET** requests to the localized public entry pages, PWA manifest, icon, offline fallback and service worker. It uses 10-second request deadlines, a 256 KiB response ceiling and does not submit personal data, create requests, log in, or activate feature flags.
+
+Record the staging origin (not any credential), test timestamp, frontend SHA, command, result and sanitized trace in the evidence record below. A green result is only **public frontend readiness evidence**, not proof of authentication, account isolation, security approvals, installed Android PWA, screen reader, Core Web Vitals, backend migrations, data residency or release sign-off. The gate remains **NOT RUN** until executed against the real approved staging environment and separately reviewed.
+
 ## Evidence record template
 
 - Gate:
