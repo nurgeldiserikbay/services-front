@@ -204,6 +204,34 @@ try{
   assert.equal(notification.dedupe_key,'request-'+action+':guest:'+id);
   assert.equal(notification.recipient_person_id,null);
 
+  // Committing a notification intent is NOT provider delivery. No external
+  // provider worker runs in this integration test, so a seller decision must
+  // not fabricate a successful send or acknowledgement in PostgreSQL.
+  const deliveryProof=await db.query(`
+   SELECT n.state AS intent_state,n.attempts,
+     d.state AS delivery_state,d.provider_ref,d.delivered_at,
+     d.attempt_count
+   FROM notification_intents n
+   LEFT JOIN notification_deliveries d ON d.intent_id=n.id
+   WHERE n.id=$1::uuid
+  `,[notification.intent_id]);
+  assert.ok(deliveryProof.rows.length>=1,
+   'committed notification intent must be queryable');
+  for(const delivery of deliveryProof.rows){
+   assert.equal(delivery.intent_state,'PENDING',
+    'seller decision alone must not mark the intent delivered');
+   assert.equal(delivery.attempts,0,
+    'no delivery worker must have attempted provider I/O');
+   if(delivery.delivery_state!==null){
+    assert.equal(delivery.delivery_state,'PENDING',
+     'delivery row without provider worker cannot be marked sent');
+    assert.equal(delivery.attempt_count,0);
+    assert.equal(delivery.provider_ref,null);
+    assert.equal(delivery.delivered_at,null);
+   }
+  }
+
+
   const stale=await decision(id,action,randomUUID());
   assert.equal(stale.status,409,'new key cannot reapply a finalized decision');
 
