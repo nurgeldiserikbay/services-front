@@ -159,7 +159,7 @@ test('Lighthouse CI captures pinned mobile kk/ru reports without unmeasured scor
  assert.match(workflow,/node apps\/web\/tests\/validate-lighthouse-reports\.e2e\.mjs/);
  assert.match(workflow,/name: frontend-lighthouse-mobile-audits/);
  assert.match(workflow,/steps\.lighthouse_mobile\.outcome/);
- assert.match(validator,/lighthouse-\$\{locale\}-mobile\.json/);
+ assert.ok(validator.includes("readFile('artifacts/lighthouse-'+locale+'-mobile.json'"), 'validator must load each locale report');
  assert.match(validator,/not field Core Web Vitals/);
  assert.doesNotMatch(workflow,/--only-categories=.*pwa/);
 });
