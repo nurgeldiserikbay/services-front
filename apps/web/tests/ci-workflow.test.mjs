@@ -55,7 +55,13 @@ test('frontend CI protects the cross-repository integration journey',()=>{
   workflow.indexOf('Verify live search-to-profile journey'));
  assert.ok(workflow.includes('curl --connect-timeout 2 --max-time 5 --cacert "$RUNNER_TEMP/api.crt" --fail --silent https://localhost:8443/v1/professions'));
  assert.doesNotMatch(workflow,/curl\s+--insecure\b/);
- assert.equal((workflow.match(/curl --connect-timeout 2 --max-time 5/g) ?? []).length,4,'all readiness probes, including isolated private BFF, must have a request deadline');
+ const readinessProbes=workflow.split('\n').filter(line=>line.trimStart().startsWith('if curl '));
+ assert.ok(readinessProbes.length>=5,'expected public, private, TLS and isolated-failure readiness probes');
+ assert.ok(readinessProbes.every(line=>line.includes('curl --connect-timeout 2 --max-time 5')),
+  'every readiness probe must have connection and total request deadlines');
+ assert.match(workflow,/node apps\/web\/tests\/public-search-retry-failure\.e2e\.mjs/);
+ assert.ok(workflow.includes('steps.search_failure_e2e.outcome'),
+  'the real upstream outage gate must be reported');
 });
 
 test('CI summary includes all production private and browser acceptance smoke outcomes',()=>{
