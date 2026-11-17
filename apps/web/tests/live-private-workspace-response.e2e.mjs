@@ -60,4 +60,36 @@ for(const base of bases){
     }
   }
 }
+// The legacy seller screen has a public, data-free client shell. Unlike the
+// account pages above, it intentionally returns 200 before its private API
+// call. Inspect the served HTML instead of assuming a 200 grants access.
+for(const base of bases){
+  for(const path of ['/kk/seller/requests','/ru/seller/requests']){
+    for(const withCookie of [false,true]){
+      const response=await fetch(new URL(path,base.url),{
+        redirect:'manual',credentials:'omit',
+        headers:withCookie?{Cookie:'__Host-services_account_web='+forged}:{},
+        signal:AbortSignal.timeout(10000),
+      });
+      assert.equal(response.status,200,path+' must return only its public shell');
+      assert.match(response.headers.get('cache-control')??'',/\\bprivate\\b/i);
+      assert.match(response.headers.get('cache-control')??'',/\\bno-store\\b/i);
+      assert.match(response.headers.get('x-robots-tag')??'',/\\bnoindex\\b/i);
+      assert.equal(response.headers.get('set-cookie'),null,
+        path+' must not mint a session on public shell render');
+      const body=await response.text();
+      assert.ok(body.length<256*1024,path+' shell unexpectedly oversized');
+      assert.ok(!body.includes(forged),path+' echoed forged proof');
+      assert.ok(body.includes(path.startsWith('/kk')?'Менің өтінімдерім':'Мои заявки'),
+        path+' shell must preserve localized heading');
+      for(const secretMarker of ['csrf_token','idempotency_key','desiredStartAt',
+        'serviceOfferId','__Host-services_account_web=']){
+        assert.ok(!body.includes(secretMarker),
+          path+' must not embed seller inbox or session data into server HTML');
+      }
+    }
+  }
+}
+console.log('Seller shell live HTTP privacy PASS; protected seller API and real login remain separate gates.');
+
 console.log('Private workspace live HTTP denial and cache isolation PASS; manual staging sign-off still pending.');
