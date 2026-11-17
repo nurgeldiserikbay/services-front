@@ -141,6 +141,34 @@ try{
  const replay=await request(csrf);
  assert.equal(replay.status,201,'same-key retry must succeed after consumed CREATE_REQUEST proof');
  assert.deepEqual(await replay.json(),receipt);
+ // The request-scoped READ_CANCEL cookie must not authorize a new create.
+ // Renaming the same encrypted cookie to CREATE_REQUEST must not escalate it.
+ const createWithCookie=async rawCookie=>fetch(new URL('/api/guest-requests',base),{
+  method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+  headers:{
+   'Sec-Fetch-Site':'same-origin',Origin:'https://services.example.test',
+   'Content-Type':'application/json',...(rawCookie?{Cookie:rawCookie}:{}),
+  },
+  body:JSON.stringify({
+   csrf_token:csrf,idempotency_key:randomUUID(),
+   service_offer_id:offerId,consent_to_contact:true,
+   note:'Must never create a second request',
+  }),
+ });
+ for(const [label,rawCookie] of [
+  ['READ_CANCEL only',access],
+  ['READ_CANCEL renamed as CREATE_REQUEST',
+   '__Host-services_guest_create='+access.split('=')[1]],
+  ['missing CREATE_REQUEST',null],
+ ]){
+  const denied=await createWithCookie(rawCookie);
+  assert.equal(denied.status,503,label+' must not create another request');
+  assert.match(denied.headers.get('cache-control')??'',/no-store/i);
+  assert.equal(denied.headers.get('set-cookie'),null);
+  assert.deepEqual(await denied.json(),{
+   code:'UNAVAILABLE',message:'Guest request temporarily unavailable',
+  });
+ }
  const rows=await db.query('SELECT id,version,status FROM service_requests WHERE guest_contact_id=$1',[contactId]);
  assert.equal(rows.rows.length,1,'idempotent replay must not duplicate rows');
  assert.equal(rows.rows[0].id,createdId);
