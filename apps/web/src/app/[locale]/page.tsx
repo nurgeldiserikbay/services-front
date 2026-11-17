@@ -38,6 +38,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
   const items: SearchItem[] = search.result?.items ?? [];
   const nextCursor: string | null = search.result?.next_cursor ?? null;
   const error = search.error;
+  const hasSearchFilters = Boolean(q || countryId || cityId || professionId || deliveryMode !== 'any' || cursor);
   const localeLink = (next: 'kk' | 'ru') => {
     const query = new URLSearchParams();
     if (q) query.set('q', q);
@@ -110,6 +111,7 @@ export default async function Marketplace({ params, searchParams }: Props) {
           </fieldset>
           <GeographyPicker locale={locale} initialCountryId={countryId}
             initialCityId={cityId} initialScope={scope} />
+          {hasSearchFilters && <Link className="clearFilters" href={'/' + locale}>{t.clearFilters}</Link>}
         </form>
       </section>
       <section id="results-list" className="results" aria-labelledby="results-title">
