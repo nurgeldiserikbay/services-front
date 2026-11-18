@@ -33,3 +33,11 @@ test('device refresh and authentication failure clear private inventory and CSRF
  assert.match(component,/outcome==='authentication_required'\)\{\s*setItems\(\[\]\);setCsrf\(null\);setError\(t\.expired\)/);
  assert.match(refresh,/if\(!alive\.current\|\|seq!==requestId\.current\)return/);
 });
+
+test('device revoke has synchronous duplicate guard and fences stale outcomes',()=>{
+ const component=readFileSync(new URL('../src/components/AccountDeviceSessions.tsx',import.meta.url),'utf8');
+ assert.match(component,/if\(mutation\.current\|\|busy!==null\|\|loading\|\|!csrf\|\|item\.current\)return;/);
+ assert.match(component,/const owner=Symbol\(\);\s*mutation\.current=owner;\s*const seq=requestId\.current;/);
+ assert.match(component,/if\(!alive\.current\|\|mutation\.current!==owner\|\|seq!==requestId\.current\)return;/);
+ assert.match(component,/if\(mutation\.current===owner\)\{\s*mutation\.current=null;\s*if\(alive\.current\)setBusy\(null\)/);
+});
