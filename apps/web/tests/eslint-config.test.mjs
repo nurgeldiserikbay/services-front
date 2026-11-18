@@ -50,7 +50,7 @@ test('device sessions initial fetch is deferred and cancelled on discarded mount
   assert.ok(!config.includes('src/components/AccountDeviceSessions.tsx'));
   assert.match(component,/useEffect\(\(\)=>\{\s*alive\.current=true;/);
   assert.match(component,/const timer=setTimeout\(\(\)=>\{void refresh\(\);\},0\)/);
-  assert.match(component,/return \(\)=>\{clearTimeout\(timer\);alive\.current=false;requestId\.current\+\+;\}/);
+  assert.match(component,/return \(\)=>\{clearTimeout\(timer\);alive\.current=false;requestId\.current\+\+;mutation\.current=null;\}/);
   assert.match(component,/if\(!alive\.current\|\|seq!==requestId\.current\)return/);
   assert.match(component,/await revokeOtherAccountDevice\(\{sessionId:item\.id,csrf\}\)/);
   assert.match(component,/await refresh\(\)/);
