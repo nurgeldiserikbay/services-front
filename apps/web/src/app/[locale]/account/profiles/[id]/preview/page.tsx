@@ -3,7 +3,8 @@ import {notFound} from 'next/navigation';
 import Link from 'next/link';
 import {isLocale} from '@/lib/i18n';
 import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
-import {getOwnProfessionalProfilePreview} from '@/lib/account-session-bff.server';
+import {getOwnProfessionalProfilePreview,getProfessionalProfileCreationContext} from '@/lib/account-session-bff.server';
+import PublishProfileButton from '../../PublishProfileButton';
 export const dynamic='force-dynamic';
 export const revalidate=0;
 export const runtime='nodejs';
@@ -16,6 +17,11 @@ export default async function ProfilePreviewPage({params}:{params:Promise<{local
  let preview;
  try{preview=await getOwnProfessionalProfilePreview((await cookies()).get(ACCOUNT_WEB_COOKIE)?.value,id);}
  catch{notFound();}
+ let publishCsrf:string|null=null;
+ if(process.env.SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_PUBLICATION==='enabled'){
+  try{publishCsrf=(await getProfessionalProfileCreationContext((await cookies()).get(ACCOUNT_WEB_COOKIE)?.value)).csrf;}
+  catch{/* preview remains read-only */}
+ }
  const title=kk?'Профильді алдын ала көру':'Предпросмотр профиля';
  return <main id="main-content" className="shell">
   <header className="header"><Link className="brand" href={'/'+locale}>Services<span className="brandDot">.</span></Link>
@@ -36,5 +42,6 @@ export default async function ProfilePreviewPage({params}:{params:Promise<{local
     {preview.published.about&&<p>{preview.published.about}</p>}
    </article>:<p>{kk?'Әлі жарияланбаған.':'Ещё не опубликован.'}</p>}
   </section>
+  {publishCsrf&&<PublishProfileButton kk={kk} csrf={publishCsrf} id={preview.id} version={preview.draft.version}/>}
  </main>;
 }

@@ -35,3 +35,5 @@ export type ProfessionalProfilePreview={
  published:{title:string|null;about:string|null;version:number}|null;
 };
 export function readBackendProfessionalProfilePreview(options:AccountSessionTransportOptions&{profileId:string}):Promise<ProfessionalProfilePreview>;
+
+export function publishBackendProfessionalProfile(options:AccountSessionTransportOptions&{id:string;version:number}):Promise<'published'|'conflict'>;

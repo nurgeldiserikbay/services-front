@@ -292,3 +292,30 @@ export async function readBackendProfessionalProfilePreview({
   };
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+/** Strict publication receipt; never pass backend error details to the browser. */
+export async function publishBackendProfessionalProfile({baseUrl,production=true,accountBearer,id,version,transport=fetch}){
+ if(typeof id!=='string'||!UUID.test(id)||!Number.isSafeInteger(version)||version<1||version>=2147483646)
+  throw new AccountSessionTransportUnavailable();
+ try{
+  const response=await transport(endpoint(baseUrl,production,'/me/professional-profiles/'+id.toLowerCase()+'/publish'),{
+   method:'POST',headers:{...headers(accountBearer),'Content-Type':'application/json','If-Match':'"'+version+'"'},
+   body:'{}',cache:'no-store',credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  if(response.status===409){if(response.body)void response.body.cancel().catch(()=>{});return 'conflict';}
+  const cache=response.headers.get('cache-control')??'';
+  const length=response.headers.get('content-length');
+  if(response.status!==201||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||/(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^\d+$/.test(length)||Number(length)>512))){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   throw new AccountSessionTransportUnavailable();
+  }
+  const row=await readBoundedJson(response);
+  if(!row||typeof row!=='object'||Array.isArray(row)||Object.keys(row).sort().join(',')!=='id,lifecycle_status,published_version,version'||
+   row.id!==id.toLowerCase()||row.lifecycle_status!=='published'||row.version!==version+1||row.published_version!==row.version)
+   throw new AccountSessionTransportUnavailable();
+  return 'published';
+ }catch{throw new AccountSessionTransportUnavailable();}
+}

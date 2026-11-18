@@ -19,3 +19,9 @@ Unit tests cover strict bearer transport, TLS restrictions, redirect/status fail
 The backend PR #59 supplies native/server-to-server session inventory and logout. For web rollout: approved OTP provider, account enrollment and sign-in API, audited delivery of a real issued backend bearer to `issueAccountWebSession`, CSRF/Origin verification, trusted anti-abuse signals, cookie/key lifecycle and end-to-end session revocation tests must be complete. The already existing seller BFF remains default-off until those gates are met. Never expose or store session bearer in client JS, localStorage, URLs or logs. CORS on backend deliberately excludes direct browser Authorization/POST.
 
 Policy: Services ADR-0005.
+
+## Prepared owner professional publication (2026-11-18)
+- Private BFF `POST /api/account/profiles/{id}/publish` is **default-off** unless `SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_PUBLICATION=enabled`; backend separately requires `SERVICES_ENABLE_PROFILE_PUBLISH=enabled`.
+- Never enable either flag in production without moderation, seller eligibility, request concurrency and product/legal approval. The preview page renders a publication control only under the separate web publication flag and authenticated owner CSRF context.
+- Server BFF validates same-origin session/CSRF, strong `If-Match`, canonical empty JSON body `{}` (max 16 bytes), and accepts only a strictly validated no-store backend publication receipt. Exposes only generic status codes to browsers; never returns backend bearer, moderation details or raw error.
+- Published version is not proof of approval. Backend remains authoritative on completeness, active requests and publication readiness.
