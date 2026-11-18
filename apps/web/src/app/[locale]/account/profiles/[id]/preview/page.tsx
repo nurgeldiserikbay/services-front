@@ -3,8 +3,9 @@ import {notFound} from 'next/navigation';
 import Link from 'next/link';
 import {isLocale} from '@/lib/i18n';
 import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
-import {getOwnProfessionalProfilePreview,getProfessionalProfileCreationContext} from '@/lib/account-session-bff.server';
+import {getOwnProfessionalProfilePreview,getProfessionalProfileCreationContext,getOwnAppealableProfileRejection} from '@/lib/account-session-bff.server';
 import PublishProfileButton from '../../PublishProfileButton';
+import AppealProfileButton from '../../AppealProfileButton';
 export const dynamic='force-dynamic';
 export const revalidate=0;
 export const runtime='nodejs';
@@ -21,6 +22,17 @@ export default async function ProfilePreviewPage({params}:{params:Promise<{local
  if(process.env.SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_PUBLICATION==='enabled'){
   try{publishCsrf=(await getProfessionalProfileCreationContext((await cookies()).get(ACCOUNT_WEB_COOKIE)?.value)).csrf;}
   catch{/* preview remains read-only */}
+ }
+ let rejection:null|{decision_id:string;profile_id:string;profile_version:number}=null;
+ let appealCsrf:string|null=null;
+ if(process.env.SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_APPEALS==='enabled'){
+  try{
+   const sealed=(await cookies()).get(ACCOUNT_WEB_COOKIE)?.value;
+   rejection=await getOwnAppealableProfileRejection(sealed,preview.id);
+   if(rejection&&rejection.profile_version===preview.draft.version){
+    appealCsrf=(await getProfessionalProfileCreationContext(sealed)).csrf;
+   }
+  }catch{/* fail closed without exposing private rejection metadata */}
  }
  const title=kk?'Профильді алдын ала көру':'Предпросмотр профиля';
  return <main id="main-content" className="shell">
@@ -42,6 +54,7 @@ export default async function ProfilePreviewPage({params}:{params:Promise<{local
     {preview.published.about&&<p>{preview.published.about}</p>}
    </article>:<p>{kk?'Әлі жарияланбаған.':'Ещё не опубликован.'}</p>}
   </section>
+  {appealCsrf&&rejection&&<AppealProfileButton id={preview.id} version={rejection.profile_version} decisionId={rejection.decision_id} csrf={appealCsrf} kk={kk}/>}
   {publishCsrf&&<PublishProfileButton kk={kk} csrf={publishCsrf} id={preview.id} version={preview.draft.version}/>}
  </main>;
 }
