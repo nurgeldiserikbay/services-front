@@ -40,9 +40,11 @@ export function AccountDeviceSessions({locale}:{locale:Locale}){
  const [error,setError]=useState<string|null>(null);
  const requestId=useRef(0);
  const alive=useRef(true);
+ const mutation=useRef<symbol|null>(null);
  const refresh=useCallback(async()=>{
   const seq=++requestId.current;
   setItems([]);setCsrf(null);setLoading(true);setError(null);
+  if(!mutation.current)setBusy(null);
   try{
    const page=await loadAccountDevices();
    if(!alive.current||seq!==requestId.current)return;
@@ -61,14 +63,17 @@ export function AccountDeviceSessions({locale}:{locale:Locale}){
   // Defer the initial state-changing request until after the effect callback.
   // A discarded Strict Mode mount cancels this timer before it starts.
   const timer=setTimeout(()=>{void refresh();},0);
-  return ()=>{clearTimeout(timer);alive.current=false;requestId.current++;};
+  return ()=>{clearTimeout(timer);alive.current=false;requestId.current++;mutation.current=null;};
  },[refresh]);
  async function revoke(item:AccountDeviceItem){
-  if(busy!==null||loading||!csrf||item.current)return;
+  if(mutation.current||busy!==null||loading||!csrf||item.current)return;
+  const owner=Symbol();
+  mutation.current=owner;
+  const seq=requestId.current;
   setBusy(item.id);setError(null);
   try{
    const outcome=await revokeOtherAccountDevice({sessionId:item.id,csrf});
-   if(!alive.current)return;
+   if(!alive.current||mutation.current!==owner||seq!==requestId.current)return;
    if(outcome==='ok'){
     // Trust only the fresh backend list, never optimistic deletion.
     await refresh();
@@ -77,7 +82,12 @@ export function AccountDeviceSessions({locale}:{locale:Locale}){
    }else{
     setError(outcome==='current_session'?t.currentError:t.failed);
    }
-  }finally{if(alive.current)setBusy(null);}
+  }finally{
+   if(mutation.current===owner){
+    mutation.current=null;
+    if(alive.current)setBusy(null);
+   }
+  }
  }
  const format=(value:string|null)=>value?new Date(value).toLocaleString(locale==='kk'?'kk-KZ':'ru-RU'):t.notRecorded;
  return <section className={styles.panel} aria-labelledby="account-device-title">
