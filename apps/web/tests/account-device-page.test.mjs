@@ -25,3 +25,11 @@ test('private settings never trusts a client supplied user ID or bearer',()=>{
  assert.match(source,/Каталогқа қайту/);
  assert.match(source,/Вернуться в каталог/);
 });
+
+test('device refresh and authentication failure clear private inventory and CSRF',()=>{
+ const component=readFileSync(new URL('../src/components/AccountDeviceSessions.tsx',import.meta.url),'utf8');
+ const refresh=component.slice(component.indexOf('const refresh=useCallback'),component.indexOf('useEffect(()=>'));
+ assert.match(refresh,/setItems\(\[\]\);setCsrf\(null\);setLoading\(true\);setError\(null\);[\s\S]*?await loadAccountDevices\(\)/);
+ assert.match(component,/outcome==='authentication_required'\)\{\s*setItems\(\[\]\);setCsrf\(null\);setError\(t\.expired\)/);
+ assert.match(refresh,/if\(!alive\.current\|\|seq!==requestId\.current\)return/);
+});
