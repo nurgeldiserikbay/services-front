@@ -217,3 +217,27 @@ export async function createBackendProfessionalProfile({baseUrl,production=true,
   return 'created';
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+export function validProfessionalEdit(body){
+ return !!body&&typeof body==='object'&&!Array.isArray(body)&&
+ Object.keys(body).length>0&&Object.keys(body).every(k=>['title','about'].includes(k)&&typeof body[k]==='string'&&!body[k].includes('\0')&&Array.from(body[k]).length<=(k==='title'?180:3000));
+}
+export async function updateBackendProfessionalProfile({baseUrl,production=true,accountBearer,id,version,body,transport=fetch}){
+ if(typeof id!=='string'||!UUID.test(id)||!Number.isSafeInteger(version)||version<1||version>=2147483647||!validProfessionalEdit(body))throw new AccountSessionTransportUnavailable();
+ try{
+  const response=await transport(endpoint(baseUrl,production,'/me/professional-profiles/'+id.toLowerCase()),{
+   method:'PATCH',headers:{...headers(accountBearer),'Content-Type':'application/json','If-Match':'"'+version+'"'},body:JSON.stringify(body),
+   cache:'no-store',credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  if(response.status===409){if(response.body)void response.body.cancel().catch(()=>{});return 'conflict';}
+  const cache=response.headers.get('cache-control')??'';
+  if(response.status!==200||response.headers.has('content-range')||!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||/(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)){
+   if(response.body)void response.body.cancel().catch(()=>{});throw new AccountSessionTransportUnavailable();
+  }
+  const row=await readBoundedJson(response);
+  if(!row||typeof row!=='object'||Array.isArray(row)||Object.keys(row).sort().join(',')!=='about,id,lifecycle_status,offers,profession_id,slug,title,version'||row.id!==id.toLowerCase()||row.version!==version+1||
+   Object.keys(body).some(k=>row[k]!==body[k]))throw new AccountSessionTransportUnavailable();
+  return 'updated';
+ }catch{throw new AccountSessionTransportUnavailable();}
+}
