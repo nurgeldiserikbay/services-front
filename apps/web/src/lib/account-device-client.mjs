@@ -5,7 +5,7 @@ export class AccountDeviceUnavailable extends Error{
  constructor(){super('Account devices temporarily unavailable');}
 }
 export class AccountDeviceAuthenticationRequired extends Error{
- constructor(){super('Account sign-in required');}
+ constructor(){super('Account sign-in required');this.name='AccountDeviceAuthenticationRequired';}
 }
 function validDate(value){
  return typeof value==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)&&
