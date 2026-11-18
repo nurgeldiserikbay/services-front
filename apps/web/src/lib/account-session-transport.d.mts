@@ -27,3 +27,11 @@ export function createBackendProfessionalProfile(options:AccountSessionTransport
 export type ProfessionalEdit={title?:string;about?:string};
 export function validProfessionalEdit(body:unknown):body is ProfessionalEdit;
 export function updateBackendProfessionalProfile(options:AccountSessionTransportOptions&{id:string;version:number;body:ProfessionalEdit}):Promise<'updated'|'conflict'>;
+
+export type ProfessionalProfilePreview={
+ id:string;slug:string;profession_id:string;
+ lifecycle_status:'draft'|'published'|'paused'|'archived';
+ draft:{title:string|null;about:string|null;version:number};
+ published:{title:string|null;about:string|null;version:number}|null;
+};
+export function readBackendProfessionalProfilePreview(options:AccountSessionTransportOptions&{profileId:string}):Promise<ProfessionalProfilePreview>;

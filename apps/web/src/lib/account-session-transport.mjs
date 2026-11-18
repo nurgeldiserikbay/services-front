@@ -241,3 +241,54 @@ export async function updateBackendProfessionalProfile({baseUrl,production=true,
   return 'updated';
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+
+/** Private owner preview: reject redirects, public caching and arbitrary fields. */
+export async function readBackendProfessionalProfilePreview({
+ baseUrl,production=true,accountBearer,profileId,transport=fetch,
+}){
+ if(typeof profileId!=='string'||!UUID.test(profileId))throw new AccountSessionTransportUnavailable();
+ try{
+  const response=await transport(endpoint(baseUrl,production,
+   '/me/professional-profiles/'+profileId.toLowerCase()+'/preview'),{
+   method:'GET',headers:headers(accountBearer),cache:'no-store',
+   credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  const cache=response.headers.get('cache-control')??'';
+  const length=response.headers.get('content-length');
+  if(response.status!==200||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||
+   /(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^\d+$/.test(length)||Number(length)>4096))){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   throw new AccountSessionTransportUnavailable();
+  }
+  const value=await readBoundedJson(response);
+  const fields=['id','slug','profession_id','lifecycle_status','draft','published'];
+  const validText=(value,max)=>value===null||(typeof value==='string'&&
+   !value.includes('\0')&&Array.from(value).length<=max);
+  const validRevision=(revision)=>revision&&typeof revision==='object'&&!Array.isArray(revision)&&
+   Object.keys(revision).sort().join(',')==='about,title,version'&&
+   validText(revision.title,180)&&validText(revision.about,3000)&&
+   Number.isSafeInteger(revision.version)&&revision.version>=1&&revision.version<2147483647;
+  if(!value||typeof value!=='object'||Array.isArray(value)||
+   Object.keys(value).sort().join(',')!==fields.sort().join(',')||
+   value.id!==profileId.toLowerCase()||
+   typeof value.profession_id!=='string'||!UUID.test(value.profession_id)||
+   typeof value.slug!=='string'||!/^[a-z0-9](?:[a-z0-9-]{0,158}[a-z0-9])?$/.test(value.slug)||
+   !['draft','published','paused','archived'].includes(value.lifecycle_status)||
+   !validRevision(value.draft)||
+   !(value.published===null||validRevision(value.published))||
+   (value.published!==null&&value.published.version>value.draft.version))
+   throw new AccountSessionTransportUnavailable();
+  return {
+   id:value.id,slug:value.slug,profession_id:value.profession_id,
+   lifecycle_status:value.lifecycle_status,
+   draft:{title:value.draft.title,about:value.draft.about,version:value.draft.version},
+   published:value.published===null?null:{
+    title:value.published.title,about:value.published.about,version:value.published.version,
+   },
+  };
+ }catch{throw new AccountSessionTransportUnavailable();}
+}
