@@ -37,3 +37,7 @@ export type ProfessionalProfilePreview={
 export function readBackendProfessionalProfilePreview(options:AccountSessionTransportOptions&{profileId:string}):Promise<ProfessionalProfilePreview>;
 
 export function publishBackendProfessionalProfile(options:AccountSessionTransportOptions&{id:string;version:number}):Promise<'published'|'conflict'>;
+
+export type AppealableRejection={decision_id:string;profile_id:string;profile_version:number};
+export function readBackendAppealableProfileRejection(options:AccountSessionTransportOptions&{id:string}):Promise<AppealableRejection|null>;
+export function requestBackendProfessionalProfileAppeal(options:AccountSessionTransportOptions&{id:string;version:number;decisionId:string}):Promise<'submitted'|'conflict'>;

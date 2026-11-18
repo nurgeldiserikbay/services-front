@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,type ProfessionalEdit}
+ revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,readBackendAppealableProfileRejection,requestBackendProfessionalProfileAppeal,type ProfessionalEdit}
  from './account-session-transport.mjs';
 
 function config(){
@@ -100,4 +100,19 @@ export async function publishOwnProfessionalProfile(input:{cookieValue:string|un
  const auth=authenticateAccountWebMutation(input);
  if(!auth)throw new Error('unauthorized');
  return publishBackendProfessionalProfile({...config(),accountBearer:auth.accountBearer,id:input.id,version:input.version});
+}
+
+export async function getOwnAppealableProfileRejection(cookieValue:string|undefined,id:string){
+ const cookie=readAccountWebSession(cookieValue);
+ if(!cookie)throw new Error('unauthorized');
+ return readBackendAppealableProfileRejection({...config(),accountBearer:cookie.token,id});
+}
+export async function submitOwnProfessionalProfileAppeal(input:{
+ cookieValue:string|undefined;csrfToken:string|undefined;origin:string|null;fetchSite:string|null;
+ id:string;version:number;decisionId:string;
+}){
+ const auth=authenticateAccountWebMutation(input);
+ if(!auth)throw new Error('unauthorized');
+ return requestBackendProfessionalProfileAppeal({...config(),accountBearer:auth.accountBearer,
+  id:input.id,version:input.version,decisionId:input.decisionId});
 }

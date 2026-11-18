@@ -319,3 +319,53 @@ export async function publishBackendProfessionalProfile({baseUrl,production=true
   return 'published';
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+
+/** Owner-only rejected decision lookup; an advisory read, not authorization. */
+export async function readBackendAppealableProfileRejection({baseUrl,production=true,accountBearer,id,transport=fetch}){
+ if(typeof id!=='string'||!UUID.test(id))throw new AccountSessionTransportUnavailable();
+ try{
+  const response=await transport(endpoint(baseUrl,production,'/me/professional-profiles/'+id.toLowerCase()+'/appealable-rejection'),{
+   method:'GET',headers:headers(accountBearer),cache:'no-store',credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  const cache=response.headers.get('cache-control')??'';
+  const length=response.headers.get('content-length');
+  if(response.status!==200||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||/(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^\d+$/.test(length)||Number(length)>512)))throw new AccountSessionTransportUnavailable();
+  const row=await readBoundedJson(response);
+  if(row===null)return null;
+  if(!row||typeof row!=='object'||Array.isArray(row)||
+   Object.keys(row).sort().join(',')!=='decision_id,profile_id,profile_version'||
+   row.profile_id!==id.toLowerCase()||typeof row.decision_id!=='string'||!UUID.test(row.decision_id)||
+   !Number.isSafeInteger(row.profile_version)||row.profile_version<1||row.profile_version>2147483646)
+   throw new AccountSessionTransportUnavailable();
+  return {decision_id:row.decision_id,profile_id:row.profile_id,profile_version:row.profile_version};
+ }catch{throw new AccountSessionTransportUnavailable();}
+}
+/** The backend validates owner, exact REJECT evidence and version again. */
+export async function requestBackendProfessionalProfileAppeal({baseUrl,production=true,accountBearer,id,version,decisionId,transport=fetch}){
+ if(typeof id!=='string'||!UUID.test(id)||typeof decisionId!=='string'||!UUID.test(decisionId)||
+  !Number.isSafeInteger(version)||version<1||version>2147483646)throw new AccountSessionTransportUnavailable();
+ try{
+  const response=await transport(endpoint(baseUrl,production,'/me/professional-profiles/'+id.toLowerCase()+'/appeals'),{
+   method:'POST',headers:{...headers(accountBearer),'Content-Type':'application/json','If-Match':'"'+version+'"'},
+   body:JSON.stringify({decision_id:decisionId.toLowerCase()}),
+   cache:'no-store',credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  if(response.status===409){if(response.body)void response.body.cancel().catch(()=>{});return 'conflict';}
+  const cache=response.headers.get('cache-control')??'';
+  const length=response.headers.get('content-length');
+  if(response.status!==201||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||/(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^\d+$/.test(length)||Number(length)>512)))throw new AccountSessionTransportUnavailable();
+  const row=await readBoundedJson(response);
+  if(!row||typeof row!=='object'||Array.isArray(row)||
+   Object.keys(row).sort().join(',')!=='case_id,profile_id,profile_version,state'||
+   row.profile_id!==id.toLowerCase()||row.profile_version!==version||row.state!=='appeal'||
+   typeof row.case_id!=='string'||!UUID.test(row.case_id))throw new AccountSessionTransportUnavailable();
+  return 'submitted';
+ }catch{throw new AccountSessionTransportUnavailable();}
+}

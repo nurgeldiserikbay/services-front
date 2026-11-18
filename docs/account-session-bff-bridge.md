@@ -25,3 +25,9 @@ Policy: Services ADR-0005.
 - Never enable either flag in production without moderation, seller eligibility, request concurrency and product/legal approval. The preview page renders a publication control only under the separate web publication flag and authenticated owner CSRF context.
 - Server BFF validates same-origin session/CSRF, strong `If-Match`, canonical empty JSON body `{}` (max 16 bytes), and accepts only a strictly validated no-store backend publication receipt. Exposes only generic status codes to browsers; never returns backend bearer, moderation details or raw error.
 - Published version is not proof of approval. Backend remains authoritative on completeness, active requests and publication readiness.
+
+## Prepared professional moderation appeal (2026-11-18)
+- Default-off `SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_APPEALS=enabled` adds owner-only BFF GET rejection lookup and CSRF-protected POST appeal intake. Backend independently requires `SERVICES_ENABLE_PROFILE_APPEALS=enabled`.
+- The browser sees only an optional current-version rejection ID obtained server-side from the private backend; bearer secrets, reviewer identity and evidence stay server-only.
+- An explicit consent checkbox and idempotent submission message are shown in the private preview. POST requires a live sealed session, CSRF, origin validation, strong version `If-Match`, bounded JSON and strict backend receipt. Failed or ambiguous responses never claim success.
+- No appeal adjudication, deadline policy or automatic publication is implemented. Do not enable flags without legal/product/security and staging E2E approval.
