@@ -8,5 +8,5 @@ export function issueGuestOtpChallenge(input:OtpTransportInput&{
   channel:'email'|'sms';contact:string;locale:'kk'|'ru';
 }):Promise<{challengeId:string}>;
 export function verifyGuestOtpChallenge(input:OtpTransportInput&{
-  challengeId:string;code:string;now?:number;
+  challengeId:string;code:string;now?:number;clock?:()=>number;
 }):Promise<{createCapability:string;expiresInSeconds:number}>;
