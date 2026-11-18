@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,type ProfessionalEdit}
+ revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,type ProfessionalEdit}
  from './account-session-transport.mjs';
 
 function config(){
@@ -93,4 +93,11 @@ export async function getOwnProfessionalProfilePreview(cookieValue:string|undefi
  const cookie=readAccountWebSession(cookieValue);
  if(!cookie)throw new Error('unauthorized');
  return readBackendProfessionalProfilePreview({...config(),accountBearer:cookie.token,profileId});
+}
+
+/** CSRF-authenticated owner mutation; no raw bearer is ever sent to the browser. */
+export async function publishOwnProfessionalProfile(input:{cookieValue:string|undefined;csrfToken:string|undefined;origin:string|null;fetchSite:string|null;id:string;version:number}){
+ const auth=authenticateAccountWebMutation(input);
+ if(!auth)throw new Error('unauthorized');
+ return publishBackendProfessionalProfile({...config(),accountBearer:auth.accountBearer,id:input.id,version:input.version});
 }
