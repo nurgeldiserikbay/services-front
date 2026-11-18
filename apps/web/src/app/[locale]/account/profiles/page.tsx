@@ -43,6 +43,7 @@ export default async function ProfilesPage({params}:{params:Promise<{locale:stri
     <h2>{profile.title||profile.slug}</h2><p>{statuses[profile.lifecycle_status]}</p>
     {profile.about&&<p>{profile.about}</p>}
     <p>{kk?'Қызметтер':'Услуги'}: {profile.offers.length}</p>
+    {process.env.SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_PREVIEW==='enabled'&&<Link href={'/'+locale+'/account/profiles/'+profile.id+'/preview'}>{kk?'Алдын ала көру':'Предпросмотр'}</Link>}
     {editCsrf&&<EditProfileForm kk={kk} csrf={editCsrf} profile={{id:profile.id,version:profile.version,title:profile.title,about:profile.about}}/>}
    </article></li>)}</ul>}
  </main>;
