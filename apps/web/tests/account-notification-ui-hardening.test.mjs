@@ -73,6 +73,16 @@ test('private notification refresh hides stale account data before revalidation'
   'authorization and transport failures must leave no stale notifications');
 });
 
+test('notification lifecycle cancels obsolete requests without unlocking a replacement',()=>{
+ const source=readFileSync(new URL('../src/components/AccountNotificationsInbox.tsx',import.meta.url),'utf8');
+ assert.match(source,/const active=useRef<AbortController\|null>\(null\)/);
+ assert.match(source,/if\(active\.current\)return;/);
+ assert.match(source,/AbortSignal\.any\(\[controller\.signal,AbortSignal\.timeout\(8000\)\]\)/);
+ assert.match(source,/if\(active\.current===controller\)active\.current=null/);
+ assert.match(source,/generation\.current\+\+;\s*const previous=active\.current;\s*active\.current=null;\s*previous\?\.abort\(\)/);
+ assert.match(source,/if\(current===generation\.current\)setBusy\(false\)/);
+});
+
 test('account pages cross-link only when related private feature is enabled',()=>{
  const read=p=>readFileSync(new URL('../src/app/[locale]/account/'+p+'/page.tsx',import.meta.url),'utf8');
  const seller=read('requests'),notifications=read('notifications');

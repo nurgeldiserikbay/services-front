@@ -23,17 +23,19 @@ export function AccountNotificationsInbox({locale}:{locale:Locale}){
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const generation=useRef(0);
- const lock=useRef(false);
+ const active=useRef<AbortController|null>(null);
  const load=useCallback(async()=>{
-  if(lock.current)return;
+  if(active.current)return;
+  const controller=new AbortController();
+  active.current=controller;
   // Never keep an old account's private inbox visible while the backend
   // revalidates the current cookie (including after session revocation).
-  lock.current=true;setItems(null);setBusy(true);setError('');
+  setItems(null);setBusy(true);setError('');
   const current=++generation.current;
   try{
    const response=await fetch('/api/account/notifications',{
     credentials:'same-origin',cache:'no-store',redirect:'error',
-    headers:{Accept:'application/json'},signal:AbortSignal.timeout(8000),
+    headers:{Accept:'application/json'},signal:AbortSignal.any([controller.signal,AbortSignal.timeout(8000)]),
    });
    if(!response.ok)throw new Error(response.status===401?'unauthorized':'unavailable');
    const result=await readNotificationBrowserReply(response);
@@ -43,13 +45,21 @@ export function AccountNotificationsInbox({locale}:{locale:Locale}){
     setItems(null);
     setError(e instanceof Error&&e.message==='unauthorized'?t.unauthorized:t.error);
    }
-  }finally{lock.current=false;if(current===generation.current)setBusy(false);}
+  }finally{
+   if(active.current===controller)active.current=null;
+   if(current===generation.current)setBusy(false);
+  }
  },[t.error,t.unauthorized]);
  // Schedule the initial load after the effect callback. This avoids a
  // synchronous state cascade and cancels Strict Mode's discarded mount.
  useEffect(()=>{
   const timer=setTimeout(()=>{void load();},0);
-  return ()=>{clearTimeout(timer);generation.current++;};
+  return ()=>{
+   clearTimeout(timer);generation.current++;
+   const previous=active.current;
+   active.current=null;
+   previous?.abort();
+  };
  },[load]);
  return <section aria-label={t.title}>
   <h2>{t.title}</h2><p>{t.note}</p>
