@@ -50,12 +50,13 @@ export async function startGuestChallenge(input:{
 }){
   requireInternalGate();
   requireTrustedOrigin(input.origin,input.fetchSite);
+  const key=sessionKey();
   const challenge=await issueGuestOtpChallenge({
     baseUrl:process.env.SERVICES_API_BASE_URL,
     production:process.env.NODE_ENV==='production',
     channel:input.channel,contact:input.contact,locale:input.locale,
   });
-  const sealed=sealGuestChallenge(sessionKey(),challenge.challengeId);
+  const sealed=sealGuestChallenge(key,challenge.challengeId);
   return {
     challengeId:challenge.challengeId,
     expiresInSeconds:Math.max(1,Math.floor((sealed.expiresAt-Date.now())/1000)),

@@ -12,6 +12,8 @@ function sessionKey():Buffer{
     throw new Error('Account web session key unavailable');
   return key;
 }
+/** Validate cookie configuration before consuming a one-time backend OTP. */
+export function requireAccountWebSessionKey():void{sessionKey();}
 /**
  * Trusted server login handler only. Do not expose an endpoint until a real
  * verified account login flow issues the backend account bearer and its TTL.
