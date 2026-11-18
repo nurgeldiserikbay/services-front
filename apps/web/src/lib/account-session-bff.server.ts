@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById}
+ revokeBackendAccountSessionById,readBackendAccountMe}
  from './account-session-transport.mjs';
 
 function config(){
@@ -56,4 +56,11 @@ export async function revokeOtherAccountWebSession(input:{
   ...config(),accountBearer:auth.accountBearer,sessionId:input.sessionId,
  });
  return 'ok';
+}
+
+/** Resolve the account from its sealed cookie and live backend session. */
+export async function getAccountWebIdentity(cookieValue:string|undefined){
+ const cookie=readAccountWebSession(cookieValue);
+ if(!cookie)throw new Error('unauthorized');
+ return readBackendAccountMe({...config(),accountBearer:cookie.token});
 }
