@@ -47,7 +47,11 @@ test('browser inventory fetch uses only same-origin cookie and no-store',async()
  assert.deepEqual(loaded.items,[current]);
  await assert.rejects(loadAccountDevices({
   transport:async()=>new Response(null,{status:401}),
- }),AccountDeviceAuthenticationRequired);
+ }),error=>{
+  assert.ok(error instanceof AccountDeviceAuthenticationRequired);
+  assert.equal(error.name,'AccountDeviceAuthenticationRequired');
+  return true;
+ });
  await assert.rejects(loadAccountDevices({
   transport:async()=>new Response(null,{status:503}),
  }),AccountDeviceUnavailable);
