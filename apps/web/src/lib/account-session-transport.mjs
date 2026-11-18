@@ -117,3 +117,32 @@ export async function revokeBackendAccountSessionById({
   return true;
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+/** Read only the authenticated identity summary. No client-selected IDs. */
+export async function readBackendAccountMe({
+ baseUrl,production=true,accountBearer,transport=fetch,
+}){
+ try{
+  const response=await transport(endpoint(baseUrl,production,'/me'),{
+   method:'GET',headers:headers(accountBearer),cache:'no-store',
+   credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  const cache=response.headers.get('cache-control')??'';
+  const length=response.headers.get('content-length');
+  if(response.status!==200||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||
+   /(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^(?:0|[1-9][0-9]*)$/.test(length)||Number(length)>512))){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   throw new AccountSessionTransportUnavailable();
+  }
+  const payload=await readBoundedJson(response);
+  if(!payload||typeof payload!=='object'||Array.isArray(payload)||
+   Object.keys(payload).sort().join(',')!=='person_id,user_id'||
+   typeof payload.user_id!=='string'||!UUID.test(payload.user_id)||
+   typeof payload.person_id!=='string'||!UUID.test(payload.person_id))
+   throw new AccountSessionTransportUnavailable();
+  return {user_id:payload.user_id,person_id:payload.person_id};
+ }catch{throw new AccountSessionTransportUnavailable();}
+}

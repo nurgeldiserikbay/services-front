@@ -15,3 +15,6 @@ export function revokeBackendAccountSession(
 export function revokeBackendAccountSessionById(
  options:AccountSessionTransportOptions&{sessionId:string},
 ):Promise<true>;
+
+export function readBackendAccountMe(options:AccountSessionTransportOptions):
+ Promise<{user_id:string;person_id:string}>;
