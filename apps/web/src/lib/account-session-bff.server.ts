@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById,readBackendAccountMe}
+ revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles}
  from './account-session-transport.mjs';
 
 function config(){
@@ -63,4 +63,10 @@ export async function getAccountWebIdentity(cookieValue:string|undefined){
  const cookie=readAccountWebSession(cookieValue);
  if(!cookie)throw new Error('unauthorized');
  return readBackendAccountMe({...config(),accountBearer:cookie.token});
+}
+
+export async function getOwnProfessionalProfiles(cookieValue:string|undefined){
+ const cookie=readAccountWebSession(cookieValue);
+ if(!cookie)throw new Error('unauthorized');
+ return listBackendProfessionalProfiles({...config(),accountBearer:cookie.token});
 }

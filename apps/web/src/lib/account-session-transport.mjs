@@ -146,3 +146,48 @@ export async function readBackendAccountMe({
   return {user_id:payload.user_id,person_id:payload.person_id};
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+/** Read-only owner inventory; never forward a browser-selected bearer. */
+export async function listBackendProfessionalProfiles({baseUrl,production=true,accountBearer,transport=fetch}){
+ try{
+  const response=await transport(endpoint(baseUrl,production,'/me/professional-profiles'),{
+   method:'GET',headers:headers(accountBearer),cache:'no-store',credentials:'omit',
+   redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  const cache=response.headers.get('cache-control')??'';
+  const length=response.headers.get('content-length');
+  if(response.status!==200||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||/(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^\d+$/.test(length)||Number(length)>MAX_BYTES))){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   throw new AccountSessionTransportUnavailable();
+  }
+  const rows=await readBoundedJson(response);
+  if(!Array.isArray(rows)||rows.length>100)throw new AccountSessionTransportUnavailable();
+  const seen=new Set();
+  return rows.map(row=>{
+   if(!row||typeof row!=='object'||Array.isArray(row)||
+    Object.keys(row).sort().join(',')!=='about,id,lifecycle_status,offers,profession_id,slug,title,version'||
+    typeof row.id!=='string'||!UUID.test(row.id)||seen.has(row.id.toLowerCase())||
+    typeof row.profession_id!=='string'||!UUID.test(row.profession_id)||
+    !['draft','published','paused','archived'].includes(row.lifecycle_status)||
+    typeof row.slug!=='string'||! /^[a-z0-9](?:[a-z0-9-]{0,158}[a-z0-9])?$/.test(row.slug)||
+    !(row.title===null||(typeof row.title==='string'&&Array.from(row.title).length<=180))||
+    !(row.about===null||(typeof row.about==='string'&&Array.from(row.about).length<=3000))||
+    !Number.isSafeInteger(row.version)||row.version<1||row.version>2147483647||
+    !Array.isArray(row.offers)||row.offers.length>100)
+    throw new AccountSessionTransportUnavailable();
+   seen.add(row.id.toLowerCase());
+   const offers=row.offers.map(o=>{
+    if(!o||typeof o!=='object'||Array.isArray(o)||Object.keys(o).sort().join(',')!=='delivery_mode,id,price_label,title'||
+     typeof o.id!=='string'||!UUID.test(o.id)||typeof o.title!=='string'||Array.from(o.title).length>200||
+     !['at_location','at_customer','online','hybrid'].includes(o.delivery_mode)||
+     !(o.price_label===null||(typeof o.price_label==='string'&&Array.from(o.price_label).length<=160)))
+     throw new AccountSessionTransportUnavailable();
+    return {id:o.id,title:o.title,delivery_mode:o.delivery_mode,price_label:o.price_label};
+   });
+   return {id:row.id,profession_id:row.profession_id,lifecycle_status:row.lifecycle_status,slug:row.slug,title:row.title,about:row.about,version:row.version,offers};
+  });
+ }catch{throw new AccountSessionTransportUnavailable();}
+}
