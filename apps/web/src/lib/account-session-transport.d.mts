@@ -23,3 +23,7 @@ export type OwnProfessionalProfile={id:string;profession_id:string;lifecycle_sta
 export function listBackendProfessionalProfiles(options:AccountSessionTransportOptions):Promise<OwnProfessionalProfile[]>;
 
 export function createBackendProfessionalProfile(options:AccountSessionTransportOptions&{professionId:string;idempotencyKey:string}):Promise<'created'|'conflict'>;
+
+export type ProfessionalEdit={title?:string;about?:string};
+export function validProfessionalEdit(body:unknown):body is ProfessionalEdit;
+export function updateBackendProfessionalProfile(options:AccountSessionTransportOptions&{id:string;version:number;body:ProfessionalEdit}):Promise<'updated'|'conflict'>;

@@ -3,6 +3,7 @@ import {notFound} from 'next/navigation';
 import Link from 'next/link';
 import {isLocale} from '@/lib/i18n';
 import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
+import EditProfileForm from './EditProfileForm';
 import CreateProfileForm from './CreateProfileForm';
 import {getPublicProfessions,type ProfessionOption} from '@/lib/api';
 import {getProfessionalProfileCreationContext,getOwnProfessionalProfiles} from '@/lib/account-session-bff.server';
@@ -26,6 +27,10 @@ export default async function ProfilesPage({params}:{params:Promise<{locale:stri
    creation={csrf:context.csrf,professions:professions.filter(p=>!owned.has(p.id.toLowerCase()))};
   }catch{/* read-only inventory remains available */}
  }
+ let editCsrf:string|null=null;
+ if(process.env.SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_EDITING==='enabled'){
+  try{editCsrf=(await getProfessionalProfileCreationContext((await cookies()).get(ACCOUNT_WEB_COOKIE)?.value)).csrf;}catch{/* remain read-only */}
+ }
  const statuses={draft:kk?'Жоба':'Черновик',published:kk?'Жарияланған':'Опубликован',paused:kk?'Тоқтатылған':'На паузе',archived:kk?'Архивте':'В архиве'};
  return <main id="main-content" className="shell">
   <header className="header"><Link className="brand" href={'/'+locale}>Services<span className="brandDot">.</span></Link>
@@ -38,6 +43,7 @@ export default async function ProfilesPage({params}:{params:Promise<{locale:stri
     <h2>{profile.title||profile.slug}</h2><p>{statuses[profile.lifecycle_status]}</p>
     {profile.about&&<p>{profile.about}</p>}
     <p>{kk?'Қызметтер':'Услуги'}: {profile.offers.length}</p>
+    {editCsrf&&<EditProfileForm kk={kk} csrf={editCsrf} profile={{id:profile.id,version:profile.version,title:profile.title,about:profile.about}}/>}
    </article></li>)}</ul>}
  </main>;
 }

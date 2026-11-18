@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile}
+ revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,type ProfessionalEdit}
  from './account-session-transport.mjs';
 
 function config(){
@@ -81,4 +81,10 @@ export async function createOwnProfessionalProfile(input:{cookieValue:string|und
  const auth=authenticateAccountWebMutation(input);
  if(!auth)throw new Error('unauthorized');
  return createBackendProfessionalProfile({...config(),accountBearer:auth.accountBearer,professionId:input.professionId,idempotencyKey:input.idempotencyKey});
+}
+
+export async function updateOwnProfessionalProfile(input:{cookieValue:string|undefined;csrfToken:string|undefined;origin:string|null;fetchSite:string|null;id:string;version:number;body:ProfessionalEdit}){
+ const auth=authenticateAccountWebMutation(input);
+ if(!auth)throw new Error('unauthorized');
+ return updateBackendProfessionalProfile({...config(),accountBearer:auth.accountBearer,id:input.id,version:input.version,body:input.body});
 }
