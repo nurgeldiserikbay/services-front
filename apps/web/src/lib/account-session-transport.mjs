@@ -191,3 +191,29 @@ export async function listBackendProfessionalProfiles({baseUrl,production=true,a
   });
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+/** Creation response is a minimal draft receipt; no raw backend error is forwarded. */
+export async function createBackendProfessionalProfile({baseUrl,production=true,accountBearer,professionId,idempotencyKey,transport=fetch}){
+ if(typeof professionId!=='string'||!UUID.test(professionId)||typeof idempotencyKey!=='string'||!UUID.test(idempotencyKey))
+  throw new AccountSessionTransportUnavailable();
+ try{
+  const response=await transport(endpoint(baseUrl,production,'/me/professional-profiles'),{
+   method:'POST',headers:{...headers(accountBearer),'Content-Type':'application/json','Idempotency-Key':idempotencyKey},
+   body:JSON.stringify({profession_id:professionId.toLowerCase()}),cache:'no-store',credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  if(response.status===409){if(response.body)void response.body.cancel().catch(()=>{});return 'conflict';}
+  const cache=response.headers.get('cache-control')??'';
+  if(response.status!==201||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||/(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   throw new AccountSessionTransportUnavailable();
+  }
+  const row=await readBoundedJson(response);
+  if(!row||typeof row!=='object'||Array.isArray(row)||Object.keys(row).sort().join(',')!=='id,lifecycle_status,offers,profession_id,slug,title'||
+   typeof row.id!=='string'||!UUID.test(row.id)||row.profession_id!==professionId.toLowerCase()||
+   row.lifecycle_status!=='draft'||row.title!==null||row.slug!=='pro-'+row.id||
+   !Array.isArray(row.offers)||row.offers.length!==0)throw new AccountSessionTransportUnavailable();
+  return 'created';
+ }catch{throw new AccountSessionTransportUnavailable();}
+}
