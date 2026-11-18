@@ -113,6 +113,17 @@ test('guest OTP proof requires at least one whole remaining second',async()=>{
     })}),{createCapability:proof,expiresInSeconds:1});
   }
 });
+test('guest OTP TTL accounts for elapsed network time and rejects clock rollback',async()=>{
+  for(const [elapsed,remaining] of [[2500,10000],[4500,5000],[5000,5000],[-1,10000]]){
+    let time=now;
+    const pending=verify({now:undefined,clock:()=>time,transport:async()=>{
+      time+=elapsed;
+      return json({guest_capability:proof,expires_at:new Date(now+remaining).toISOString()});
+    }});
+    if(elapsed<0||remaining-elapsed<1000)await assert.rejects(pending,GuestOtpUnavailable);
+    else assert.deepEqual(await pending,{createCapability:proof,expiresInSeconds:Math.floor((remaining-elapsed)/1000)});
+  }
+});
 test('OTP issue and verify stop oversized streams without buffering unlimited bytes',async()=>{
   for(const invoke of [issue,verify]){
     let produced=0;
