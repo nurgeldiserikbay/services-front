@@ -40,7 +40,7 @@ test('notification inbox initial load is scheduled outside React effect and canc
   const inbox=readFileSync(new URL('../src/components/AccountNotificationsInbox.tsx',import.meta.url),'utf8');
   assert.ok(!config.includes('src/components/AccountNotificationsInbox.tsx'));
   assert.match(inbox,/useEffect\(\(\)=>\{\s*const timer=setTimeout\(\(\)=>\{void load\(\);\},0\)/);
-  assert.match(inbox,/return \(\)=>\{clearTimeout\(timer\);generation\.current\+\+;\}/);
+  assert.match(inbox,/return \(\)=>\{\s*clearTimeout\(timer\);generation\.current\+\+;\s*const previous=active\.current;\s*active\.current=null;\s*previous\?\.abort\(\);\s*\}/);
   assert.match(inbox,/if\(current===generation\.current\)setItems\(result\.items\)/);
   assert.match(inbox,/if\(lock\.current\)return/);
 });
