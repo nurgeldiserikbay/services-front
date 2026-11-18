@@ -24,7 +24,8 @@ export default async function AccountNotificationsPage({
  return <main id="main-content" className="shell">
   <header className="header">
    <Link className="brand" href={'/'+locale}>Services<span className="brandDot">.</span></Link>
-   <nav>{process.env.SERVICES_WEB_ENABLE_SELLER_WORKSPACE==='enabled'&&<Link href={'/'+locale+'/account/requests'}>
+   <nav>
+    {process.env.SERVICES_WEB_ENABLE_ACCOUNT_HOME==='enabled'&&process.env.SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF==='enabled'&&<Link href={'/'+locale+'/account'}>{kk?'Менің аккаунтым':'Мой аккаунт'}</Link>}{process.env.SERVICES_WEB_ENABLE_SELLER_BFF==='enabled'&&process.env.SERVICES_WEB_ENABLE_SELLER_WORKSPACE==='enabled'&&<Link href={'/'+locale+'/account/requests'}>
     {kk?'Өтінімдерге өту':'К заявкам'}</Link>}
     <Link href={'/'+locale}>{kk?'Каталог':'Каталог'}</Link></nav>
   </header>
