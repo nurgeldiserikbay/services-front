@@ -42,7 +42,7 @@ test('notification inbox initial load is scheduled outside React effect and canc
   assert.match(inbox,/useEffect\(\(\)=>\{\s*const timer=setTimeout\(\(\)=>\{void load\(\);\},0\)/);
   assert.match(inbox,/return \(\)=>\{\s*clearTimeout\(timer\);generation\.current\+\+;\s*const previous=active\.current;\s*active\.current=null;\s*previous\?\.abort\(\);\s*\}/);
   assert.match(inbox,/if\(current===generation\.current\)setItems\(result\.items\)/);
-  assert.match(inbox,/if\(lock\.current\)return/);
+  assert.match(inbox,/if\(active\.current\)return/);
 });
 
 test('device sessions initial fetch is deferred and cancelled on discarded mounts',()=>{
