@@ -35,6 +35,7 @@ export default async function AccountDevicesPage({
   <header className="header">
    <Link className="brand" href={'/'+locale}>Services<span className="brandDot">.</span></Link>
    <nav aria-label={kk?'Навигация':'Навигация'}>
+    {process.env.SERVICES_WEB_ENABLE_ACCOUNT_HOME==='enabled'&&process.env.SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF==='enabled'&&<Link href={'/'+locale+'/account'}>{kk?'Менің аккаунтым':'Мой аккаунт'}</Link>}
     <Link href={'/'+locale}>{kk?'Каталогқа қайту':'Вернуться в каталог'}</Link>
    </nav>
   </header>

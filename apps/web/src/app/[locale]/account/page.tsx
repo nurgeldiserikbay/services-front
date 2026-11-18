@@ -18,6 +18,8 @@ export default async function AccountPage({params}:{params:Promise<{locale:strin
  }catch{notFound();}
  const kk=locale==='kk';
  const links=[
+  {enabled:process.env.SERVICES_WEB_ENABLE_SELLER_BFF==='enabled'&&process.env.SERVICES_WEB_ENABLE_SELLER_WORKSPACE==='enabled',path:'requests',label:kk?'Өтінімдер':'Заявки'},
+  {enabled:process.env.SERVICES_WEB_ENABLE_ACCOUNT_NOTIFICATIONS==='enabled',path:'notifications',label:kk?'Хабарламалар':'Уведомления'},
   {enabled:process.env.SERVICES_WEB_ENABLE_ACCOUNT_DEVICES_PAGE==='enabled',path:'devices',label:kk?'Құрылғылар':'Устройства'},
  ];
  return <main id="main-content" className="shell">

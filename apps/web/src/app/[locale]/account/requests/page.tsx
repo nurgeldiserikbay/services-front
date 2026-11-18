@@ -39,6 +39,7 @@ export default async function AccountRequestsPage({
         Services<span className="brandDot">.</span>
       </Link>
       <nav aria-label={kk?'Навигация':'Навигация'}>
+    {process.env.SERVICES_WEB_ENABLE_ACCOUNT_HOME==='enabled'&&process.env.SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF==='enabled'&&<Link href={'/'+locale+'/account'}>{kk?'Менің аккаунтым':'Мой аккаунт'}</Link>}
         <Link href={'/'+locale}>{kk?'Каталогқа қайту':'Вернуться в каталог'}</Link>
         {process.env.SERVICES_WEB_ENABLE_ACCOUNT_NOTIFICATIONS==='enabled'&&<Link href={'/'+locale+'/account/notifications'}>{kk?'Хабарламалар':'Уведомления'}</Link>}
       </nav>
