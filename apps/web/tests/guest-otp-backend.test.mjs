@@ -101,6 +101,18 @@ test('verify rejects extra secrets, bad/missing proof, expired and long-lived pr
   ])await assert.rejects(verify({transport:async()=>json(data)}),
     GuestOtpUnavailable);
 });
+test('guest OTP proof requires at least one whole remaining second',async()=>{
+  for(const remaining of [0,1,999]){
+    await assert.rejects(verify({transport:async()=>json({
+      guest_capability:proof,expires_at:new Date(now+remaining).toISOString(),
+    })}),GuestOtpUnavailable);
+  }
+  for(const remaining of [1000,1999]){
+    assert.deepEqual(await verify({transport:async()=>json({
+      guest_capability:proof,expires_at:new Date(now+remaining).toISOString(),
+    })}),{createCapability:proof,expiresInSeconds:1});
+  }
+});
 test('OTP issue and verify stop oversized streams without buffering unlimited bytes',async()=>{
   for(const invoke of [issue,verify]){
     let produced=0;
