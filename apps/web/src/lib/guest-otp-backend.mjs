@@ -87,11 +87,12 @@ export async function issueGuestOtpChallenge({
  * result to the browser; immediately issue the scoped HttpOnly cookie.
  */
 export async function verifyGuestOtpChallenge({
-  baseUrl,production=false,challengeId,code,transport=fetch,now=Date.now(),
+  baseUrl,production=false,challengeId,code,transport=fetch,now,clock=Date.now,
 }){
+  const startedAt=now??clock();
   if(typeof challengeId!=='string'||!UUID.test(challengeId)||
     typeof code!=='string'||!/^[0-9]{6}$/.test(code)||
-    !Number.isSafeInteger(now))throw new GuestOtpUnavailable();
+    !Number.isSafeInteger(startedAt))throw new GuestOtpUnavailable();
   const url=endpoint(baseUrl,'/'+challengeId.toLowerCase()+'/verify',production);
   const data=await postJson(url,{code},200,transport);
   if(!data||typeof data!=='object'||Array.isArray(data)||
@@ -99,10 +100,12 @@ export async function verifyGuestOtpChallenge({
     typeof data.guest_capability!=='string'||!PROOF.test(data.guest_capability)||
     typeof data.expires_at!=='string')throw new GuestOtpUnavailable();
   const expiry=Date.parse(data.expires_at);
+  const receivedAt=now??clock();
   if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(data.expires_at)||
     !Number.isFinite(expiry)||new Date(expiry).toISOString()!==data.expires_at||
-    expiry-now<1000||expiry>now+900000+5000)
+    !Number.isSafeInteger(receivedAt)||receivedAt<startedAt||
+    expiry-receivedAt<1000||expiry>startedAt+900000+5000)
     throw new GuestOtpUnavailable();
   return {createCapability:data.guest_capability,
-    expiresInSeconds:Math.min(900,Math.floor((expiry-now)/1000))};
+    expiresInSeconds:Math.min(900,Math.floor((expiry-receivedAt)/1000))};
 }
