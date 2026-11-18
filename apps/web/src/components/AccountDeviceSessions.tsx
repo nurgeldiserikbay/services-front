@@ -42,7 +42,7 @@ export function AccountDeviceSessions({locale}:{locale:Locale}){
  const alive=useRef(true);
  const refresh=useCallback(async()=>{
   const seq=++requestId.current;
-  setLoading(true);setError(null);
+  setItems([]);setCsrf(null);setLoading(true);setError(null);
   try{
    const page=await loadAccountDevices();
    if(!alive.current||seq!==requestId.current)return;
@@ -73,7 +73,7 @@ export function AccountDeviceSessions({locale}:{locale:Locale}){
     // Trust only the fresh backend list, never optimistic deletion.
     await refresh();
    }else if(outcome==='authentication_required'){
-    setCsrf(null);setError(t.expired);
+    setItems([]);setCsrf(null);setError(t.expired);
    }else{
     setError(outcome==='current_session'?t.currentError:t.failed);
    }
