@@ -99,3 +99,15 @@ test('private account transport rejects spoofed length, malformed JSON and forbi
   await assert.rejects(verifyBackendAccountOtp({...req,transport:async()=>response}),AccountLoginTransportUnavailable);
  }
 });
+
+test('OTP compositions preflight cookie encryption keys before consuming upstream OTP',()=>{
+ const read=p=>readFileSync(new URL('../src/lib/'+p,import.meta.url),'utf8');
+ const account=read('account-login-bff.server.ts');
+ const exchange=account.slice(account.indexOf('export async function exchangeVerifiedAccountOtpForCookie'));
+ assert.match(exchange,/requireAccountWebSessionKey\(\);\s*const result=await verifyBackendAccountOtp\(/);
+ assert.match(read('account-web-session.server.ts'),/export function requireAccountWebSessionKey\(\):void\{sessionKey\(\);\}/);
+ const guest=read('guest-otp-bff.server.ts');
+ const start=guest.slice(guest.indexOf('export async function startGuestChallenge'),guest.indexOf('export async function confirmGuestChallenge'));
+ assert.match(start,/const key=sessionKey\(\);\s*const challenge=await issueGuestOtpChallenge\(/);
+ assert.match(start,/sealGuestChallenge\(key,challenge\.challengeId\)/);
+});
