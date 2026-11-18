@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles}
+ revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile}
  from './account-session-transport.mjs';
 
 function config(){
@@ -69,4 +69,16 @@ export async function getOwnProfessionalProfiles(cookieValue:string|undefined){
  const cookie=readAccountWebSession(cookieValue);
  if(!cookie)throw new Error('unauthorized');
  return listBackendProfessionalProfiles({...config(),accountBearer:cookie.token});
+}
+
+export async function getProfessionalProfileCreationContext(cookieValue:string|undefined){
+ const cookie=readAccountWebSession(cookieValue);
+ if(!cookie)throw new Error('unauthorized');
+ const profiles=await listBackendProfessionalProfiles({...config(),accountBearer:cookie.token});
+ return {profiles,csrf:cookie.csrf};
+}
+export async function createOwnProfessionalProfile(input:{cookieValue:string|undefined;csrfToken:string|undefined;origin:string|null;fetchSite:string|null;professionId:string;idempotencyKey:string}){
+ const auth=authenticateAccountWebMutation(input);
+ if(!auth)throw new Error('unauthorized');
+ return createBackendProfessionalProfile({...config(),accountBearer:auth.accountBearer,professionId:input.professionId,idempotencyKey:input.idempotencyKey});
 }
