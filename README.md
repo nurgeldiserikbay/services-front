@@ -27,6 +27,12 @@ The old scaffold-only summary was outdated. The repository has progressed beyond
 - Accepted requests render an explicit completion button only with the separate `SERVICES_WEB_ENABLE_CUSTOMER_COMPLETION=enabled` flag. It sends the session's CSRF token and strong `If-Match` to the same-origin BFF; no raw backend bearer or customer ID is exposed. An uncertain upstream outcome prompts users to check status, never assumes completion.
 - Backend dependency: `GET /v1/account/requests` in services-back PR #359. Frontend default CI uses an older pinned backend SHA; a green PR CI does **not** prove current backend integration. The page must remain off until PR #359 merges, cross-repo current SHA integration, real login/cookie issuance and browser/staging acceptance are verified.
 
+## 2026-11-20 current backend/client completion cross-repo acceptance test
+
+- Frontend CI's reproducible backend pin was advanced to merged `services-back` SHA `2cebdc94a9ab574f7f6ca3011729ce6c97982a45`, containing `GET /v1/account/requests` and the authenticated completion endpoint. The pin only advances again after separately reviewed backend changes.
+- New CI-only live `private-bff-customer-completion.e2e.mjs` uses uniquely generated disposable PostgreSQL identities and a sealed **test-fixture** account session to exercise real Next.js `/{locale}/account/my-requests` and `POST /api/account/requests/:id/complete` through HTTPS backend. Verifies own/foreign request isolation, denied CSRF/cross-site access, accepted → completed, experience and notification recorded once, page refresh, stale replay rejection, invalid pending-state rejection and revoked-session denial.
+- The frontend's isolated CI BFF server alone enables customer request and completion flags. These remain **default-off** in normal environments. This is **not** proof of real user OTP/login, staging/KZ ingress, Android/Capacitor lifecycle, or a production rollout. Record the passing workflow run before closing a checklist acceptance gate.
+
 ## Release gates (all require verification)
 
 1. Verify backend dependency versions, merged PRs, OpenAPI compatibility and latest green CI on the exact release commit.
