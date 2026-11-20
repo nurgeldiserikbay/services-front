@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,readBackendAppealableProfileRejection,requestBackendProfessionalProfileAppeal,completeBackendCustomerRequest,type ProfessionalEdit}
+ revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,readBackendAppealableProfileRejection,requestBackendProfessionalProfileAppeal,completeBackendCustomerRequest,listBackendCustomerRequests,type ProfessionalEdit}
  from './account-session-transport.mjs';
 
 function config(){
@@ -127,4 +127,15 @@ export async function completeOwnAccountRequest(input:{
  if(!auth)throw new Error('unauthorized');
  return completeBackendCustomerRequest({...config(),
   accountBearer:auth.accountBearer,requestId:input.requestId,version:input.version});
+}
+
+/** Read-only backend-revalidated customer inventory with a sealed CSRF token. */
+export async function getOwnCustomerRequestPage(
+ cookieValue:string|undefined,cursor:string|null,
+){
+ const session=readAccountWebSession(cookieValue);
+ if(!session)throw new Error('unauthorized');
+ const page=await listBackendCustomerRequests({...config(),
+  accountBearer:session.token,cursor});
+ return {...page,csrf:session.csrf};
 }
