@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {guestCompletionUrl,readGuestCompletionUiResponse}
+import {guestCompletionUrl,readGuestCompletionUiResponse,
+ shouldResetGuestCompletionAfterVerifiedRefresh}
  from '../src/lib/guest-completion-ui-core.mjs';
 
 const id=randomUUID(),other=randomUUID();
@@ -74,4 +75,25 @@ test('completion UI stays feature-gated, state-verified and secret-free',()=>{
  assert.doesNotMatch(component,/localStorage|sessionStorage|document\.cookie|Guest-Capability|createHmac|networkProof|setInterval/);
  assert.match(component,/credentials:'same-origin'/);
  assert.match(component,/cache:'no-store'/);
+});
+
+test('ambiguous completion unlock needs a verified same-version accepted status',()=>{
+ assert.equal(shouldResetGuestCompletionAfterVerifiedRefresh(2,2,'accepted'),true);
+ for(const [oldVersion,newVersion,state] of [
+  [null,2,'accepted'],[2,1,'accepted'],[2,3,'accepted'],
+  [2,2,'completed'],[2,2,'pending'],[2,2,'declined'],
+  [2,2,'cancelled_by_provider'],[0,0,'accepted'],
+ ]){
+  assert.equal(shouldResetGuestCompletionAfterVerifiedRefresh(
+   oldVersion,newVersion,state),false);
+ }
+ const status=readFileSync(new URL('../src/components/GuestRequestStatusCheck.tsx',
+  import.meta.url),'utf8');
+ const completion=readFileSync(new URL('../src/components/GuestRequestCompletion.tsx',
+  import.meta.url),'utf8');
+ assert.match(status,/shouldResetGuestCompletionAfterVerifiedRefresh\(/);
+ assert.match(status,/setCompletionRefreshEpoch\(value=>value\+1\)/);
+ assert.match(status,/completionRefreshEpoch\} locale=\{locale\}/);
+ assert.match(completion,/if\(action==='confirm'\)setPhase\('uncertain'\)/);
+ assert.doesNotMatch(completion,/setTimeout|setInterval|localStorage|sessionStorage/);
 });
