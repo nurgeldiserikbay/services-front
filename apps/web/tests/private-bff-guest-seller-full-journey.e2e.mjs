@@ -258,6 +258,18 @@ try{
   'READ_CANCEL alone must never confirm completion');
  assert.equal((await completionPost('/confirm',{},
   {cookie:writeCookies,match:'W/"2"'})).status,409);
+ // A syntactically valid but stale strong ETag must not consume the sealed
+ // write proof. The same cookie can still complete using the actual version.
+ assert.equal((await completionPost('/confirm',{},
+  {cookie:writeCookies,match:'"1"'})).status,503,
+  'BFF intentionally hides upstream version conflict as unavailable; proof remains sealed');
+ assert.equal((await db.query(`SELECT count(*)::int AS n
+  FROM domain_outbox_events WHERE subject_id=$1
+  AND topic='service_request.completed'`,[createdRequest])).rows[0]?.n,0);
+ assert.equal((await db.query(`SELECT count(*)::int AS n
+  FROM guest_capabilities WHERE request_id=$1
+  AND scope='COMPLETE_REQUEST' AND consumed_at IS NOT NULL`,
+  [createdRequest])).rows[0]?.n,0);
  const acceptedStill=await db.query('SELECT status,version FROM service_requests WHERE id=$1',
   [createdRequest]);
  assert.deepEqual(acceptedStill.rows[0],{status:'ACCEPTED',version:2});
