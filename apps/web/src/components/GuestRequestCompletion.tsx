@@ -65,10 +65,11 @@ export function GuestRequestCompletion({locale,requestId,version,onRefresh}:Prop
    if(action==='start'&&phase==='idle'){
     const bootstrap=await send('/bootstrap');
     const ready=await readGuestCompletionUiResponse(bootstrap,'bootstrap');
-    if(!CSRF.test(ready.csrfToken))throw new Error('csrf_unavailable');
+    if(typeof ready.csrfToken!=='string'||!CSRF.test(ready.csrfToken))throw new Error('csrf_unavailable');
     csrf.current=ready.csrfToken;
     const response=await send('/challenges',{locale});
     const result=await readGuestCompletionUiResponse(response,'challenge');
+    if(typeof result.challengeId!=='string')throw new Error('challenge_unavailable');
     setChallenge(result.challengeId);setPhase('challenge');
    }else if(action==='verify'&&phase==='challenge'&&challenge&&/^[0-9]{6}$/.test(code)){
     const response=await send('/challenges/'+challenge+'/verify',{code});
