@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createCipheriv,createHmac,randomBytes,randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {join} from 'node:path';
 import {sealGuestSession} from '../src/lib/guest-session-core.mjs';
@@ -201,6 +202,18 @@ try{
   {proof:'v1.invalid'});
  assert.equal(forgedNetwork.status,503);
  const started=await completionPost('/challenges',{locale:'kk'});
+ if(started.status!==202){
+  const challengeRows=await db.query(`SELECT count(*)::int AS n
+   FROM guest_challenges WHERE request_id=$1 AND purpose='COMPLETE_REQUEST'`,
+   [createdRequest]);
+  const networkRows=await db.query(`SELECT count(*)::int AS n
+   FROM guest_otp_network_issuances WHERE network_digest=$1
+    AND purpose='COMPLETE_REQUEST'`,[networkDigest]);
+  console.error('CI OTP boundary diagnostic (no secrets)',{
+   status:started.status,deliveryObserved:existsSync(codeFile),
+   challengeRows:challengeRows.rows[0]?.n,networkRows:networkRows.rows[0]?.n,
+  });
+ }
  assert.equal(started.status,202,'real OTP must be initiated through scoped guest BFF');
  const challengeResponse=await started.json();
  assert.deepEqual(Object.keys(challengeResponse),['challenge_id']);
