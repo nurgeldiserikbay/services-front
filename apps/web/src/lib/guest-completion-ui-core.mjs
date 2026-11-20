@@ -51,3 +51,15 @@ export async function readGuestCompletionUiResponse(response,kind,requestId,vers
   return {completed:true,version:data.version};
  throw new Error('guest_completion_unavailable');
 }
+
+/**
+ * Only a verified, same-version ACCEPTED refresh can release an ambiguous
+ * guest completion UI. A stale response, failed refresh or a newer version
+ * must not restore old one-use credentials or re-submit a COMMIT.
+ */
+export function shouldResetGuestCompletionAfterVerifiedRefresh(
+ previousVersion,nextVersion,nextState){
+ return Number.isSafeInteger(previousVersion)&&previousVersion>=1&&
+  Number.isSafeInteger(nextVersion)&&nextVersion===previousVersion&&
+  nextState==='accepted';
+}
