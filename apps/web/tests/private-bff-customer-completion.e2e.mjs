@@ -25,7 +25,7 @@ const bearer=[randomBytes(32).toString('base64url'),randomBytes(32).toString('ba
 const seal=bearer.map(token=>sealAccountWebSession(webKey,token,600));
 const cookies=seal.map(s=>'__Host-services_account_web='+s.cookie);
 const hashes=bearer.map(token=>createHmac('sha256',hmacKey)
- .update('services-session:v1\\0').update(token).digest('hex'));
+ .update('services-session:v1\0').update(token).digest('hex'));
 const db=new Client({connectionString:process.env.DATABASE_URL});
 const read=async cookie=>fetch(new URL('/ru/account/my-requests',base),{
  headers:{Cookie:cookie},redirect:'manual',signal:AbortSignal.timeout(8000),
