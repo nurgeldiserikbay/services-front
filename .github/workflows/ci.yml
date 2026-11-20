@@ -400,6 +400,12 @@ jobs:
       - name: Verify live guest create, seller accept, OTP reverify, one-use completion and refreshed status in PostgreSQL
         id: guest_seller_lifecycle_e2e
         run: node apps/web/tests/private-bff-guest-seller-full-journey.e2e.mjs
+      - name: Diagnose isolated guest completion OTP dispatch failure without secrets
+        if: failure()
+        run: |
+          if test -f "$RUNNER_TEMP/services-completion-ci-back.log"; then
+            grep 'CI_GUEST_COMPLETION_DISPATCH_ERROR' "$RUNNER_TEMP/services-completion-ci-back.log" || true
+          fi
       - name: Verify private frontend BFF routes remain default-off over live HTTP
         id: private_bff_e2e
         run: node apps/web/tests/private-bff-default-off.e2e.mjs
