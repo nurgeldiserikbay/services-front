@@ -100,7 +100,13 @@ test('completion sessions bind purpose, request and expiry with distinct AES-GCM
  assert.equal(openGuestCompletionSession(key,'challenge',sealed,now),null);
  assert.equal(openGuestCompletionSession(randomBytes(32),'completion',sealed,now),null);
  assert.equal(openGuestCompletionSession(key,'completion',sealed,now+600001),null);
- const forged=sealed.slice(0,-1)+(sealed.at(-1)==='a'?'b':'a');
+ const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+ const finalIndex=alphabet.indexOf(sealed.at(-1));
+ assert.ok(finalIndex>=0);
+ // AES-GCM 16-byte tag has two unused bits in its last Base64URL character.
+ // Flip only an unused bit: decoded tag bytes remain identical, yet the
+ // noncanonical cookie spelling must be rejected, not accepted as an alias.
+ const forged=sealed.slice(0,-1)+alphabet[finalIndex^1];
  assert.equal(openGuestCompletionSession(key,'completion',forged,now),null);
  const challenge=sealGuestCompletionSession(key,'challenge',requestId,
   challengeId,now+500000,now);
