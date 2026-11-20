@@ -209,9 +209,21 @@ try{
   const networkRows=await db.query(`SELECT count(*)::int AS n
    FROM guest_otp_network_issuances WHERE network_digest=$1
     AND purpose='COMPLETE_REQUEST'`,[networkDigest]);
+  let directBackendStatus='request_not_sent';
+  try{
+   const backend=await fetch(new URL('/v1/guest-requests/'+createdRequest+
+    '/completion/challenges','https://localhost:8445'),{
+    method:'POST',redirect:'manual',signal:AbortSignal.timeout(5000),
+    headers:{'Content-Type':'application/json','Guest-Capability':accessSession.capability,
+     'X-Services-Network-Proof':networkProof},body:'{"locale":"kk"}',
+   });
+   directBackendStatus=backend.status;
+   if(backend.body)void backend.body.cancel().catch(()=>{});
+  }catch{directBackendStatus='transport_unavailable';}
   console.error('CI OTP boundary diagnostic (no secrets)',{
    status:started.status,deliveryObserved:existsSync(codeFile),
    challengeRows:challengeRows.rows[0]?.n,networkRows:networkRows.rows[0]?.n,
+   networkProofAgeMs:Date.now()-Number(timestamp),directBackendStatus,
   });
  }
  assert.equal(started.status,202,'real OTP must be initiated through scoped guest BFF');
