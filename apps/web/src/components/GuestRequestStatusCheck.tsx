@@ -54,6 +54,7 @@ function ReceiptStatusView({locale,requestId,serviceOfferId,completionEnabled=fa
   const [version,setVersion]=useState<number|null>(null);
   const [pending,setPending]=useState(false);
   const [error,setError]=useState(false);
+  const [completionRefreshEpoch,setCompletionRefreshEpoch]=useState(0);
   const active=useRef<AbortController|null>(null);
   const busy=useRef(false);
   const currentVersion=useRef<number|null>(null);
@@ -96,6 +97,11 @@ function ReceiptStatusView({locale,requestId,serviceOfferId,completionEnabled=fa
         currentVersion.current=result.version;
         setState(result.state);
         setVersion(result.version);
+      }else if(currentVersion.current===result.version&&result.state==='accepted'){
+        // A verified refresh of the same accepted version is the only safe
+        // way to leave the completion UI's ambiguous-commit lock. Remount
+        // its short-lived OTP/CSRF state; never retry the old mutation.
+        setCompletionRefreshEpoch(value=>value+1);
       }
     }catch{
       // A deadline abort is a failed refresh, unlike a receipt-switch abort.
@@ -122,7 +128,7 @@ function ReceiptStatusView({locale,requestId,serviceOfferId,completionEnabled=fa
       <small>{t.version}: {version}</small>
       <RequestTimeline state={state} locale={locale}/>
       {completionEnabled&&state==='accepted'&&<GuestRequestCompletion
-        key={requestId+'|'+version} locale={locale} requestId={requestId}
+        key={requestId+'|'+version+'|'+completionRefreshEpoch} locale={locale} requestId={requestId}
         version={version} onRefresh={refresh}/>}
     </>}
     {error&&<p role="alert" className={styles.error}>{t.error}</p>}
