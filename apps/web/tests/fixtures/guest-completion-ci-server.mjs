@@ -6,11 +6,11 @@
 import 'reflect-metadata';
 import {NestFactory} from '@nestjs/core';
 import {writeFileSync} from 'node:fs';
-import {AppModule} from '../src/modules/app.module.js';
+import {AppModule} from '../dist/modules/app.module.js';
 import {OtpDeliveryService} from
- '../src/modules/guest-requests/otp-delivery.service.js';
+ '../dist/modules/guest-requests/otp-delivery.service.js';
 import {GuestOtpDispatchService} from
- '../src/modules/guest-requests/guest-otp-dispatch.service.js';
+ '../dist/modules/guest-requests/guest-otp-dispatch.service.js';
 
 if(process.env.CI!=='true'||process.env.SERVICES_TEST_OTP_DELIVERY!=='fixture'||
  !process.env.RUNNER_TEMP||!process.env.DATABASE_URL||
