@@ -35,11 +35,11 @@ const encrypted=Buffer.concat([contactCipher.update(originalContact,'utf8'),cont
 const contactCipherText=['v1',iv.toString('base64url'),
  contactCipher.getAuthTag().toString('base64url'),encrypted.toString('base64url')].join('.');
 const contactDigest=createHmac('sha256',guestBackendKey)
- .update('guest-contact:v1\\0').update('email\\0'+originalContact).digest('hex');
+ .update('guest-contact:v1\0').update('email\0'+originalContact).digest('hex');
 const networkDigest=randomBytes(32).toString('hex');
 const timestamp=String(Date.now());
 const networkProof='v1.'+networkDigest+'.'+timestamp+'.'+createHmac('sha256',networkKey)
- .update('services-otp-network:v1\\n').update(networkDigest).update('\\n')
+ .update('services-otp-network:v1\n').update(networkDigest).update('\n')
  .update(timestamp).digest('hex');
 const accountBackendKey=Buffer.from(process.env.ACCOUNT_SESSION_HMAC_KEY??'','base64');
 assert.equal(accountBackendKey.length,32);
