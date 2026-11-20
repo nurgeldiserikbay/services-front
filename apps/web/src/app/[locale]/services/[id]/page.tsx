@@ -40,6 +40,11 @@ export default async function ServiceOfferPage({params}:Props) {
     process.env.SERVICES_WEB_ENABLE_GUEST_OTP_BFF==='enabled'&&
     process.env.SERVICES_WEB_ENABLE_GUEST_CREATE_HTTP==='enabled';
   const statusEnabled=process.env.SERVICES_WEB_ENABLE_GUEST_STATUS_HTTP==='enabled';
+  // Both private status and completion BFF must be explicitly enabled.
+  // The trusted ingress must inject signed OTP network attestation separately.
+  const completionEnabled=statusEnabled&&
+    process.env.SERVICES_WEB_ENABLE_GUEST_COMPLETION_UI==='enabled'&&
+    process.env.SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF==='enabled';
   return <main id="main-content" className="shell offerPage">
     <nav><Link href={'/'+locale}>{t.brand}</Link></nav>
     <article className="offerDetail">
@@ -55,7 +60,7 @@ export default async function ServiceOfferPage({params}:Props) {
       </section>
       <p className="offerNote">{t.offerTimeNotice}</p>
       {guestEnabled&&<ConnectedGuestRequestWizard serviceOfferId={offer.id} locale={locale}
-        statusEnabled={statusEnabled}/> }
+        statusEnabled={statusEnabled} completionEnabled={completionEnabled}/> }
     </article>
     <Link href={'/'+locale} className="offerBack">{t.backToSearch}</Link>
   </main>;
