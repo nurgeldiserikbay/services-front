@@ -25,8 +25,7 @@ const unavailable=()=>NextResponse.json({code:'UNAVAILABLE'},
  */
 export async function GET(request:NextRequest,
  context:{params:Promise<{id:string}>}):Promise<NextResponse>{
- if(process.env.SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF!=='enabled'||
-    process.env.SERVICES_WEB_ENABLE_GUEST_STATUS_HTTP!=='enabled')
+ if(process.env.SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF!=='enabled')
   return unavailable();
  try{
   if(new URL(request.url).search)return unavailable();
