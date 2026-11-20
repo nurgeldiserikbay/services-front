@@ -39,7 +39,10 @@ export function openGuestCompletionSession(key,purpose,cookie,now=Date.now()){
   const iv=Buffer.from(parts[1],'base64url');
   const encrypted=Buffer.from(parts[2],'base64url');
   const tag=Buffer.from(parts[3],'base64url');
-  if(iv.length!==12||encrypted.length>600||tag.length!==16)return null;
+  if(iv.length!==12||encrypted.length>600||tag.length!==16||
+   iv.toString('base64url')!==parts[1]||
+   encrypted.toString('base64url')!==parts[2]||
+   tag.toString('base64url')!==parts[3])return null;
   const decipher=createDecipheriv('aes-256-gcm',key,iv);
   decipher.setAAD(Buffer.from(PURPOSES[purpose].aad,'utf8'));
   decipher.setAuthTag(tag);
