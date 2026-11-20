@@ -33,6 +33,12 @@ The old scaffold-only summary was outdated. The repository has progressed beyond
 - New CI-only live `private-bff-customer-completion.e2e.mjs` uses uniquely generated disposable PostgreSQL identities and a sealed **test-fixture** account session to exercise real Next.js `/{locale}/account/my-requests` and `POST /api/account/requests/:id/complete` through HTTPS backend. Verifies own/foreign request isolation, denied CSRF/cross-site access, accepted → completed, experience and notification recorded once, page refresh, stale replay rejection, invalid pending-state rejection and revoked-session denial.
 - The frontend's isolated CI BFF server alone enables customer request and completion flags. These remain **default-off** in normal environments. This is **not** proof of real user OTP/login, staging/KZ ingress, Android/Capacitor lifecycle, or a production rollout. Record the passing workflow run before closing a checklist acceptance gate.
 
+## Prepared guest OTP completion BFF (2026-11-20)
+
+- New **default-off** `POST /api/guest-requests/:id/completion/challenges`, `POST /api/guest-requests/:id/completion/challenges/:challengeId/verify`, `POST /api/guest-requests/:id/completion/confirm` routes require the request-scoped HttpOnly READ_CANCEL cookie, same-origin CSRF and exact bounded JSON; challenge initiation additionally requires cryptographically validated trusted network attestation. Backend is pinned to merged `services-back` PR #364 SHA `83261556433d43b0037ced0d165de541ed8e1aa6`.
+- The OTP verification response's COMPLETE_REQUEST bearer is immediately sealed in a **different**, purpose-bound AES-GCM HttpOnly cookie and is never serialized to browser JavaScript. Confirmation requires strong If-Match, consumes a one-time backend capability and returns a safe receipt. Uncertain upstream completion returns a generic 503 and does not fabricate success.
+- **Not ready to enable:** real KZ-approved OTP delivery provider, edge proof stripping/signing, private ingress/TLS, cross-repo live OTP/full-browser E2E, phone tests, staging and product owner approval remain open. Flags `SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF` and backend `SERVICES_ENABLE_GUEST_COMPLETION_HTTP` stay **disabled by default**. No top-level checklist acceptance closure is implied.
+
 ## Release gates (all require verification)
 
 1. Verify backend dependency versions, merged PRs, OpenAPI compatibility and latest green CI on the exact release commit.
