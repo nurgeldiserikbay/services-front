@@ -320,6 +320,9 @@ jobs:
       - name: Verify verified-test guest creation returns scoped status cookie
         id: guest_create_status_e2e
         run: node apps/web/tests/private-bff-guest-create-journey.e2e.mjs
+      - name: Verify live guest create through seller accept to guest status in PostgreSQL
+        id: guest_seller_lifecycle_e2e
+        run: node apps/web/tests/private-bff-guest-seller-full-journey.e2e.mjs
       - name: Verify private frontend BFF routes remain default-off over live HTTP
         id: private_bff_e2e
         run: node apps/web/tests/private-bff-default-off.e2e.mjs
