@@ -183,6 +183,24 @@ try{
  assert.ok(accessSession&&accessSession.requestId===createdRequest);
  const guestCsrf=accessSession.csrf;
  const completionUrl='/api/guest-requests/'+createdRequest+'/completion';
+ const bootstrap=(id,cookie,fetchSite='same-origin')=>fetch(
+  new URL('/api/guest-requests/'+id+'/completion/bootstrap',completionBase),{
+   method:'GET',cache:'no-store',redirect:'manual',
+   signal:AbortSignal.timeout(8000),
+   headers:{'Sec-Fetch-Site':fetchSite,...(cookie?{Cookie:cookie}:{})},
+  });
+ assert.equal((await bootstrap(createdRequest,null)).status,404,
+  'missing guest request cookie cannot reveal CSRF token');
+ assert.equal((await bootstrap(randomUUID(),accessCookie)).status,404,
+  'request-bound cookie must not bootstrap a foreign request');
+ assert.equal((await bootstrap(createdRequest,accessCookie,'cross-site')).status,404,
+  'cross-site fetch metadata cannot bootstrap CSRF');
+ const bootstrapped=await bootstrap(createdRequest,accessCookie);
+ assert.equal(bootstrapped.status,200);
+ assert.match(bootstrapped.headers.get('cache-control')??'',/no-store/);
+ assert.equal(bootstrapped.headers.get('set-cookie'),null,
+  'CSRF bootstrap must not rotate or expose an authentication cookie');
+ assert.deepEqual(await bootstrapped.json(),{csrf_token:guestCsrf});
  const completionPost=(suffix,payload,{cookie=accessCookie,csrf=guestCsrf,
   proof=networkProof,match}={})=>fetch(
   new URL(completionUrl+suffix,completionBase),{

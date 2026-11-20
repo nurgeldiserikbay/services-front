@@ -204,3 +204,9 @@ The frontend run completed the pinned-backend PostgreSQL migration, private admi
 - Full frontend PR-head CI and merge are pending. Production flags remain default-off. This is **not** real-provider, production ingress, user UI, staging, mobile or owner acceptance.
 
 - Frontend CI #1879: isolated full browser/backend/PostgreSQL E2E failed because the new assertion expected exposed 409 instead of intentionally mapped safe 503. Test assertion corrected to the existing privacy contract; unchanged production BFF behavior. Fresh full CI required before merge.
+
+## Guest completion receipt CSRF bootstrap — 2026-11-20 (CI pending)
+
+- Branch `feat/guest-completion-csrf-bootstrap-20261120`: add disabled-by-default same-origin `GET /api/guest-requests/:id/completion/bootstrap` to obtain **only** a request-bound CSRF nonce using the existing sealed HttpOnly READ_CANCEL cookie. Never returns the capability, sends an OTP, or changes database state. Fail closed with the same 404 for missing, foreign, expired and cross-site requests; no cache or index.
+- Existing disposable guest → seller → OTP → completion **real Next.js + backend + PostgreSQL** CI exercise now checks bootstrap succeeds for the authorized receipt but fails for missing/foreign/cross-site sessions. No client-side token storage or network-proof signing is added.
+- This unlocks a future client-side completion form **only after** the trusted edge injects server-signed network proof and security approval. It does not bypass provider, ingress, staging, device or owner acceptance. PR-head CI and merge pending.
