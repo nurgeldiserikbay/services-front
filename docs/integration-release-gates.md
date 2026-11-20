@@ -167,3 +167,9 @@ The frontend run completed the pinned-backend PostgreSQL migration, private admi
 - Default backend integration SHA: `d39d196f7ceedd9df13a253834e3737ad5c120fd` ([Backend CI #43723300416](https://github.com/nurgeldiserikbay/services-back/actions/runs/43723300416): **dependency-audit** and **build-and-test** both passed).
 - Earlier frontend CI [#43723802467](https://github.com/nurgeldiserikbay/services-front/actions/runs/43723802467) passed frontend unit tests and dependency audit, then failed at a PostgreSQL test in the older backend `69861edc670b731145dab861436b76e45f40f356` (registered-customer IN_APP notification trigger, SQLSTATE 23514). That older backend is no longer the default compatibility pin.
 - **Frontend cross-repository compatibility remains unverified** until a new full frontend workflow succeeds on the refreshed immutable pin. Staging acceptance and feature flags remain unchanged.
+
+## Current backend inventory and completion integration pin — 2026-11-20
+
+- The frontend CI's reviewed default backend SHA is now `2cebdc94a9ab574f7f6ca3011729ce6c97982a45`, from merged [services-back PR #359](https://github.com/nurgeldiserikbay/services-back/pull/359), whose [independent backend CI passed](https://github.com/nurgeldiserikbay/services-back/actions/runs/44676315167). This includes the authenticated registered-customer inventory and completion routes.
+- A new disposable real Next.js + HTTPS backend + PostgreSQL E2E CI gate exercises an actual sealed test account: own/other request isolation, accepted-to-completed transition, page refresh, CSRF/origin and stale-version denial, revocation, one experience and one notification. All production customer BFF/page flags remain **default-off**.
+- This is code-level CI evidence, not a real OTP/login, complete guest journey, staging release, domain/TLS security acceptance, or production deployment. Record the passing frontend workflow and exact SHA before marking a checklist item complete.
