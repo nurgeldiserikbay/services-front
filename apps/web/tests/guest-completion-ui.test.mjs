@@ -24,6 +24,12 @@ test('completion UI routes are request scoped and reject path injection',()=>{
  for(const bad of ['','../admin',other+'/confirm','/x?csrf=token'])
   assert.throws(()=>guestCompletionUrl(bad,'/bootstrap'));
  assert.throws(()=>guestCompletionUrl(id,'/../account'));
+ for(const malformed of [
+  '00000000-0000-0000-0000-000000000000',
+  'ffffffff-ffff-ffff-ffff-ffffffffffff',
+  '12345678-1234-1234-1234-123456789abc',
+  'not-a-uuid-0000-0000-000000000000',
+ ])assert.throws(()=>guestCompletionUrl(id,'/challenges/'+malformed+'/verify'));
 });
 
 test('guest completion UI parses only bounded allowlisted private responses',async()=>{
@@ -50,6 +56,38 @@ test('guest completion UI parses only bounded allowlisted private responses',asy
  const publicCache=response({csrf_token:csrf},200);
  publicCache.headers.set('cache-control','public,max-age=120');
  await assert.rejects(readGuestCompletionUiResponse(publicCache,'bootstrap'));
+ const contradictory=response({csrf_token:csrf},200);
+ contradictory.headers.set('cache-control','public, no-store, s-maxage=3600');
+ await assert.rejects(readGuestCompletionUiResponse(contradictory,'bootstrap'));
+ const malformed=response({csrf_token:csrf},200);
+ malformed.headers.set('content-length','999999999999999999999');
+ await assert.rejects(readGuestCompletionUiResponse(malformed,'bootstrap'));
+});
+test('guest completion response reader rejects malformed streams and cancels oversized bodies',async()=>{
+ let canceled=0;
+ const make=(stream)=>({
+  status:200,headers:new Headers({
+   'content-type':'application/json','cache-control':'private, no-store',
+  }),body:stream,
+ });
+ const oversized=new ReadableStream({
+  start(controller){controller.enqueue(new Uint8Array(1100));},
+  cancel(){canceled++;}
+ });
+ await assert.rejects(readGuestCompletionUiResponse(make(oversized),'bootstrap'),
+  /guest_completion_unavailable/);
+ assert.equal(canceled,1,'rejected stream must be cancelled');
+ const broken=new ReadableStream({
+  start(controller){controller.enqueue(new Uint8Array([0xff]));controller.close();}
+ });
+ await assert.rejects(readGuestCompletionUiResponse(make(broken),'bootstrap'),
+  /guest_completion_unavailable/);
+ const foreignChunk=new ReadableStream({
+  start(controller){controller.enqueue(new Uint8Array([123]));controller.close();}
+ });
+ // A valid stream with malformed JSON cannot masquerade as a successful response.
+ await assert.rejects(readGuestCompletionUiResponse(make(foreignChunk),'bootstrap'),
+  /guest_completion_unavailable/);
 });
 
 test('completion UI stays feature-gated, state-verified and secret-free',()=>{

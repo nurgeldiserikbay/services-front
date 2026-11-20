@@ -223,3 +223,9 @@ The frontend run completed the pinned-backend PostgreSQL migration, private admi
 - An unacknowledged completion POST intentionally locks its UI in `uncertain` and does **not** retry its one-use capability. Previously a successful manual status refresh to the **same** accepted version kept the same React subtree mounted, so the user could not restart a fresh OTP flow without navigating away.
 - A verified, request-scoped status refresh reporting `accepted` at the same version now resets the mounted completion UI to its initial state, discarding the previous component's CSRF/OTP/challenge memory. A stale/older version, a newer version, or any failed/unauthorized status refresh never unlocks the old uncertain flow. No automatic OTP dispatch or completion retry is added.
 - Existing default-off UI/BFF/status feature flags and the approved trusted-edge, delivery-provider, staging and security rollout gates remain mandatory. This change does not provide production acceptance. PR-head CI and merge pending.
+
+## Guest completion browser-response boundary tightening — 2026-11-20 (PR CI pending)
+
+- Branch `fix/guest-completion-ui-response-boundary-20261120`: reject malformed completion challenge UUIDs before browser fetch, even when they superficially match a 36-character route; keep request UUID scoped to the receipt.
+- The guest completion UI's bounded JSON decoder now rejects contradictory `public` / `s-maxage` cache directives even when `no-store` also appears; malformed chunks and overflow fail closed. On overflow or truncated/bad streams, cancel the response body rather than retaining an unnecessary reader.
+- Unit regressions assert URL scope, strict cache policy, malformed UTF-8/JSON, and cancellation. No production feature toggle changes and no OTP provider or trusted ingress acceptance. Require full PR-head CI before merge.
