@@ -199,6 +199,8 @@ The frontend run completed the pinned-backend PostgreSQL migration, private admi
 
 ## Sealed completion stale ETag live frontend BFF regression — 2026-11-20 (verification pending)
 
-- Branch `test/guest-completion-bff-stale-version-20261120` extends the real disposable guest → seller → OTP → completion frontend/backend/PostgreSQL CI journey. A valid-but-stale strong `If-Match: "1"` must return 409 *without consuming the sealed one-use write proof*, emitting a completed outbox event, or changing accepted status. The same sealed cookie and actual `If-Match: "2"` subsequently complete once.
+- Branch `test/guest-completion-bff-stale-version-20261120` extends the real disposable guest → seller → OTP → completion frontend/backend/PostgreSQL CI journey. A valid-but-stale strong `If-Match: "1"` must return the BFF's privacy-preserving 503 (upstream 409 is intentionally masked), *without consuming the sealed one-use write proof*, emitting a completed outbox event, or changing accepted status. The same sealed cookie and actual `If-Match: "2"` subsequently complete once.
 - Frontend CI #1873 exposed a formerly flaky cookie-tampering unit test: alternate noncanonical Base64URL encodings can represent identical AES-GCM tag bytes. The completion-cookie reader now rejects noncanonical encoding of IV, ciphertext and auth tag, and the test deterministically flips an unused tag bit to prove that no equivalent textual alias is accepted. Updated PR-head CI and merge pending.
 - Full frontend PR-head CI and merge are pending. Production flags remain default-off. This is **not** real-provider, production ingress, user UI, staging, mobile or owner acceptance.
+
+- Frontend CI #1879: isolated full browser/backend/PostgreSQL E2E failed because the new assertion expected exposed 409 instead of intentionally mapped safe 503. Test assertion corrected to the existing privacy contract; unchanged production BFF behavior. Fresh full CI required before merge.
