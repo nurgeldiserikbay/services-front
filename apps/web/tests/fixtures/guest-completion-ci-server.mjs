@@ -9,6 +9,8 @@ import {writeFileSync} from 'node:fs';
 import {AppModule} from '../src/modules/app.module.js';
 import {OtpDeliveryService} from
  '../src/modules/guest-requests/otp-delivery.service.js';
+import {GuestOtpDispatchService} from
+ '../src/modules/guest-requests/guest-otp-dispatch.service.js';
 
 if(process.env.CI!=='true'||process.env.SERVICES_TEST_OTP_DELIVERY!=='fixture'||
  !process.env.RUNNER_TEMP||!process.env.DATABASE_URL||
@@ -30,6 +32,22 @@ otp.provider={
     destination:message.destination,purpose:message.purpose}),
    {mode:0o600,flag:'w'});
   return {accepted:true,providerRef:'ci_test_adapter_01'};
+ }
+};
+// Emit only error class and SQLSTATE/constraint names from the disposable
+// isolated test server. Do not log request, identity, contact, OTP or bearer.
+const dispatcher=app.get(GuestOtpDispatchService);
+const originalDispatch=dispatcher.dispatchCompleteRequest.bind(dispatcher);
+dispatcher.dispatchCompleteRequest=async(...args)=>{
+ try{return await originalDispatch(...args);}
+ catch(error){
+  const event={name:error instanceof Error?error.name:'Unknown',
+   code:typeof error?.code==='string'&&/^[A-Z0-9]{5}$/.test(error.code)
+    ?error.code:null,
+   constraint:typeof error?.constraint==='string'&&
+    /^[a-z0-9_]{1,90}$/.test(error.constraint)?error.constraint:null};
+  console.error('CI_GUEST_COMPLETION_DISPATCH_ERROR',JSON.stringify(event));
+  throw error;
  }
 };
 app.setGlobalPrefix('v1');
