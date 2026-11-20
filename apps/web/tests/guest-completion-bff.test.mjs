@@ -133,7 +133,18 @@ test('browser routes retain independent flag, CSRF, cookies and no bearer exposu
  const start=p('challenges/route.ts');
  const verify=p('challenges/[challengeId]/verify/route.ts');
  const finish=p('confirm/route.ts');
+ const bootstrap=p('bootstrap/route.ts');
+ const access=readFileSync(new URL('../src/lib/guest-request-access.server.ts',import.meta.url),'utf8');
  const wrapper=readFileSync(new URL('../src/lib/guest-completion-bff.server.ts',import.meta.url),'utf8');
+ assert.match(bootstrap,/SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF/);
+ assert.match(bootstrap,/readGuestRequestMutationCsrf/);
+ assert.match(bootstrap,/GUEST_REQUEST_COOKIE/);
+ assert.match(bootstrap,/Sec-Fetch-Site|sec-fetch-site/);
+ assert.match(bootstrap,/no-store/);
+ assert.match(bootstrap,/csrf_token/);
+ assert.doesNotMatch(bootstrap,/requestCapability|guest_capability|otp\.provider/);
+ assert.match(access,/input\.fetchSite!=='same-origin'/);
+ assert.match(access,/verifyGuestRequestAccess/);
  for(const route of [start,verify,finish]){
   assert.match(route,/SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF/);
   assert.match(route,/GUEST_REQUEST_COOKIE/);
