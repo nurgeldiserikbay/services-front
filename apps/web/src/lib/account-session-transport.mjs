@@ -369,3 +369,54 @@ export async function requestBackendProfessionalProfileAppeal({baseUrl,productio
   return 'submitted';
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+/**
+ * Registered customer completion transport. The bearer comes exclusively from
+ * the server-side sealed account session; no browser-supplied account ID.
+ * A timed-out request has an unknown outcome: clients must refresh status,
+ * never blindly assert completion or retry at a new version.
+ */
+export async function completeBackendCustomerRequest({
+ baseUrl,production=true,accountBearer,requestId,version,transport=fetch,
+}){
+ if(typeof requestId!=='string'||!UUID.test(requestId)||
+  !Number.isSafeInteger(version)||version<1||version>2147483646)
+  throw new AccountSessionTransportUnavailable();
+ const id=requestId.toLowerCase();
+ try{
+  const response=await transport(endpoint(baseUrl,production,
+   '/account/requests/'+id+'/complete'),{
+   method:'POST',
+   headers:{...headers(accountBearer),'Content-Type':'application/json',
+    'If-Match':'"'+version+'"'},
+   body:'{}',cache:'no-store',credentials:'omit',redirect:'manual',
+   signal:AbortSignal.timeout(5000),
+  });
+  if(response.status===409){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   return {kind:'conflict'};
+  }
+  if(response.status===404){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   return {kind:'not_found'};
+  }
+  const cache=response.headers.get('cache-control')??'';
+  const length=response.headers.get('content-length');
+  if(response.status!==200||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(
+    response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||
+   /(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^(?:0|[1-9][0-9]*)$/.test(length)||
+    Number(length)>512))){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   throw new AccountSessionTransportUnavailable();
+  }
+  const payload=await readBoundedJson(response);
+  if(!payload||typeof payload!=='object'||Array.isArray(payload)||
+   Object.keys(payload).sort().join(',')!=='id,state,version'||
+   payload.id!==id||payload.state!=='completed'||payload.version!==version+1)
+   throw new AccountSessionTransportUnavailable();
+  return {kind:'completed',id,version:payload.version};
+ }catch{throw new AccountSessionTransportUnavailable();}
+}

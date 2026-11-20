@@ -41,3 +41,11 @@ export function publishBackendProfessionalProfile(options:AccountSessionTranspor
 export type AppealableRejection={decision_id:string;profile_id:string;profile_version:number};
 export function readBackendAppealableProfileRejection(options:AccountSessionTransportOptions&{id:string}):Promise<AppealableRejection|null>;
 export function requestBackendProfessionalProfileAppeal(options:AccountSessionTransportOptions&{id:string;version:number;decisionId:string}):Promise<'submitted'|'conflict'>;
+
+export type CustomerCompletionTransportResult=
+ |{kind:'completed';id:string;version:number}
+ |{kind:'conflict'}
+ |{kind:'not_found'};
+export function completeBackendCustomerRequest(options:AccountSessionTransportOptions&{
+ requestId:string;version:number;
+}):Promise<CustomerCompletionTransportResult>;
