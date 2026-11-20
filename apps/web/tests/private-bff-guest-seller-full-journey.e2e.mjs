@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import {createHmac,randomBytes,randomUUID} from 'node:crypto';
+import {createCipheriv,createHmac,randomBytes,randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {join} from 'node:path';
 import {sealGuestSession} from '../src/lib/guest-session-core.mjs';
+import {openGuestRequestAccess} from '../src/lib/guest-request-access-core.mjs';
 import {sealAccountWebSession} from '../src/lib/account-web-session-core.mjs';
 
 // Real Next.js -> HTTPS backend -> committed PostgreSQL CI-only lifecycle.
@@ -21,6 +22,25 @@ const [guestWebKey,accountWebKey,guestBackendKey]=await Promise.all([
  secret('services-private-bff-guest-key'),secret('services-private-bff-account-key'),
  secret('services-guest-capability-hmac-key'),
 ]);
+const [encryptionKey,networkKey]=await Promise.all([
+ secret('services-guest-contact-encryption-key'),
+ secret('services-guest-network-attestation-key'),
+]);
+const codeFile=join(process.env.RUNNER_TEMP,'services-guest-completion-otp.json');
+const completionBase=process.env.GUEST_COMPLETION_BFF_TEST_BASE_URL??'http://127.0.0.1:3003';
+const originalContact='ci-complete-'+randomBytes(8).toString('hex')+'@example.org';
+const iv=randomBytes(12);
+const contactCipher=createCipheriv('aes-256-gcm',encryptionKey,iv);
+const encrypted=Buffer.concat([contactCipher.update(originalContact,'utf8'),contactCipher.final()]);
+const contactCipherText=['v1',iv.toString('base64url'),
+ contactCipher.getAuthTag().toString('base64url'),encrypted.toString('base64url')].join('.');
+const contactDigest=createHmac('sha256',guestBackendKey)
+ .update('guest-contact:v1\\0').update('email\\0'+originalContact).digest('hex');
+const networkDigest=randomBytes(32).toString('hex');
+const timestamp=String(Date.now());
+const networkProof='v1.'+networkDigest+'.'+timestamp+'.'+createHmac('sha256',networkKey)
+ .update('services-otp-network:v1\\n').update(networkDigest).update('\\n')
+ .update(timestamp).digest('hex');
 const accountBackendKey=Buffer.from(process.env.ACCOUNT_SESSION_HMAC_KEY??'','base64');
 assert.equal(accountBackendKey.length,32);
 const base=process.env.PRIVATE_BFF_TEST_BASE_URL??'http://127.0.0.1:3001';
@@ -84,8 +104,8 @@ try{
   [ids.offer,ids.definition,ids.org]);
  await db.query(`INSERT INTO guest_contacts
   (id,channel,encrypted_value,digest,verified_at,expires_at)
-  VALUES($1,'email','CI encrypted fixture',$2,now(),now()+interval '1 day')`,
-  [ids.contact,'ci-guest-seller-'+randomUUID()]);
+  VALUES($1,'email',$2,$3,now(),now()+interval '1 day')`,
+  [ids.contact,contactCipherText,contactDigest]);
  await db.query(`INSERT INTO guest_capabilities
   (id,guest_contact_id,scope,token_hash,expires_at)
   VALUES($1,$2,'CREATE_REQUEST',$3,now()+interval '15 minutes')`,
@@ -155,7 +175,95 @@ try{
  });
  const stale=await sellerAccept(createdRequest,sellerSealed.csrf,1,randomUUID());
  assert.equal(stale.status,409,'different idempotency key cannot re-accept decision');
- console.log('Live CI guest CREATE_REQUEST -> seller accept -> guest READ_CANCEL accepted status verified');
+
+ // Continue the SAME committed request through independent OTP completion BFF.
+ // CI-only adapter delivers the true generated OTP to an ephemeral 0600 file.
+ const accessSession=openGuestRequestAccess(guestWebKey,accessCookie.split('=')[1]);
+ assert.ok(accessSession&&accessSession.requestId===createdRequest);
+ const guestCsrf=accessSession.csrf;
+ const completionUrl='/api/guest-requests/'+createdRequest+'/completion';
+ const completionPost=(suffix,payload,{cookie=accessCookie,csrf=guestCsrf,
+  proof=networkProof,match}={})=>fetch(
+  new URL(completionUrl+suffix,completionBase),{
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+   headers:{'Content-Type':'application/json',
+    Origin:'https://services.example.test','Sec-Fetch-Site':'same-origin',
+    Cookie:cookie,'X-Services-CSRF':csrf,
+    'X-Services-Network-Proof':proof,
+    ...(match?{'If-Match':match}:{})},
+   body:JSON.stringify(payload),
+  });
+
+ const deniedStart=await completionPost('/challenges',{locale:'kk'},
+  {csrf:randomBytes(32).toString('base64url')});
+ assert.equal(deniedStart.status,503);
+ const forgedNetwork=await completionPost('/challenges',{locale:'kk'},
+  {proof:'v1.invalid'});
+ assert.equal(forgedNetwork.status,503);
+ const started=await completionPost('/challenges',{locale:'kk'});
+ assert.equal(started.status,202,'real OTP must be initiated through scoped guest BFF');
+ const challengeResponse=await started.json();
+ assert.deepEqual(Object.keys(challengeResponse),['challenge_id']);
+ const challengeCookie=started.headers.getSetCookie()
+  .find(x=>x.startsWith('__Host-services_guest_completion_challenge='))?.split(';')[0];
+ assert.ok(challengeCookie);
+ assert.match(started.headers.getSetCookie()[0]??'',/httponly/i);
+ assert.ok(!JSON.stringify(challengeResponse).includes(guestToken));
+ const otp=JSON.parse(await readFile(codeFile,'utf8'));
+ assert.deepEqual({purpose:otp.purpose,destination:otp.destination},
+  {purpose:'COMPLETE_REQUEST',destination:originalContact});
+ assert.match(otp.code,/^[0-9]{6}$/);
+ const challengePath='/challenges/'+challengeResponse.challenge_id+'/verify';
+ const verificationCookie=accessCookie+'; '+challengeCookie;
+ const wrongCode=otp.code==='999999'?'999998':'999999';
+ assert.equal((await completionPost(challengePath,{code:wrongCode},
+  {cookie:verificationCookie})).status,503);
+ const verified=await completionPost(challengePath,{code:otp.code},
+  {cookie:verificationCookie});
+ assert.equal(verified.status,200);
+ assert.deepEqual(await verified.json(),{verified:true});
+ const completionCookie=verified.headers.getSetCookie()
+  .find(x=>x.startsWith('__Host-services_guest_completion='))?.split(';')[0];
+ assert.ok(completionCookie,'one-use write bearer is sealed in HttpOnly cookie');
+ assert.match(verified.headers.getSetCookie().join(' '),/httponly/i);
+ assert.ok(!verified.headers.getSetCookie().join(' ').includes(otp.code));
+ const writeCookies=accessCookie+'; '+completionCookie;
+ assert.equal((await completionPost('/confirm',{},
+  {cookie:accessCookie,match:'"2"'})).status,503,
+  'READ_CANCEL alone must never confirm completion');
+ assert.equal((await completionPost('/confirm',{},
+  {cookie:writeCookies,match:'W/"2"'})).status,409);
+ const acceptedStill=await db.query('SELECT status,version FROM service_requests WHERE id=$1',
+  [createdRequest]);
+ assert.deepEqual(acceptedStill.rows[0],{status:'ACCEPTED',version:2});
+ const finished=await completionPost('/confirm',{},
+  {cookie:writeCookies,match:'"2"'});
+ assert.equal(finished.status,200,'real OTP write proof must complete accepted request');
+ assert.deepEqual(await finished.json(),
+  {code:'COMPLETED',id:createdRequest,version:3});
+ assert.ok(finished.headers.getSetCookie()
+  .some(x=>x.startsWith('__Host-services_guest_completion=')&&/max-age=0/i.test(x)));
+ const completedStatus=await guestStatus(createdRequest,accessCookie);
+ assert.equal(completedStatus.status,200);
+ const completedBody=await completedStatus.json();
+ assert.equal(completedBody.state,'completed');
+ assert.equal(completedBody.version,3);
+ assert.equal((await completionPost('/confirm',{},
+  {cookie:writeCookies,match:'"2"'})).status,503,
+  'replayed one-use proof cannot duplicate completion');
+ assert.equal((await db.query('SELECT id FROM service_experiences WHERE request_id=$1',
+  [createdRequest])).rowCount,0,'guest completion must not create verified review');
+ const completedEvents=await db.query(
+  'SELECT topic,safe_payload FROM domain_outbox_events WHERE subject_id=$1',
+  [createdRequest]);
+ assert.deepEqual(new Set(completedEvents.rows.map(x=>x.topic)),
+  new Set(['service_request.created','service_request.accepted',
+   'service_request.completed']));
+ assert.ok(completedEvents.rows.every(x=>JSON.stringify(x.safe_payload)==='{}'));
+ assert.equal((await db.query('SELECT id FROM notification_intents WHERE dedupe_key=$1',
+  ['request-completed:seller:'+createdRequest])).rowCount,1);
+ console.log('Live CI guest CREATE -> seller ACCEPT -> delivered OTP -> guest COMPLETE -> refreshed status PASS');
+
 }finally{
  if(connected){
   if(createdRequest){
