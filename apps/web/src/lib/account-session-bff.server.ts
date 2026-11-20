@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,readBackendAppealableProfileRejection,requestBackendProfessionalProfileAppeal,type ProfessionalEdit}
+ revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,readBackendAppealableProfileRejection,requestBackendProfessionalProfileAppeal,completeBackendCustomerRequest,type ProfessionalEdit}
  from './account-session-transport.mjs';
 
 function config(){
@@ -115,4 +115,16 @@ export async function submitOwnProfessionalProfileAppeal(input:{
  if(!auth)throw new Error('unauthorized');
  return requestBackendProfessionalProfileAppeal({...config(),accountBearer:auth.accountBearer,
   id:input.id,version:input.version,decisionId:input.decisionId});
+}
+
+/** CSRF-protected browser-to-backend completion, never exposes bearer. */
+export async function completeOwnAccountRequest(input:{
+ cookieValue:string|undefined;csrfToken:string|undefined;
+ origin:string|null;fetchSite:string|null;
+ requestId:string;version:number;
+}){
+ const auth=authenticateAccountWebMutation(input);
+ if(!auth)throw new Error('unauthorized');
+ return completeBackendCustomerRequest({...config(),
+  accountBearer:auth.accountBearer,requestId:input.requestId,version:input.version});
 }
