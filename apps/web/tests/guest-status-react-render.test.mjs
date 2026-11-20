@@ -32,6 +32,7 @@ instance.require=(id)=>{
     };
   if(id==='./GuestRequestStatusCheck.module.css')return {default:{panel:'test-panel',error:'test-error'}};
   if(id==='./RequestTimeline')return {RequestTimeline:()=>React.createElement('span',null,'timeline')};
+  if(id==='./GuestRequestCompletion')return {GuestRequestCompletion:()=>React.createElement('span',null,'completion')};
   return require(id);
 };
 instance._compile(compiled.outputText,filename);

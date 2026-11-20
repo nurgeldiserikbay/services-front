@@ -17,9 +17,9 @@ const copy={
 } as const;
 
 /** Private, server-authorized receipt presentation; not publicly mounted. */
-export function GuestRequestReceipt({locale,receipt,serviceOfferId,statusEnabled=false}:{
+export function GuestRequestReceipt({locale,receipt,serviceOfferId,statusEnabled=false,completionEnabled=false}:{
   locale:Locale;receipt:Pick<RequestReceipt,'id'|'state'>;
-  serviceOfferId?:string;statusEnabled?:boolean;
+  serviceOfferId?:string;statusEnabled?:boolean;completionEnabled?:boolean;
 }){
   const t=copy[locale];
   return <section className={styles.receipt} aria-label={t.heading}>
@@ -28,6 +28,7 @@ export function GuestRequestReceipt({locale,receipt,serviceOfferId,statusEnabled
     <p role="status">{receipt.state==='pending'?(locale==='kk'?'Орындаушы жауабын күтуде':'Ожидает ответа исполнителя'):(locale==='kk'?'Өтінім күйі: ':'Статус заявки: ')+receipt.state}</p>
     <p>{t.note}</p><small>{t.privacy}</small>
     {statusEnabled&&serviceOfferId&&<GuestRequestStatusCheck locale={locale}
-      requestId={receipt.id} serviceOfferId={serviceOfferId}/>}
+      requestId={receipt.id} serviceOfferId={serviceOfferId}
+      completionEnabled={completionEnabled}/>}
   </section>;
 }

@@ -8,6 +8,7 @@ import {
 } from '@/lib/guest-status-ui-core.mjs';
 import styles from './GuestRequestStatusCheck.module.css';
 import {RequestTimeline} from './RequestTimeline';
+import {GuestRequestCompletion} from './GuestRequestCompletion';
 
 const translations={
   kk:{
@@ -38,7 +39,7 @@ const translations={
   },
 } as const;
 
-type Props={locale:Locale;requestId:string;serviceOfferId:string};
+type Props={locale:Locale;requestId:string;serviceOfferId:string;completionEnabled?:boolean};
 
 /** A receipt switch must replace the whole stateful subtree during React's
  * render, not after an effect: no old customer's status is ever painted.
@@ -47,7 +48,7 @@ type Props={locale:Locale;requestId:string;serviceOfferId:string};
 export function GuestRequestStatusCheck(props:Props){
   return <ReceiptStatusView key={props.requestId+'|'+props.serviceOfferId} {...props}/>;
 }
-function ReceiptStatusView({locale,requestId,serviceOfferId}:Props){
+function ReceiptStatusView({locale,requestId,serviceOfferId,completionEnabled=false}:Props){
   const t=translations[locale];
   const [state,setState]=useState<PrivateGuestStatusState|null>(null);
   const [version,setVersion]=useState<number|null>(null);
@@ -120,6 +121,9 @@ function ReceiptStatusView({locale,requestId,serviceOfferId}:Props){
     {version!==null&&state!==null&&<>
       <small>{t.version}: {version}</small>
       <RequestTimeline state={state} locale={locale}/>
+      {completionEnabled&&state==='accepted'&&<GuestRequestCompletion
+        key={requestId+'|'+version} locale={locale} requestId={requestId}
+        version={version} onRefresh={refresh}/>}
     </>}
     {error&&<p role="alert" className={styles.error}>{t.error}</p>}
     <button type="button" onClick={refresh} disabled={pending}>
