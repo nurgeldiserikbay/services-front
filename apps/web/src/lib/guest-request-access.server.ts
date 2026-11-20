@@ -59,3 +59,21 @@ export function clearGuestRequestAccess(){
     options:{httpOnly:true as const,secure:true as const,
       sameSite:'strict' as const,path:'/' as const,maxAge:0}};
 }
+
+/**
+ * Server-only CSRF bootstrap for a previously authenticated request receipt.
+ * Return only the CSRF nonce, never the READ_CANCEL capability. The caller
+ * must separately pass the usual Origin and Fetch Metadata mutation guards.
+ */
+export function readGuestRequestMutationCsrf(input:{
+  requestId:string;cookieValue:string|undefined;fetchSite:string|null;
+}):string|null{
+  // Browser fetch() from our own page supplies same-origin metadata.
+  // Refuse cross-site, navigation and missing metadata before cookie work.
+  if(input.fetchSite!=='same-origin'||!process.env.SERVICES_WEB_ORIGIN)
+    return null;
+  const session=openGuestRequestAccess(accessKey(),input.cookieValue);
+  if(!session||!verifyGuestRequestAccess(session,input.requestId,session.csrf))
+    return null;
+  return session.csrf;
+}
