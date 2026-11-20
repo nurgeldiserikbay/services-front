@@ -46,10 +46,11 @@ dispatcher.dispatchCompleteRequest=async(...args)=>{
     ?error.code:null,
    constraint:typeof error?.constraint==='string'&&
     /^[a-z0-9_]{1,90}$/.test(error.constraint)?error.constraint:null,
-   // Only code locations, not exception text or query parameters.
+   // Only source path/line location, never exception text or parameters.
    locations:typeof error?.stack==='string'?
-    error.stack.split('\\n').slice(1,5).map(frame=>
-     /(?:src|test)\\/[a-zA-Z0-9_./-]+:\\d+:\\d+/.exec(frame)?.[0]??'unknown') : [],
+    error.stack.split(String.fromCharCode(10)).slice(1,4).map(frame=>
+     frame.trim().split('(').at(-1).split('/').slice(-3)
+      .join('/').slice(0,120)) : [],
   };
   console.error('CI_GUEST_COMPLETION_DISPATCH_ERROR',JSON.stringify(event));
   throw error;
