@@ -49,3 +49,7 @@ export type CustomerCompletionTransportResult=
 export function completeBackendCustomerRequest(options:AccountSessionTransportOptions&{
  requestId:string;version:number;
 }):Promise<CustomerCompletionTransportResult>;
+
+export type CustomerRequestSummary={id:string;state:'pending'|'accepted'|'declined'|'cancelled_by_customer'|'cancelled_by_provider'|'cancelled_mutual'|'completed'|'expired';version:number;created_at:string};
+export type CustomerRequestInventory={items:CustomerRequestSummary[];next_cursor:string|null};
+export function listBackendCustomerRequests(options:AccountSessionTransportOptions&{cursor?:string|null}):Promise<CustomerRequestInventory>;
