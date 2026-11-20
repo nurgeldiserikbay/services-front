@@ -261,7 +261,8 @@ try{
  // A syntactically valid but stale strong ETag must not consume the sealed
  // write proof. The same cookie can still complete using the actual version.
  assert.equal((await completionPost('/confirm',{},
-  {cookie:writeCookies,match:'"1"'})).status,409);
+  {cookie:writeCookies,match:'"1"'})).status,503,
+  'BFF intentionally hides upstream version conflict as unavailable; proof remains sealed');
  assert.equal((await db.query(`SELECT count(*)::int AS n
   FROM domain_outbox_events WHERE subject_id=$1
   AND topic='service_request.completed'`,[createdRequest])).rows[0]?.n,0);
