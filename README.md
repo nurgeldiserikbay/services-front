@@ -21,6 +21,12 @@ The old scaffold-only summary was outdated. The repository has progressed beyond
 - The backend account endpoint is customer-authoritative: only an ACTIVE account session with ownership may complete an accepted request. BFF verifies a tightly bounded no-store reply and suppresses upstream errors/secrets. An unknown upstream commit outcome returns 503, never a false completion; clients must refresh state rather than assume success.
 - **Not a completed user journey:** no registered-customer request inventory/UI is wired by this PR; end-user login, backend/frontend current-SHA contract CI, staging browser E2E, secure ingress, mobile flows and guest completion remain separate release gates. Do not turn on either flag solely because unit tests pass.
 
+## Prepared customer request list and completion UI (2026-11-20)
+
+- Default-off localized page `/{kk|ru}/account/my-requests` shows only backend-authorized registered-customer request summaries (status, version and UTC creation time), with bounded 20-item pagination. Accessible from the account dashboard when `SERVICES_WEB_ENABLE_CUSTOMER_REQUESTS=enabled`.
+- Accepted requests render an explicit completion button only with the separate `SERVICES_WEB_ENABLE_CUSTOMER_COMPLETION=enabled` flag. It sends the session's CSRF token and strong `If-Match` to the same-origin BFF; no raw backend bearer or customer ID is exposed. An uncertain upstream outcome prompts users to check status, never assumes completion.
+- Backend dependency: `GET /v1/account/requests` in services-back PR #359. Frontend default CI uses an older pinned backend SHA; a green PR CI does **not** prove current backend integration. The page must remain off until PR #359 merges, cross-repo current SHA integration, real login/cookie issuance and browser/staging acceptance are verified.
+
 ## Release gates (all require verification)
 
 1. Verify backend dependency versions, merged PRs, OpenAPI compatibility and latest green CI on the exact release commit.

@@ -18,6 +18,7 @@ export default async function AccountPage({params}:{params:Promise<{locale:strin
  }catch{notFound();}
  const kk=locale==='kk';
  const links=[
+  {enabled:process.env.SERVICES_WEB_ENABLE_CUSTOMER_REQUESTS==='enabled',path:'my-requests',label:kk?'Менің тапсырыстарым':'Мои заказы'},
   {enabled:process.env.SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILES==='enabled',path:'profiles',label:kk?'Мамандық профильдері':'Профили специалиста'},
   {enabled:process.env.SERVICES_WEB_ENABLE_SELLER_BFF==='enabled'&&process.env.SERVICES_WEB_ENABLE_SELLER_WORKSPACE==='enabled',path:'requests',label:kk?'Өтінімдер':'Заявки'},
   {enabled:process.env.SERVICES_WEB_ENABLE_ACCOUNT_NOTIFICATIONS==='enabled',path:'notifications',label:kk?'Хабарламалар':'Уведомления'},
