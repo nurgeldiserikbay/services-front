@@ -9,6 +9,7 @@ import {
 import styles from './GuestRequestStatusCheck.module.css';
 import {RequestTimeline} from './RequestTimeline';
 import {GuestRequestCompletion} from './GuestRequestCompletion';
+import {shouldResetGuestCompletionAfterVerifiedRefresh} from '@/lib/guest-completion-ui-core.mjs';
 
 const translations={
   kk:{
@@ -97,7 +98,8 @@ function ReceiptStatusView({locale,requestId,serviceOfferId,completionEnabled=fa
         currentVersion.current=result.version;
         setState(result.state);
         setVersion(result.version);
-      }else if(currentVersion.current===result.version&&result.state==='accepted'){
+      }else if(shouldResetGuestCompletionAfterVerifiedRefresh(
+        currentVersion.current,result.version,result.state)){
         // A verified refresh of the same accepted version is the only safe
         // way to leave the completion UI's ambiguous-commit lock. Remount
         // its short-lived OTP/CSRF state; never retry the old mutation.
