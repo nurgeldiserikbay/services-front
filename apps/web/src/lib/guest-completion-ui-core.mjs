@@ -4,7 +4,8 @@ const LIMIT=1024;
 export function guestCompletionUrl(requestId,suffix=''){
  if(typeof requestId!=='string'||!UUID.test(requestId)||
     !['/bootstrap','/challenges','/confirm'].includes(suffix)&&
-    !/^\/challenges\/[0-9a-f-]{36}\/verify$/i.test(suffix))
+    !(suffix.startsWith('/challenges/')&&suffix.endsWith('/verify')&&
+      UUID.test(suffix.slice('/challenges/'.length,-'/verify'.length))))
   throw new Error('guest_completion_invalid_url');
  return '/api/guest-requests/'+requestId.toLowerCase()+'/completion'+suffix;
 }
@@ -15,6 +16,8 @@ export async function readGuestCompletionUiResponse(response,kind,requestId,vers
     !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(
       response.headers.get('content-type')??'')||
     !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(
+      response.headers.get('cache-control')??'')||
+    /(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(
       response.headers.get('cache-control')??''))
   throw new Error('guest_completion_unavailable');
  const length=response.headers.get('content-length');
@@ -23,17 +26,23 @@ export async function readGuestCompletionUiResponse(response,kind,requestId,vers
  if(!response.body)throw new Error('guest_completion_unavailable');
  const reader=response.body.getReader();
  const decoder=new TextDecoder('utf-8',{fatal:true});
- let raw='',size=0;
+ let raw='',size=0,ended=false;
  try{
   for(;;){
    const {done,value}=await reader.read();
-   if(done)break;
+   if(done){ended=true;break;}
+   if(!(value instanceof Uint8Array)||size+value.byteLength>LIMIT)
+    throw new Error('guest_completion_unavailable');
    size+=value.byteLength;
-   if(size>LIMIT)throw new Error('guest_completion_unavailable');
    raw+=decoder.decode(value,{stream:true});
   }
   raw+=decoder.decode();
- }finally{reader.releaseLock();}
+ }catch{
+  throw new Error('guest_completion_unavailable');
+ }finally{
+  if(!ended)try{void reader.cancel().catch(()=>{});}catch{}
+  reader.releaseLock();
+ }
  let data;
  try{data=JSON.parse(raw);}catch{throw new Error('guest_completion_unavailable');}
  if(!data||typeof data!=='object'||Array.isArray(data))
