@@ -93,7 +93,12 @@ try{
  const strangerHtml=await strangerPage.text();
  assert.ok(strangerHtml.includes(foreign.slice(0,8)));
  assert.ok(!strangerHtml.includes(owned[0].slice(0,8)));
- assert.equal((await read('')).status,404,'no account cookie must deny page');
+ const anonymous=await read('');
+ assert.ok([200,404].includes(anonymous.status));
+ const anonymousHtml=await anonymous.text();
+ assert.match(anonymousHtml,/noindex/i,'streamed Next.js notFound must be noindex');
+ assert.ok(!anonymousHtml.includes(owned[0].slice(0,8)),
+  'anonymous response must never include private request summary');
 
  const deniedCsrf=await mutation({csrf:randomBytes(32).toString('base64url')});
  assert.equal(deniedCsrf.status,404);
@@ -143,8 +148,13 @@ try{
  await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessions[0]]);
  const revoked=await mutation({id:owned[1]});
  assert.equal(revoked.status,503,'revoked bearer must never reach mutation');
- assert.equal((await read(cookies[0])).status,404,
-  'revoked account session must deny page on server render');
+ const revokedPage=await read(cookies[0]);
+ assert.ok([200,404].includes(revokedPage.status),
+  'Next.js streaming notFound can retain HTTP 200');
+ const revokedHtml=await revokedPage.text();
+ assert.match(revokedHtml,/noindex/i);
+ assert.ok(!revokedHtml.includes(owned[0].slice(0,8)),
+  'revoked session cannot render previously owned request information');
  console.log('Current frontend/backend live customer list -> complete -> refreshed status PASS');
 }finally{
  if(connected){
