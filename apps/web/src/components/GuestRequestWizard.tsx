@@ -43,10 +43,11 @@ const copy={
  */
 export function GuestRequestWizard({
   locale,serviceOfferId,onStartChallenge,onVerifyChallenge,onCreateRequest,statusEnabled=false,
+  completionEnabled=false,
 }:{
   locale:Locale;
   serviceOfferId:string;
-  statusEnabled?:boolean;
+  statusEnabled?:boolean;completionEnabled?:boolean;
   onStartChallenge:(draft:GuestInquiryDraft)=>Promise<Challenge>;
   onVerifyChallenge:(challengeId:string,code:string)=>Promise<OtpVerificationResult>;
   onCreateRequest:(draft:GuestInquiryDraft,idempotencyKey:string)=>Promise<Created>;
@@ -116,7 +117,8 @@ export function GuestRequestWizard({
 
   if(step==='receipt'&&receipt){
     return <GuestRequestReceipt locale={locale} receipt={receipt}
-      serviceOfferId={serviceOfferId} statusEnabled={statusEnabled}/>;
+      serviceOfferId={serviceOfferId} statusEnabled={statusEnabled}
+      completionEnabled={completionEnabled}/>;
   }
   return <div className={styles.wizard}>
     {step==='draft'&&<>
