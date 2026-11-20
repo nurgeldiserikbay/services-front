@@ -14,6 +14,13 @@ The old scaffold-only summary was outdated. The repository has progressed beyond
 
 **Important:** These PR descriptions establish implementation scope, not current merge status or passing CI. A feature-gated or unmounted module is not an enabled user journey. Do not claim production-ready login, OTP, notifications, native builds, or complete booking flows without deployment and E2E evidence.
 
+## Prepared registered-customer completion BFF (2026-11-20)
+
+- Default-off endpoint: `POST /api/account/requests/:id/complete` (requires both `SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF=enabled` and `SERVICES_WEB_ENABLE_CUSTOMER_COMPLETION=enabled`).
+- Reuses the sealed, HttpOnly account session and same-origin CSRF token. Requires strong `If-Match` and exact `{}` JSON body (2 bytes); ignores browser Authorization and customer-ID claims. Backend bearer stays server-side and calls `POST /v1/account/requests/:id/complete`.
+- The backend account endpoint is customer-authoritative: only an ACTIVE account session with ownership may complete an accepted request. BFF verifies a tightly bounded no-store reply and suppresses upstream errors/secrets. An unknown upstream commit outcome returns 503, never a false completion; clients must refresh state rather than assume success.
+- **Not a completed user journey:** no registered-customer request inventory/UI is wired by this PR; end-user login, backend/frontend current-SHA contract CI, staging browser E2E, secure ingress, mobile flows and guest completion remain separate release gates. Do not turn on either flag solely because unit tests pass.
+
 ## Release gates (all require verification)
 
 1. Verify backend dependency versions, merged PRs, OpenAPI compatibility and latest green CI on the exact release commit.
