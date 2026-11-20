@@ -420,3 +420,54 @@ export async function completeBackendCustomerRequest({
   return {kind:'completed',id,version:payload.version};
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+/** Registered customer request inventory: no seller/contact/private notes. */
+export async function listBackendCustomerRequests({
+ baseUrl,production=true,accountBearer,cursor=null,transport=fetch,
+}){
+ if(cursor!==null&&(typeof cursor!=='string'||cursor.length===0||
+  cursor.length>180||!/^[A-Za-z0-9_-]+$/.test(cursor)))
+  throw new AccountSessionTransportUnavailable();
+ try{
+  const response=await transport(endpoint(baseUrl,production,
+    '/account/requests')+(cursor?'?cursor='+encodeURIComponent(cursor):''),{
+   method:'GET',headers:headers(accountBearer),cache:'no-store',
+   credentials:'omit',redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  const cache=response.headers.get('cache-control')??'';
+  const length=response.headers.get('content-length');
+  if(response.status!==200||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(
+    response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||
+   /(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^(?:0|[1-9][0-9]*)$/.test(length)||
+    Number(length)>MAX_BYTES))){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   throw new AccountSessionTransportUnavailable();
+  }
+  const row=await readBoundedJson(response);
+  if(!row||typeof row!=='object'||Array.isArray(row)||
+   Object.keys(row).sort().join(',')!=='items,next_cursor'||
+   !Array.isArray(row.items)||row.items.length>20||
+   !(row.next_cursor===null||(typeof row.next_cursor==='string'&&
+    /^[A-Za-z0-9_-]{1,180}$/.test(row.next_cursor))))
+   throw new AccountSessionTransportUnavailable();
+  const states=new Set(['pending','accepted','declined',
+   'cancelled_by_customer','cancelled_by_provider','cancelled_mutual',
+   'completed','expired']);
+  const seen=new Set();
+  const items=row.items.map(x=>{
+   if(!x||typeof x!=='object'||Array.isArray(x)||
+    Object.keys(x).sort().join(',')!=='created_at,id,state,version'||
+    typeof x.id!=='string'||!UUID.test(x.id)||x.id!==x.id.toLowerCase()||
+    seen.has(x.id)||!states.has(x.state)||
+    !Number.isSafeInteger(x.version)||x.version<1||
+    !validUtcDate(x.created_at))
+    throw new AccountSessionTransportUnavailable();
+   seen.add(x.id);
+   return {id:x.id,state:x.state,version:x.version,created_at:x.created_at};
+  });
+  return {items,next_cursor:row.next_cursor};
+ }catch{throw new AccountSessionTransportUnavailable();}
+}
