@@ -183,6 +183,37 @@ try{
   !foreignHtml.includes(blankReceipt.id.slice(0,8)),
   'foreign account must not see either customer request');
 
+ // Five persisted account requests inside the last minute exhaust the
+ // backend ceiling. These CI-only rows never represent provider activity.
+ for(let i=0;i<3;i++){
+  const seeded=randomUUID();
+  requestIds.push(seeded);
+  await db.query(`
+   INSERT INTO service_requests
+    (id,offer_id,customer_person_id,source_context,
+     seller_organization_id,status,note)
+   VALUES($1::uuid,$2::uuid,$3::uuid,'ORGANIZATION',$4::uuid,
+    'PENDING',NULL)
+  `,[seeded,offer,persons[0],organization]);
+ }
+ const blockedKey='registered_budget_'+randomUUID().replace(/-/g,'');
+ const blocked=await submit({key:blockedKey});
+ assert.equal(blocked.status,429,'account ceiling must surface a sanitized 429');
+ assert.deepEqual(await blocked.json(),{code:'RATE_LIMITED'});
+ assert.match(blocked.headers.get('cache-control')??'',/no-store/);
+ assert.equal(blocked.headers.get('set-cookie'),null);
+ // A previously committed idempotency key must still recover the original
+ // receipt at the limit, even if another newer key is denied.
+ const replayAtBudget=await submit();
+ assert.equal(replayAtBudget.status,201);
+ assert.deepEqual(await replayAtBudget.json(),receipt);
+ const blockedLedger=await db.query(`
+  SELECT count(*)::text AS n FROM idempotency_records
+  WHERE actor_scope=$1 AND route='/account/requests' AND key=$2
+ `,['account:'+persons[0],blockedKey]);
+ assert.equal(blockedLedger.rows[0]?.n,'0',
+  'a budget denial may not create a successful replay ledger');
+
  await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessions[0]]);
  const revoked=await submit({key:'registered_revoked_'+randomUUID().replace(/-/g,'')});
  assert.equal(revoked.status,503,'revoked bearer must never report creation success');
@@ -195,8 +226,8 @@ try{
   'revoked session must not reveal private request inventory');
  counts=await db.query(
   'SELECT count(*)::text AS n FROM service_requests WHERE offer_id=$1',[offer]);
- assert.equal(counts.rows[0]?.n,'2',
-  'revocation cannot create another request beyond noted + null-note');
+ assert.equal(counts.rows[0]?.n,'5',
+  'budget rejection and revocation cannot create a sixth request');
  console.log('Registered customer Next.js -> BFF -> backend -> PostgreSQL -> own inventory PASS');
 }finally{
  if(connected){
