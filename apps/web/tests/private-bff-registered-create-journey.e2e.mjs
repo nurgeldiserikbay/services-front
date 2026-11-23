@@ -92,7 +92,7 @@ try{
  assert.equal(originDenied.status,404,'foreign origin is forbidden');
  const tampered=await submit({payload:{...body,customer_person_id:persons[1]}});
  assert.equal(tampered.status,400,'customer person must never be client-selectable');
- let counts=await db.query<{n:string}>(
+ let counts=await db.query(
   'SELECT count(*)::text AS n FROM service_requests WHERE offer_id=$1',[offer]);
  assert.equal(counts.rows[0]?.n,'0','denied requests must cause no creation');
 
@@ -154,7 +154,7 @@ try{
  assert.match(revokedHtml,/noindex/i);
  assert.ok(!revokedHtml.includes(receipt.id.slice(0,8)),
   'revoked session must not reveal private request inventory');
- counts=await db.query<{n:string}>(
+ counts=await db.query(
   'SELECT count(*)::text AS n FROM service_requests WHERE offer_id=$1',[offer]);
  assert.equal(counts.rows[0]?.n,'1','revocation cannot create another request');
  console.log('Registered customer Next.js -> BFF -> backend -> PostgreSQL -> own inventory PASS');
