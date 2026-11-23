@@ -8,13 +8,15 @@ import {readCommittedCustomerCreateReceipt} from
 type Props={
  serviceOfferId:string;locale:'kk'|'ru';csrf:string;
 };
-type Phase='idle'|'sending'|'uncertain'|'conflict'|'created';
+type Phase='idle'|'sending'|'uncertain'|'rate_limited'|'conflict'|'created';
 const LABELS={
  kk:{
   title:'Қызметке өтінім беру',note:'Түсініктеме (міндетті емес)',
   consent:'Өтінімді орындаушыға жіберуге келісемін',
   submit:'Өтінімді жіберу',sending:'Жіберілуде…',
   retry:'Сол өтінімді қайта тексеру',created:'Өтінім қабылданды',
+  retryAfterLimit:'Лимиттен кейін осы өтінімді қайта жіберу',
+  rateLimited:'Өтінімдер лимитіне жеттіңіз. Кейінірек дәл осы өтінімді қайта жіберіңіз.',
   uncertain:'Нәтиже белгісіз. Қайталанбас үшін сол кілтпен қайта тексеріңіз.',
   conflict:'Өтінім өзгерген немесе қызмет қолжетімсіз. Күйін тексеріңіз.',
   orders:'Менің өтінімдерім',counter:'1000 таңбадан аспауы тиіс',
@@ -24,6 +26,8 @@ const LABELS={
   consent:'Согласен отправить заявку исполнителю',
   submit:'Отправить заявку',sending:'Отправляем…',
   retry:'Проверить ту же заявку ещё раз',created:'Заявка принята',
+  retryAfterLimit:'Повторить эту же заявку позже',
+  rateLimited:'Лимит заявок исчерпан. Позже повторите ту же заявку.',
   uncertain:'Результат неизвестен. Повторите с тем же ключом, чтобы избежать дубля.',
   conflict:'Заявка изменена или услуга недоступна. Проверьте статус.',
   orders:'Мои заявки',counter:'Не более 1000 символов',
@@ -61,6 +65,11 @@ export function CustomerRequestCreateForm({serviceOfferId,locale,csrf}:Props){
      consent_to_contact:true,
     }),
    });
+   if(response.status===429){
+    // A definitive limit denial must not be shown as unknown commit.
+    // Preserve the exact key and frozen form for a deliberate later retry.
+    setPhase('rate_limited');return;
+   }
    if(response.status===409||response.status===404){
     setPhase('conflict');return;
    }
@@ -95,9 +104,11 @@ export function CustomerRequestCreateForm({serviceOfferId,locale,csrf}:Props){
    </label>
    <button type="button" disabled={phase==='sending'||phase==='conflict'||!consent}
     onClick={submit}>
-    {phase==='sending'?t.sending:phase==='uncertain'?t.retry:t.submit}
+    {phase==='sending'?t.sending:phase==='uncertain'?t.retry:
+     phase==='rate_limited'?t.retryAfterLimit:t.submit}
    </button>
    {phase==='uncertain'&&<p role="alert">{t.uncertain}</p>}
+   {phase==='rate_limited'&&<p role="alert">{t.rateLimited}</p>}
    {phase==='conflict'&&<p role="alert">{t.conflict}</p>}
   </>}
  </section>;

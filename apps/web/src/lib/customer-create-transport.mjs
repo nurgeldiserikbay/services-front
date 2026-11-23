@@ -103,6 +103,10 @@ export async function createBackendCustomerRequest({
    body:JSON.stringify(normalized),credentials:'omit',cache:'no-store',
    redirect:'manual',signal:AbortSignal.timeout(5000),
   });
+  if(response.status===429){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   return {kind:'rate_limited'};
+  }
   if(response.status===409){
    if(response.body)void response.body.cancel().catch(()=>{});
    return {kind:'conflict'};

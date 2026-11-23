@@ -11,6 +11,7 @@ export function readCustomerCreateBody(
 ):Promise<Uint8Array>;
 export type CustomerCreateResult=
  |{kind:'created';id:string;version:1}
+ |{kind:'rate_limited'}
  |{kind:'conflict'}
  |{kind:'not_found'};
 export function createBackendCustomerRequest(input:{
