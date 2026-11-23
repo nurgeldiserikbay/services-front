@@ -136,17 +136,52 @@ try{
   [receipt.id,'request-created:seller:'+receipt.id]);
  assert.deepEqual(effects.rows[0],{audits:1,outbox:1,notices:1});
 
+ // Exercise the exact optional-comment behavior of the localized form:
+ // an empty editor sends JSON note:null, not an empty or invented note.
+ const blankPayload={service_offer_id:offer,note:null,consent_to_contact:true};
+ const blankKey='registered_null_'+randomUUID().replace(/-/g,'');
+ const blankResponse=await submit({key:blankKey,payload:blankPayload});
+ assert.equal(blankResponse.status,201,'empty comment must create through real BFF');
+ const blankReceipt=await blankResponse.json();
+ assert.equal(blankReceipt.code,'CREATED');
+ assert.equal(blankReceipt.version,1);
+ assert.notEqual(blankReceipt.id,receipt.id);
+ requestIds.push(blankReceipt.id);
+ const blankReplay=await submit({key:blankKey,payload:blankPayload});
+ assert.equal(blankReplay.status,201);
+ assert.deepEqual(await blankReplay.json(),blankReceipt);
+ const blankStored=await db.query(`
+  SELECT customer_person_id::text, note FROM service_requests
+  WHERE id=$1::uuid
+ `,[blankReceipt.id]);
+ assert.equal(blankStored.rows[0]?.customer_person_id,persons[0]);
+ assert.equal(blankStored.rows[0]?.note,null,'empty note persists as SQL NULL');
+ const blankEffects=await db.query(`
+  SELECT
+   (SELECT count(*)::int FROM service_request_events
+    WHERE request_id=$1 AND kind='CREATED') AS audits,
+   (SELECT count(*)::int FROM domain_outbox_events
+    WHERE subject_id=$1 AND topic='service_request.created') AS outbox,
+   (SELECT count(*)::int FROM notification_intents
+    WHERE dedupe_key=$2) AS notices
+ `,[blankReceipt.id,'request-created:seller:'+blankReceipt.id]);
+ assert.deepEqual(blankEffects.rows[0],{audits:1,outbox:1,notices:1},
+  'null-note retry must not duplicate audit, outbox or notification');
+
  const own=await inventory();
  assert.equal(own.status,200,'real customer request inventory must load');
  const ownHtml=await own.text();
- assert.ok(ownHtml.includes(receipt.id.slice(0,8)),
-  'created request must appear in same-account inventory');
+ assert.ok(ownHtml.includes(receipt.id.slice(0,8))&&
+  ownHtml.includes(blankReceipt.id.slice(0,8)),
+  'both noted and blank-note requests must appear in owner inventory');
  assert.ok(!ownHtml.includes(body.note)&&!ownHtml.includes(token),
   'private note and bearer must not appear in inventory');
  const foreign=await inventory(foreignSealed);
  assert.equal(foreign.status,200);
- assert.ok(!(await foreign.text()).includes(receipt.id.slice(0,8)),
-  'a different registered account must not see the request');
+ const foreignHtml=await foreign.text();
+ assert.ok(!foreignHtml.includes(receipt.id.slice(0,8))&&
+  !foreignHtml.includes(blankReceipt.id.slice(0,8)),
+  'foreign account must not see either customer request');
 
  await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessions[0]]);
  const revoked=await submit({key:'registered_revoked_'+randomUUID().replace(/-/g,'')});
@@ -160,7 +195,8 @@ try{
   'revoked session must not reveal private request inventory');
  counts=await db.query(
   'SELECT count(*)::text AS n FROM service_requests WHERE offer_id=$1',[offer]);
- assert.equal(counts.rows[0]?.n,'1','revocation cannot create another request');
+ assert.equal(counts.rows[0]?.n,'2',
+  'revocation cannot create another request beyond noted + null-note');
  console.log('Registered customer Next.js -> BFF -> backend -> PostgreSQL -> own inventory PASS');
 }finally{
  if(connected){
