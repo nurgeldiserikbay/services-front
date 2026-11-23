@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {join} from 'node:path';
 import {sealAccountWebSession} from '../src/lib/account-web-session-core.mjs';
+import {exerciseRegisteredCreateChromeRetry} from './helpers/registered-customer-create-chrome.mjs';
 
 // Disposable real Next.js -> HTTPS backend -> PostgreSQL evidence only.
 // CI intentionally inserts isolated fixture sessions, NOT real OTP login.
@@ -84,6 +85,9 @@ try{
  assert.ok(!(await foreignPage.text()).includes('Оставить заявку'),
   'anonymous offer page must not render account create form');
 
+ await exerciseRegisteredCreateChromeRetry({
+  base,offer,sealedCookie:sealed.cookie,
+ });
  const csrfDenied=await submit({csrf:randomBytes(32).toString('base64url')});
  assert.equal(csrfDenied.status,404,'invalid CSRF must deny before backend call');
  const siteDenied=await submit({site:'cross-site'});
