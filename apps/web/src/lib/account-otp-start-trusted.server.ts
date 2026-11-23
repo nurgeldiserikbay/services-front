@@ -1,5 +1,7 @@
 import 'server-only';
 import {startApprovedAccountOtp} from './account-otp-start-core.mjs';
+import {requireAccountOtpCompletionKeys}
+ from './account-otp-completion-preflight.mjs';
 import {authorizeAccountOtpPreauth}
  from './account-otp-preauth.server';
 import {
@@ -26,6 +28,14 @@ export async function startTrustedAccountOtp(input:{
     process.env.SERVICES_WEB_ENABLE_ACCOUNT_OTP_BOOTSTRAP!=='enabled'||
     process.env.SERVICES_WEB_ENABLE_ACCOUNT_OTP_INIT_BFF!=='enabled')
   throw new Error('Account OTP start unavailable');
+ // All future cookie and backend authorization secrets must exist and
+ // belong to independent security domains BEFORE any OTP is dispatched.
+ requireAccountOtpCompletionKeys({
+  preauth:process.env.SERVICES_WEB_ACCOUNT_OTP_PREAUTH_KEY,
+  challenge:process.env.SERVICES_WEB_ACCOUNT_OTP_CHALLENGE_KEY,
+  session:process.env.SERVICES_WEB_ACCOUNT_SESSION_KEY,
+  privateBff:process.env.SERVICES_WEB_ACCOUNT_LOGIN_BFF_KEY,
+ });
  return startApprovedAccountOtp({
   ...input,authorizePreauth:authorizeAccountOtpPreauth,
   requireChallengeKey:requireAccountOtpChallengeKey,
