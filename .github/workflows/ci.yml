@@ -13,7 +13,7 @@ on:
         description: 'Full 40-character backend commit SHA for compatibility test'
         required: true
         type: string
-        default: '29daa7ff5645ae5628a09092cc0a167326fd9505'
+        default: '2739ab76bfb38d4501da1a57d0caae59da599aef'
 permissions:
   contents: read
 concurrency:
@@ -55,12 +55,12 @@ jobs:
           # Lockfile-bearing backend revision, pinned for reproducible frontend API compatibility.
           # Full integration CI has not yet been confirmed green.
           # Avoid a moving main branch changing frontend CI inputs between runs.
-          ref: ${{ inputs.backend_sha || '29daa7ff5645ae5628a09092cc0a167326fd9505' }}
+          ref: ${{ inputs.backend_sha || '2739ab76bfb38d4501da1a57d0caae59da599aef' }}
           path: services-back
           persist-credentials: false
       - name: Verify selected backend commit SHA
         env:
-          EXPECTED_BACKEND_SHA: ${{ inputs.backend_sha || '29daa7ff5645ae5628a09092cc0a167326fd9505' }}
+          EXPECTED_BACKEND_SHA: ${{ inputs.backend_sha || '2739ab76bfb38d4501da1a57d0caae59da599aef' }}
         run: |
           [[ "$EXPECTED_BACKEND_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
           echo "Frontend SHA: $(git rev-parse HEAD)"
@@ -178,6 +178,7 @@ jobs:
           (cd services-back && PORT=3101 \
             SERVICES_ENABLE_GUEST_STATUS_HTTP=enabled \
             SERVICES_ENABLE_GUEST_CREATE_HTTP=enabled \
+            SERVICES_ENABLE_REGISTERED_REQUEST_CREATE_HTTP=enabled \
             GUEST_CONTACT_ENCRYPTION_KEY="$(cat "$RUNNER_TEMP/services-guest-contact-encryption-key")" \
             GUEST_REQUEST_HMAC_KEY="$(cat "$RUNNER_TEMP/services-guest-capability-hmac-key")" \
             npm start > "$RUNNER_TEMP/services-back.log" 2>&1 &)
@@ -288,6 +289,7 @@ jobs:
             SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF=enabled \
             SERVICES_WEB_ENABLE_CUSTOMER_REQUESTS=enabled \
             SERVICES_WEB_ENABLE_CUSTOMER_COMPLETION=enabled \
+            SERVICES_WEB_ENABLE_CUSTOMER_REQUEST_CREATE=enabled \
             SERVICES_WEB_GUEST_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-guest-key")" \
             SERVICES_WEB_ACCOUNT_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-account-key")" \
             SERVICES_WEB_ORIGIN=https://services.example.test \
@@ -311,6 +313,9 @@ jobs:
       - name: Verify signed web session reaches backend and revocation invalidates access
         id: signed_seller_session_e2e
         run: node apps/web/tests/private-bff-signed-session.e2e.mjs
+      - name: Verify registered customer create via real BFF, backend and PostgreSQL inventory
+        id: registered_customer_create_e2e
+        run: node apps/web/tests/private-bff-registered-create-journey.e2e.mjs
       - name: Verify live customer inventory to confirmed completion via latest backend
         id: customer_completion_e2e
         run: node apps/web/tests/private-bff-customer-completion.e2e.mjs
@@ -501,6 +506,7 @@ jobs:
           OTP_BOOTSTRAP_E2E: ${{ steps.otp_bootstrap_e2e.outcome }}
           ENABLED_PRIVATE_DENIAL_E2E: ${{ steps.enabled_private_denial_e2e.outcome }}
           SIGNED_SELLER_SESSION_E2E: ${{ steps.signed_seller_session_e2e.outcome }}
+          REGISTERED_CREATE_E2E: ${{ steps.registered_customer_create_e2e.outcome }}
           GUEST_STATUS_PROOF_E2E: ${{ steps.guest_status_proof_e2e.outcome }}
           GUEST_CREATE_STATUS_E2E: ${{ steps.guest_create_status_e2e.outcome }}
           PRIVATE_BFF_E2E: ${{ steps.private_bff_e2e.outcome }}
@@ -532,6 +538,7 @@ jobs:
             echo "| OTP CSRF bootstrap and unavailable-provider isolation | $OTP_BOOTSTRAP_E2E |"
             echo "| Enabled private BFF unauthorized proof rejection | $ENABLED_PRIVATE_DENIAL_E2E |"
             echo "| Signed seller web session and backend revocation | $SIGNED_SELLER_SESSION_E2E |"
+            echo "| Registered customer create to own inventory real PostgreSQL | $REGISTERED_CREATE_E2E |"
             echo "| Guest status scoped proof and expiry HTTP E2E | $GUEST_STATUS_PROOF_E2E |"
             echo "| Verified guest create to status-cookie HTTP E2E | $GUEST_CREATE_STATUS_E2E |"
             echo "| Private frontend BFF live HTTP E2E | $PRIVATE_BFF_E2E |"
