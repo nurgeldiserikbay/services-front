@@ -86,7 +86,7 @@ test('verify BFF is independently default-off and never returns bearer in JSON',
  assert.match(code,/clearAccountOtpChallenge/);
  assert.match(code,/clearAccountOtpPreauth/);
  assert.match(code,/code:'AUTHENTICATED'/);
- assert.match(code,/code:'VERIFICATION_FAILED'/);
+ assert.match(code,/reply\(401,'VERIFICATION_FAILED'\)/);
  assert.match(code,/no-store/);
  assert.doesNotMatch(code,/session_token:|accountBearer:|return\s+.*sessionToken/);
  assert.doesNotMatch(code,/initiateBackendAccountOtp|X-Services-Network-Proof/);
