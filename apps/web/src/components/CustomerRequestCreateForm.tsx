@@ -8,7 +8,7 @@ import {readCommittedCustomerCreateReceipt} from
 type Props={
  serviceOfferId:string;locale:'kk'|'ru';csrf:string;
 };
-type Phase='idle'|'sending'|'uncertain'|'conflict'|'created';
+type Phase='idle'|'sending'|'uncertain'|'rate_limited'|'conflict'|'created';
 const LABELS={
  kk:{
   title:'Қызметке өтінім беру',note:'Түсініктеме (міндетті емес)',
