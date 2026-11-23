@@ -57,6 +57,9 @@ test('creation rejects tampered body and invalid transport config before network
 
 test('strict upstream success allowlist and sanitized conflict mapping',async()=>{
  assert.deepEqual(await createBackendCustomerRequest({...opts,
+  transport:async()=>json({token:'must-never-echo'},429)}),
+  {kind:'rate_limited'});
+ assert.deepEqual(await createBackendCustomerRequest({...opts,
   transport:async()=>json({secret:'unsafe'},409)}),{kind:'conflict'});
  assert.deepEqual(await createBackendCustomerRequest({...opts,
   transport:async()=>json({secret:'unsafe'},404)}),{kind:'not_found'});
@@ -106,6 +109,8 @@ test('browser POST requires two feature gates, sealed cookie CSRF and bounded JS
  assert.match(route,/request\.cookies\.get\(ACCOUNT_WEB_COOKIE\)/);
  assert.match(route,/x-services-csrf/);
  assert.match(route,/idempotency-key/);
+ assert.match(route,/result.kind==='rate_limited'/);
+ assert.match(route,/reply\(429,'RATE_LIMITED'\)/);
  assert.match(route,/readCustomerCreateBody/);
  assert.match(route,/parseCustomerCreateBytes/);
  assert.match(wrapper,/authenticateAccountWebMutation\(input\)/);
