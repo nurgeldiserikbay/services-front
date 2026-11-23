@@ -15,6 +15,11 @@ Status: **unverified / default off**. A merged feature does not imply an enabled
 - Keep idempotency key stable for ambiguous retries; never show success on unverified acknowledgement.
 - Verify cancellation policy is enforced by backend, not only client time.
 
+### Prepared registered-customer request creation BFF (2026-11-23)
+- Frontend branch `feat/account-request-create-bff-20261123`: a separate default-off `POST /api/account/requests` uses the existing authenticated sealed `__Host-services_account_web` session and strict origin/Fetch Metadata + CSRF checks. Request JSON is capped at 1200 streamed bytes, strictly decoded and field-allowlisted; only `service_offer_id`, `note` and `consent_to_contact` are accepted. A stable `Idempotency-Key` is forwarded by server-only HTTPS transport with backend session bearer; no bearer, contact, PII, request notes or backend error bodies are returned to browsers.
+- Requires both frontend `SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF=enabled` and `SERVICES_WEB_ENABLE_CUSTOMER_REQUEST_CREATE=enabled`, as well as backend `SERVICES_ENABLE_REGISTERED_REQUEST_CREATE_HTTP=enabled`. All flags remain disabled in defaults. A 503 means uncertain commit: the browser should retry with the **same idempotency key**, never assume failure or create a fresh key automatically.
+- This is **not** complete F2 acceptance: no registered-customer creation UI or authenticated real-browser staging journey is shown, and production abuse limits, edge ingress, provider and operator security sign-off are still pending. CI passing does not authorize enabling the flags.
+
 ## Gate F3 — release evidence
 - Exact commit: `pnpm install --frozen-lockfile && pnpm typecheck && pnpm test && pnpm build`.
 - E2E against a real staging backend/database, with negative permission and concurrency cases.
