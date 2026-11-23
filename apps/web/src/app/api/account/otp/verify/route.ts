@@ -96,6 +96,9 @@ export async function POST(request:NextRequest):Promise<NextResponse>{
    return reply(401,'VERIFICATION_FAILED');
   // This is a potentially consumed backend code with an unconfirmed ack.
   // Never report success or retry the one-time OTP automatically.
-  return reply(503,'UNAVAILABLE');
+  const unconfirmed=reply(503,'UNAVAILABLE');
+  const cleared=clearAccountOtpChallenge();
+  unconfirmed.cookies.set(cleared.name,cleared.value,cleared.options);
+  return unconfirmed;
  }
 }
