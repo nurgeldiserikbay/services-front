@@ -20,6 +20,8 @@ Status: **unverified / default off**. A merged feature does not imply an enabled
 - Requires both frontend `SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF=enabled` and `SERVICES_WEB_ENABLE_CUSTOMER_REQUEST_CREATE=enabled`, as well as backend `SERVICES_ENABLE_REGISTERED_REQUEST_CREATE_HTTP=enabled`. All flags remain disabled in defaults. A 503 means uncertain commit: the browser should retry with the **same idempotency key**, never assume failure or create a fresh key automatically.
 - This is **not** complete F2 acceptance: no registered-customer creation UI or authenticated real-browser staging journey is shown, and production abuse limits, edge ingress, provider and operator security sign-off are still pending. CI passing does not authorize enabling the flags.
 
+- Verified frontend [PR #157](https://github.com/nurgeldiserikbay/services-front/pull/157), exact PR head `daf01a817ca7ea7e51850bd6927c2d94cee0b6da`, [Frontend foundation CI #45147357285 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45147357285), squash merge `d5ad3b7a18e2161607e565d7de388b635606f13b`. This verifies default-off frontend code, unit tests and the existing pinned-backend CI scope; it does **not** prove the new create route against backend PR #449 in a cross-repository authenticated browser E2E or private staging.
+
 ## Gate F3 — release evidence
 - Exact commit: `pnpm install --frozen-lockfile && pnpm typecheck && pnpm test && pnpm build`.
 - E2E against a real staging backend/database, with negative permission and concurrency cases.
