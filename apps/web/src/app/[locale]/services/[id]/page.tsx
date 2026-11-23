@@ -4,6 +4,10 @@ import { notFound } from 'next/navigation';
 import { dictionary,isLocale } from '@/lib/i18n';
 import { getPublishedServiceOffer,OfferNotFound } from '@/lib/public-offer';
 import {ConnectedGuestRequestWizard} from '@/components/ConnectedGuestRequestWizard';
+import {cookies} from 'next/headers';
+import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
+import {getAccountWebSessions} from '@/lib/account-session-bff.server';
+import {CustomerRequestCreateForm} from '@/components/CustomerRequestCreateForm';
 
 type Props={params:Promise<{locale:string;id:string}>};
 
@@ -29,6 +33,21 @@ export default async function ServiceOfferPage({params}:Props) {
     return <main id="main-content" className="shell offerPage">
       <Link href={'/'+locale}>{t.brand}</Link><p role="status">{t.unavailable}</p>
     </main>;
+  }
+  // Only render authenticated creation after backend revalidates the sealed
+  // account session. No bearer reaches this server component's output.
+  const customerCreateEnabled=
+    process.env.SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF==='enabled'&&
+    process.env.SERVICES_WEB_ENABLE_CUSTOMER_REQUEST_CREATE==='enabled';
+  let customerCsrf:string|null=null;
+  if(customerCreateEnabled){
+    try{
+      const session=await getAccountWebSessions(
+        (await cookies()).get(ACCOUNT_WEB_COOKIE)?.value);
+      customerCsrf=session.csrf_token;
+    }catch{
+      // Unauthenticated or revoked sessions never render the create form.
+    }
   }
   const methods=offer.contact_methods.map(method=>t.contactMethods[method]);
   // UI and transport flags are independent: never show an actionable form
@@ -61,6 +80,8 @@ export default async function ServiceOfferPage({params}:Props) {
       <p className="offerNote">{t.offerTimeNotice}</p>
       {guestEnabled&&<ConnectedGuestRequestWizard serviceOfferId={offer.id} locale={locale}
         statusEnabled={statusEnabled} completionEnabled={completionEnabled}/> }
+      {customerCsrf&&<CustomerRequestCreateForm serviceOfferId={offer.id}
+        locale={locale} csrf={customerCsrf}/> }
     </article>
     <Link href={'/'+locale} className="offerBack">{t.backToSearch}</Link>
   </main>;
