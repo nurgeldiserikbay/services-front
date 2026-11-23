@@ -63,5 +63,10 @@ test('form is gated by backend-revalidated session and preserves uncertain opera
  assert.match(form,/credentials:'same-origin'/);
  assert.match(form,/X-Services-CSRF/);
  assert.match(form,/Idempotency-Key/);
+ assert.match(form,/response.status===429/);
+ assert.match(form,/setPhase\('rate_limited'\)/);
+ assert.match(form,/phase==='rate_limited'/);
+ assert.match(form,/rateLimited:/);
+ assert.match(form,/retryAfterLimit:/);
  assert.doesNotMatch(form,/Authorization|accountBearer|localStorage/);
 });
