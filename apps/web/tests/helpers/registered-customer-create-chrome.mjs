@@ -143,10 +143,18 @@ export async function exerciseRegisteredCreateChromeRetry({base,offer,sealedCook
     return true;
   })()`);
   assert.equal(installed,true);
-  const focus=await evaluate(`(()=>{
-   const note=document.getElementById('customer-request-note');
-   note.focus();return document.activeElement===note;
-  })()`);
+  // The SSR textarea can be replaced during React hydration. Wait for
+  // the connected, enabled node to receive genuine Chrome keyboard focus.
+  let focus=false;
+  for(let attempt=0;attempt<30;attempt++){
+   focus=await evaluate(`(()=>{
+    const note=document.getElementById('customer-request-note');
+    if(!note||!note.isConnected||note.disabled)return false;
+    note.focus();return document.activeElement===note&&note.isConnected;
+   })()`);
+   if(focus)break;
+   await pause(100);
+  }
   assert.equal(focus,true,'note must accept keyboard input');
   await send('Input.insertText',{text:'Browser retry original note'});
   const textReady=await evaluate(`document.getElementById('customer-request-note').value`);
