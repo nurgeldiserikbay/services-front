@@ -51,6 +51,7 @@ export async function POST(request:NextRequest):Promise<NextResponse>{
  }catch{return reply(400,'INVALID_REQUEST');}
  try{
   const result=await submitOwnCustomerRequest({...auth,idempotencyKey,body});
+  if(result.kind==='rate_limited')return reply(429,'RATE_LIMITED');
   if(result.kind==='conflict')return reply(409,'CONFLICT');
   if(result.kind==='not_found')return reply(404,'NOT_FOUND');
   return NextResponse.json({code:'CREATED',id:result.id,version:result.version},
