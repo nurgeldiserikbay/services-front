@@ -5,6 +5,8 @@ import {
 } from '@/lib/account-otp-challenge-session.server';
 import {ACCOUNT_WEB_COOKIE,requireAccountWebSessionKey}
  from '@/lib/account-web-session.server';
+import {clearAccountOtpPreauth}
+ from '@/lib/account-otp-preauth.server';
 import {exchangeVerifiedAccountOtpForCookie}
  from '@/lib/account-login-bff.server';
 import {AccountLoginTransportDenied}
@@ -85,6 +87,9 @@ export async function POST(request:NextRequest):Promise<NextResponse>{
    verified.setCookie.options);
   const cleared=clearAccountOtpChallenge();
   response.cookies.set(cleared.name,cleared.value,cleared.options);
+  const clearedPreauth=clearAccountOtpPreauth();
+  response.cookies.set(clearedPreauth.name,clearedPreauth.value,
+   clearedPreauth.options);
   return response;
  }catch(error){
   if(error instanceof AccountLoginTransportDenied)
