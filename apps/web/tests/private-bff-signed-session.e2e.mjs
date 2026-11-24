@@ -288,12 +288,32 @@ try{
  const browserLogoutSessionId=randomUUID();
  const browserLogoutBearer=randomBytes(32).toString('base64url');
  const browserLogoutHash=createHmac('sha256',hmacKey)
-  .update('services-session:v1\\0').update(browserLogoutBearer).digest('hex');
+  .update('services-session:v1\0').update(browserLogoutBearer).digest('hex');
  await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
    VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
   [browserLogoutSessionId,userId,browserLogoutHash,randomUUID()]);
+ const browserLogoutCookie=sealAccountWebSession(key,browserLogoutBearer,600).cookie;
+ const browserInventory=await fetch(new URL('/api/account/sessions',base),{
+  headers:{'Sec-Fetch-Site':'same-origin',
+    Cookie:'__Host-services_account_web='+browserLogoutCookie},
+  redirect:'manual',signal:AbortSignal.timeout(8000),
+ });
+ assert.equal(browserInventory.status,200,
+  'browser logout fixture must pass live session inventory before SSR: '+
+   JSON.stringify({status:browserInventory.status}));
+ await browserInventory.arrayBuffer();
+ const serverDevices=await fetch(new URL('/kk/account/devices',base),{
+  headers:{Cookie:'__Host-services_account_web='+browserLogoutCookie},
+  redirect:'manual',signal:AbortSignal.timeout(8000),
+ });
+ const devicesHtml=await serverDevices.text();
+ assert.ok(devicesHtml.includes('Аккаунттан шығу'),
+  'server-rendered protected devices page must expose logout: '+JSON.stringify({
+   status:serverDevices.status,robots:serverDevices.headers.get('x-robots-tag'),
+   foundNotFound:devicesHtml.includes('404'),length:devicesHtml.length,
+  }));
  await exerciseAccountLogoutChrome({
-  base,sealedCookie:sealAccountWebSession(key,browserLogoutBearer,600).cookie,
+  base,sealedCookie:browserLogoutCookie,
   locale:'kk',
  });
  const browserLogoutProof=await db.query(

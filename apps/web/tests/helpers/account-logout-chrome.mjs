@@ -90,7 +90,7 @@ export async function exerciseAccountLogoutChrome({base,sealedCookie,locale='kk'
   await send('Emulation.setDeviceMetricsOverride',{
    width:375,height:740,deviceScaleFactor:1,mobile:true,
   });
-  await send('Page.navigate',{url:new URL('/'+locale+'/account',base).href});
+  await send('Page.navigate',{url:new URL('/'+locale+'/account/devices',base).href});
   let button;
   const expected=locale==='kk'?'Аккаунттан шығу':'Выйти из аккаунта';
   for(let i=0;i<120;i++){

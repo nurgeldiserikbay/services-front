@@ -5,6 +5,7 @@ import {isLocale} from '@/lib/i18n';
 import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
 import {getAccountWebSessions} from '@/lib/account-session-bff.server';
 import {AccountDeviceSessions} from '@/components/AccountDeviceSessions';
+import {AccountSignOut} from '@/components/AccountSignOut';
 
 export const dynamic='force-dynamic';
 export const revalidate=0;
@@ -46,6 +47,7 @@ export default async function AccountDevicesPage({
     ?'Өзіңіздің басқа құрылғылардағы сессияларыңызды тексеріп, қажет болса тоқтатыңыз.'
     :'Проверьте и при необходимости завершите сеансы на других устройствах.'}</p>
    <AccountDeviceSessions locale={locale}/>
+   <AccountSignOut locale={locale}/>
   </section>
  </main>;
 }
