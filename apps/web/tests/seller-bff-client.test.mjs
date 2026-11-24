@@ -76,3 +76,50 @@ test('seller action buttons disable during any concurrent mutation/refresh',()=>
  const matches=src.match(/disabled=\{refreshing\|\|busy!==null\|\|settled\[req\.id\]===req\.version\}/g)??[];
  assert.equal(matches.length,2);
 });
+
+test('streamed seller inbox stops at byte cap and cancels oversized body',async()=>{
+ let reads=0,cancelled=false;
+ const stream=new ReadableStream({
+  pull(controller){
+   reads++;
+   controller.enqueue(new Uint8Array(32769));
+  },
+  cancel(){cancelled=true;},
+ });
+ await assert.rejects(loadSellerInbox({
+  transport:async()=>new Response(stream,{status:200,headers:{'Content-Type':'application/json'}}),
+ }),SellerClientUnavailable);
+ assert.ok(reads<=3,'reader must stop promptly after exceeding byte budget');
+ assert.equal(cancelled,true,'oversized stream must be cancelled');
+});
+
+test('seller decision streaming response rejects oversize and invalid UTF-8',async()=>{
+ const base={requestId:uuid,version:1,decision:'accept',csrf,idempotencyKey:idempotency};
+ const badUtf8=new Uint8Array([0x7b,0xff,0x7d]);
+ for(const payload of [new Uint8Array(65537),badUtf8]){
+  const result=await sendSellerDecision({...base,transport:async()=>new Response(payload,{
+   status:200,headers:{'Content-Type':'application/json'},
+  })});
+  assert.equal(result,'unavailable');
+ }
+});
+
+test('valid seller BFF streaming JSON preserves strict response projection',async()=>{
+ const response=()=>new Response(JSON.stringify(page),{
+  status:200,headers:{'Content-Type':'application/json'},
+ });
+ assert.equal((await loadSellerInbox({transport:async()=>response()})).items[0].id,uuid);
+ const base={requestId:uuid,version:1,decision:'accept',csrf,idempotencyKey:idempotency};
+ assert.equal(await sendSellerDecision({...base,transport:async()=>new Response(
+  '{"outcome":"ok"}',{status:200,headers:{'Content-Type':'application/json'}}
+ )}),'ok');
+});
+
+test('seller BFF rejects declared oversized response without reading body',async()=>{
+ let consumed=false;
+ const response={status:200,headers:new Headers({
+  'Content-Type':'application/json','Content-Length':'65537',
+ }),text:async()=>{consumed=true;return '{}';}};
+ await assert.rejects(loadSellerInbox({transport:async()=>response}),SellerClientUnavailable);
+ assert.equal(consumed,false);
+});
