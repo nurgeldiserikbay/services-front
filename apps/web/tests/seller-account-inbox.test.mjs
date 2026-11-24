@@ -60,3 +60,17 @@ test('account-wide seller decisions use executable synchronous gate',()=>{
  assert.match(src,/retry\.current\.set\(key,nonce\)/);
  assert.match(src,/finally\{setPendingId\(null\);\}/);
 });
+
+test('external account inbox reloads cannot race an in-flight seller decision',()=>{
+ const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+ assert.match(src,/const load=useCallback\(async\(next=false,afterDecision=false\)=>\{/);
+ assert.match(src,/if\(run\.current\|\|\(decisionGate\.current\.active&&!afterDecision\)\)return false;/);
+ assert.match(src,/await load\(false,true\);/,
+   'only post-decision server refresh can bypass the decision gate');
+ assert.match(src,/onClick=\{\(\)=>void load\(\)\}/,
+   'manual refresh cannot bypass the guard');
+ assert.match(src,/onClick=\{\(\)=>void load\(true\)\}/,
+   'load-more cannot bypass the guard');
+ assert.match(src,/void load\(\);/,
+   'initial mount fetch remains protected by the same gate');
+});
