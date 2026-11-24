@@ -278,6 +278,7 @@ jobs:
         run: |
           umask 077
           openssl rand -base64 32 > "$RUNNER_TEMP/services-private-bff-account-key"
+          openssl rand -base64 32 > "$RUNNER_TEMP/services-private-bff-account-otp-preauth-key"
           openssl rand -base64 32 > "$RUNNER_TEMP/services-private-bff-guest-key"
           (
             cd apps/web
@@ -288,6 +289,8 @@ jobs:
             SERVICES_WEB_ENABLE_SELLER_BFF=enabled \
             SERVICES_WEB_ENABLE_SELLER_WORKSPACE=enabled \
             SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF=enabled \
+            SERVICES_WEB_ENABLE_ACCOUNT_LOGIN_BFF=enabled \
+            SERVICES_WEB_ENABLE_ACCOUNT_OTP_BOOTSTRAP=enabled \
             SERVICES_WEB_ENABLE_ACCOUNT_HOME=enabled \
             SERVICES_WEB_ENABLE_ACCOUNT_DEVICES_PAGE=enabled \
             SERVICES_WEB_ENABLE_CUSTOMER_REQUESTS=enabled \
@@ -295,6 +298,7 @@ jobs:
             SERVICES_WEB_ENABLE_CUSTOMER_REQUEST_CREATE=enabled \
             SERVICES_WEB_GUEST_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-guest-key")" \
             SERVICES_WEB_ACCOUNT_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-account-key")" \
+            SERVICES_WEB_ACCOUNT_OTP_PREAUTH_KEY="$(cat "$RUNNER_TEMP/services-private-bff-account-otp-preauth-key")" \
             SERVICES_WEB_ORIGIN=https://services.example.test \
             pnpm start --hostname 127.0.0.1 --port 3001 > "$RUNNER_TEMP/services-private-bff.log" 2>&1 &
           )
@@ -313,6 +317,9 @@ jobs:
       - name: Verify enabled private BFF still rejects missing and forged sessions
         id: enabled_private_denial_e2e
         run: node apps/web/tests/private-bff-enabled-denial.e2e.mjs
+      - name: Verify isolated account OTP bootstrap stays CSRF-bound and verify disabled
+        id: account_otp_bootstrap_e2e
+        run: node apps/web/tests/account-otp-bootstrap-live-http.e2e.mjs
       - name: Verify signed web session reaches backend and revocation invalidates access
         id: signed_seller_session_e2e
         run: node apps/web/tests/private-bff-signed-session.e2e.mjs
