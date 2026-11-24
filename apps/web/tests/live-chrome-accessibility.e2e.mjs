@@ -271,6 +271,83 @@ try{
       assert.equal(resetCompleted,true,locale+' keyboard clear-all did not reach pristine search: '+JSON.stringify(resetDiagnostic));
       console.log('Chrome keyboard Enter clear-filters '+locale+' OK');
 
+      // Real mobile keyboard language-switch journey with an active query and
+      // delivery filter. This complements SSR link assertions by exercising
+      // the rendered link, Chrome focus and navigation in both directions.
+      const targetLocale=locale==='kk'?'ru':'kk';
+      const activeSearch=new URL('/'+locale,base);
+      activeSearch.searchParams.set('q','Stage 2 Journey');
+      activeSearch.searchParams.set('delivery_mode','online');
+      await send('Page.navigate',{url:activeSearch.href});
+      let sourceReady=false;
+      for(let attempt=0;attempt<100;attempt++){
+        try{
+          sourceReady=await evaluate(`(()=>{
+            const url=new URL(location.href);
+            return document.readyState==='complete'&&
+              document.documentElement.lang==='${locale}'&&
+              url.searchParams.get('q')==='Stage 2 Journey'&&
+              document.querySelector('#delivery_mode')?.value==='online'&&
+              !!document.querySelector('.language a[href^="/${targetLocale}"]');
+          })()`);
+        }catch{sourceReady=false;}
+        if(sourceReady)break;
+        await pause(100);
+      }
+      assert.equal(sourceReady,true,locale+' filtered source must render before switching');
+      const languageLink=await evaluate(`(()=>{
+        const link=document.querySelector('.language a[href^="/${targetLocale}"]');
+        if(!link)return null;
+        const rect=link.getBoundingClientRect();
+        link.focus();
+        return {focused:document.activeElement===link,href:link.getAttribute('href'),
+          width:rect.width,left:rect.left,right:rect.right};
+      })()`);
+      assert.ok(languageLink&&languageLink.focused,
+        locale+' language switch must be keyboard focusable');
+      assert.ok(languageLink.width>0&&languageLink.left>=-1&&languageLink.right<=376,
+        locale+' language switch must fit a 375px mobile viewport');
+      const linkUrl=new URL(languageLink.href,base);
+      assert.equal(linkUrl.pathname,'/'+targetLocale);
+      assert.equal(linkUrl.searchParams.get('q'),'Stage 2 Journey');
+      assert.equal(linkUrl.searchParams.get('delivery_mode'),'online');
+      const languageAX=await send('Accessibility.getFullAXTree');
+      assert.ok(languageAX.nodes?.some(node=>!node.ignored&&
+        node.role?.value==='link'&&node.name?.value?.includes(targetLocale==='kk'?'ҚАЗ':'РУС')),
+        locale+' switch must appear as a named Chrome accessibility link');
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',
+        code:'Enter',windowsVirtualKeyCode:13,text:'\\r',unmodifiedText:'\\r'});
+      await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',
+        code:'Enter',windowsVirtualKeyCode:13});
+      let switched=false;
+      for(let attempt=0;attempt<100;attempt++){
+        try{
+          switched=await evaluate(`(()=>{
+            const url=new URL(location.href);
+            return document.readyState==='complete'&&
+              url.pathname==='/${targetLocale}'&&
+              document.documentElement.lang==='${targetLocale}'&&
+              url.searchParams.get('q')==='Stage 2 Journey'&&
+              url.searchParams.get('delivery_mode')==='online'&&
+              document.querySelector('input#query')?.value==='Stage 2 Journey'&&
+              document.querySelector('#delivery_mode')?.value==='online'&&
+              !!document.querySelector('main#main-content');
+          })()`);
+        }catch{switched=false;}
+        if(switched)break;
+        await pause(100);
+      }
+      const switchedState=await evaluate(`(()=>({
+        href:location.href,lang:document.documentElement.lang,
+        query:document.querySelector('input#query')?.value??null,
+        delivery:document.querySelector('#delivery_mode')?.value??null
+      }))()`);
+      assert.equal(switched,true,
+        locale+' native Enter language switch lost the search/filter: '+
+        JSON.stringify(switchedState));
+      console.log('Chrome mobile filtered keyboard locale switch '+
+        locale+' -> '+targetLocale+' PASS');
+
     }
     console.log('Chrome responsive keyboard/landmark smoke '+locale+' '+width+'px OK');
     }
