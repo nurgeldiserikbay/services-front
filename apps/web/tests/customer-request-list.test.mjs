@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {canAttemptCustomerCompletion}
+import {canAttemptCustomerCompletion,readCommittedCustomerCompletionReceipt}
  from '../src/lib/customer-completion-ui-core.mjs';
 import {
  listBackendCustomerRequests,AccountSessionTransportUnavailable,
@@ -103,4 +103,43 @@ test('customer completion never resends after unknown, conflict or completed res
  assert.match(source,/status==='conflict'\|\|status==='unavailable'/);
  assert.match(source,/setStatus\('done'\);router\.refresh\(\)/);
  assert.doesNotMatch(source,/Authorization|Bearer|accountBearer/);
+});
+
+test('completion success requires exact scoped, private committed receipt',async()=>{
+ const receipt={code:'COMPLETED',id,version:3};
+ assert.equal(await readCommittedCustomerCompletionReceipt(json(receipt),id,2),true);
+ for(const value of [
+  {...receipt,id:'123e4567-e89b-42d3-a456-426614174001'},
+  {...receipt,version:2},{...receipt,version:4},
+  {...receipt,code:'PENDING'}, {...receipt,session_token:'secret'},
+  null,[],{},'not a receipt',
+ ]){
+  assert.equal(await readCommittedCustomerCompletionReceipt(json(value),id,2),false);
+ }
+ for(const response of [
+  json(receipt,{status:201}),
+  json(receipt,{headers:{'content-type':'text/plain'}}),
+  json(receipt,{headers:{'Cache-Control':'public, max-age=3600'}}),
+  json(receipt,{headers:{'content-range':'bytes 0-20/40'}}),
+  json(receipt,{headers:{'content-length':'9000'}}),
+  new Response('not-json',{status:200,headers:{'content-type':'application/json','cache-control':'no-store'}}),
+  new Response(new Uint8Array([0xff]),{status:200,headers:{'content-type':'application/json','cache-control':'no-store'}}),
+ ]){
+  assert.equal(await readCommittedCustomerCompletionReceipt(response,id,2),false);
+ }
+ assert.equal(await readCommittedCustomerCompletionReceipt(json(receipt),id,2147483647),false);
+});
+
+test('completion success cannot trust an oversized or partial server response',async()=>{
+ let cancelled=false;
+ const response={status:200,headers:new Headers({
+  'content-type':'application/json','cache-control':'private, no-store',
+ }),body:new ReadableStream({start(controller){controller.enqueue(new Uint8Array(513));},
+  cancel(){cancelled=true;}})};
+ assert.equal(await readCommittedCustomerCompletionReceipt(response,id,2),false);
+ assert.equal(cancelled,true);
+ const source=readFileSync(new URL('../src/components/CustomerCompletionAction.tsx',import.meta.url),'utf8');
+ assert.match(source,/readCommittedCustomerCompletionReceipt\(response,requestId,version\)/);
+ assert.match(source,/setStatus\('done'\);router\.refresh\(\)/);
+ assert.doesNotMatch(source,/response\.status===200/);
 });
