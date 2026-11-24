@@ -5,6 +5,7 @@ import {createRequire} from 'node:module';
 import {join} from 'node:path';
 import {sealAccountWebSession} from '../src/lib/account-web-session-core.mjs';
 import {exerciseSellerWorkspaceMobileChrome} from './helpers/seller-workspace-mobile-chrome.mjs';
+import {exerciseAccountSellerDecisionChrome} from './helpers/account-seller-decision-chrome.mjs';
 
 // CI-only real HTTP and PostgreSQL boundary test: verifies a legitimately
 // sealed *test fixture* web cookie reaches backend bearer authorization.
@@ -413,6 +414,32 @@ try{
  });
  assert.equal(pendingPage.status,200);
  assert.deepEqual((await pendingPage.json()).items,[]);
+
+ // An independent third request is accepted by the REAL React inbox button.
+ // The first two requests retain the existing HTTP/idempotency assertion matrix.
+ const browserGuestId=randomUUID(),browserRequestId=randomUUID();
+ fixture.guestIds.push(browserGuestId);fixture.requestIds.push(browserRequestId);
+ await db.query('INSERT INTO guest_contacts(id,channel,encrypted_value,digest,verified_at,expires_at) VALUES($1,\'email\',\'test-encrypted\',$2,now(),now()+interval \'1 day\')',
+   [browserGuestId,'ci-browser-guest-'+randomUUID()]);
+ await db.query('INSERT INTO service_requests(id,offer_id,guest_contact_id,source_context,seller_organization_id,status) VALUES($1,$2,$3,\'ORGANIZATION\',$4,\'PENDING\')',
+   [browserRequestId,fixture.offerId,browserGuestId,fixture.orgId]);
+ await exerciseAccountSellerDecisionChrome({
+   base,sealedCookie:sealed.cookie,requestId:browserRequestId,locale:'kk',
+ });
+ const browserCommitted=await db.query(
+   'SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId]);
+ assert.deepEqual(browserCommitted.rows[0],{status:'ACCEPTED',version:2},
+   'Chrome Enter decision must persist PostgreSQL status version 2');
+ const browserEvents=await db.query(
+   'SELECT o.id::text AS event_id,o.topic,n.domain_event_id::text AS intent_event,n.audience,n.channel,n.guest_contact_id::text AS contact_id FROM domain_outbox_events o JOIN notification_intents n ON n.domain_event_id=o.id WHERE o.subject_id=$1::uuid',
+   [browserRequestId]);
+ assert.equal(browserEvents.rowCount,1,'browser accept creates one linked event/intent');
+ assert.equal(browserEvents.rows[0].topic,'service_request.accepted');
+ assert.equal(browserEvents.rows[0].event_id,browserEvents.rows[0].intent_event);
+ assert.equal(browserEvents.rows[0].audience,'CLIENT');
+ assert.equal(browserEvents.rows[0].channel,'EMAIL');
+ assert.equal(browserEvents.rows[0].contact_id,browserGuestId);
+ console.log('Account Chrome accept -> BFF -> PostgreSQL/outbox/intent PASS');
 
  // A still-active other device must remain safe if the browser's own
  // backing PostgreSQL session is later revoked while its cookie remains valid.
