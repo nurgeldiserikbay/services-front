@@ -288,7 +288,7 @@ try{
  const browserLogoutSessionId=randomUUID();
  const browserLogoutBearer=randomBytes(32).toString('base64url');
  const browserLogoutHash=createHmac('sha256',hmacKey)
-  .update('services-session:v1\\0').update(browserLogoutBearer).digest('hex');
+  .update('services-session:v1\0').update(browserLogoutBearer).digest('hex');
  await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
    VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
   [browserLogoutSessionId,userId,browserLogoutHash,randomUUID()]);
