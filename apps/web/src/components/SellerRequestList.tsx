@@ -8,7 +8,7 @@ import {
   type SellerRequestSummary,
 } from '@/lib/seller-requests';
 import styles from './SellerRequestList.module.css';
-import {createSellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
+import {createSellerDecisionSingleFlight,sellerRefreshBlocked} from '@/lib/seller-decision-single-flight.mjs';
 import type {SellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
 
 type Decision='accept'|'decline';
@@ -78,7 +78,7 @@ export function SellerRequestList({
     // A user-triggered refresh cannot race any pending write in either seller
     // scope. Only the decision owner may refresh under its own write gate.
     const gate=sharedDecisionGate??decisionGate.current;
-    if(!onRefresh||refreshLock.current||(gate.active&&!afterDecision))return;
+    if(!onRefresh||refreshLock.current||sellerRefreshBlocked(gate.active,afterDecision))return;
     refreshLock.current=true;setRefreshing(true);
     try{
       await onRefresh();
@@ -121,7 +121,7 @@ export function SellerRequestList({
     <h2>{scopeHeading}</h2>
     <p>{t.notice}</p>
     {onRefresh&&<button type="button" className={styles.refresh}
-      onClick={()=>void refresh()} disabled={refreshing||busy!==null||(sharedDecisionGate??decisionGate.current).active}>
+      onClick={()=>void refresh()} disabled={refreshing||busy!==null||sellerRefreshBlocked((sharedDecisionGate??decisionGate.current).active)}>
       {refreshing?t.refreshing:t.refresh}
     </button>}
     {errors.__refresh&&<p role="alert">{errors.__refresh}</p>}
