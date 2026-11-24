@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createSellerDecisionSingleFlight,isCurrentSellerDecision} from '../src/lib/seller-decision-single-flight.mjs';
+import {createSellerDecisionSingleFlight,isCurrentSellerDecision,sellerRefreshBlocked} from '../src/lib/seller-decision-single-flight.mjs';
 
 test('account seller single-flight rejects a concurrent accept/decline until the first network call settles',async()=>{
  const gate=createSellerDecisionSingleFlight();
@@ -128,4 +128,18 @@ test('new locale lifecycle can fetch while old decision still owns its retired g
  assert.equal(loads,1,'new inbox may fetch without waiting on the old write');
  assert.equal(oldMutations,0,'late previous-locale decision may not mutate new view');
  assert.equal(oldGate.active,false);
+});
+
+test('seller refresh gate excludes manual reads during writes across scopes',async()=>{
+ const gate=createSellerDecisionSingleFlight();
+ let finish;
+ const transport=new Promise(resolve=>{finish=resolve;});
+ const current=gate.run(async()=>{await transport;});
+ assert.equal(sellerRefreshBlocked(gate.active),true,
+   'external refresh from any seller context must be rejected during a write');
+ assert.equal(sellerRefreshBlocked(gate.active,true),false,
+   'only the decision handler can schedule its authorized refresh');
+ finish();await current;
+ assert.equal(sellerRefreshBlocked(gate.active),false);
+ assert.equal(sellerRefreshBlocked(false,true),false);
 });
