@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import {randomBytes} from 'node:crypto';
 
 const base=process.env.PRIVATE_BFF_TEST_BASE_URL??'http://127.0.0.1:3001';
 const endpoint=new URL('/api/account/otp/bootstrap',base);
