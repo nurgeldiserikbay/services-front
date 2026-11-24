@@ -144,8 +144,8 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
       'target.getAttribute("aria-pressed")==="false";})()');
      assert.equal(focused,true,'seller pending filter must take keyboard focus');
      await send('Input.dispatchKeyEvent',{
-      type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\\r',
-      unmodifiedText:'\\r',
+      type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',
+      unmodifiedText:'\r',
      });
      await send('Input.dispatchKeyEvent',{
       type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
@@ -169,8 +169,8 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
       'all?.focus();return document.activeElement===all;})()');
      assert.equal(focusedAll,true,'seller all filter must take keyboard focus');
      await send('Input.dispatchKeyEvent',{
-      type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\\r',
-      unmodifiedText:'\\r',
+      type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',
+      unmodifiedText:'\r',
      });
      await send('Input.dispatchKeyEvent',{
       type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
