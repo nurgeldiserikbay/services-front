@@ -292,8 +292,25 @@ try{
  await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
    VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
   [browserLogoutSessionId,userId,browserLogoutHash,randomUUID()]);
+ const browserLogoutCookie=sealAccountWebSession(key,browserLogoutBearer,600).cookie;
+ const accountMe=await fetch('https://localhost:8443/v1/me',{
+  headers:{Authorization:'Bearer '+browserLogoutBearer,Accept:'application/json'},
+  signal:AbortSignal.timeout(8000),
+ });
+ assert.equal(accountMe.status,200,
+  'account home backend /me must authorize this browser test session: '+accountMe.status);
+ const serverHome=await fetch(new URL('/kk/account',base),{
+  headers:{Cookie:'__Host-services_account_web='+browserLogoutCookie},
+  redirect:'manual',signal:AbortSignal.timeout(8000),
+ });
+ const homeHtml=await serverHome.text();
+ assert.ok(homeHtml.includes('Аккаунттан шығу'),
+  'account home must SSR its logout button: '+JSON.stringify({
+   status:serverHome.status,robots:serverHome.headers.get('x-robots-tag'),
+   foundNotFound:homeHtml.includes('404'),length:homeHtml.length,
+  }));
  await exerciseAccountLogoutChrome({
-  base,sealedCookie:sealAccountWebSession(key,browserLogoutBearer,600).cookie,
+  base,sealedCookie:browserLogoutCookie,
   locale:'kk',
  });
  const browserLogoutProof=await db.query(
