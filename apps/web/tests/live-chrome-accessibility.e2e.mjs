@@ -291,6 +291,7 @@ try{
         await send('Page.navigate',{url:new URL('/'+locale+route,base).href});
         let page;
         for(let attempt=0;attempt<90;attempt++){
+          try{
           page=await evaluate('(()=>{'+
             'const main=document.querySelector("main#main-content");'+
             'const heading=main?.querySelector("h1");'+
@@ -306,6 +307,14 @@ try{
             'viewportWidth:innerWidth,'+
             'isError:!!main?.querySelector("[role=alert],[role=status]")};'+
           '})()');
+          }catch(error){
+            // Next.js streamed navigation can replace the document's JS
+            // execution context between DevTools command and evaluation.
+            // Retry only until a fresh context loads; never skip assertions.
+            if(attempt===89)throw error;
+            await pause(100);
+            continue;
+          }
           if(page.ready&&page.main&&page.heading&&page.backWidth>0)break;
           await pause(100);
         }
