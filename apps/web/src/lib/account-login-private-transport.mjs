@@ -45,7 +45,11 @@ export async function verifyBackendAccountOtp({
   });
   if(response.status===401)throw new AccountLoginTransportDenied();
   if(response.status!==200||
-   !/^application\/json(?:\s*;|\s*$)/i.test(response.headers.get('content-type')??''))
+   response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(
+    response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(
+    response.headers.get('cache-control')??''))
    throw new AccountLoginTransportUnavailable();
   const len=response.headers.get('content-length');
   if(len!==null&&(!/^\d+$/.test(len)||Number(len)>MAX_BYTES))

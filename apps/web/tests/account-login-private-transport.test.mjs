@@ -9,7 +9,7 @@ const serviceKey=randomBytes(32).toString('base64');
 const challengeId=randomUUID();
 const token=randomBytes(32).toString('base64url');
 const req={baseUrl:'https://api.example.test/v1',serviceKey,challengeId,channel:'EMAIL',code:'012345'};
-const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}});
+const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'private, no-store, max-age=0'}});
 test('private account transport applies server-only URL, key and response contract',async()=>{
  let observed;
  const out=await verifyBackendAccountOtp({...req,transport:async(url,options)=>{
@@ -82,7 +82,7 @@ test('private account transport bounds streamed response even when content lengt
    controller.enqueue(new Uint8Array(2049));
   },
   cancel(){cancelled=true;}
- }),{status:200,headers:{'content-type':'application/json'}});
+ }),{status:200,headers:{'content-type':'application/json','cache-control':'no-store'}});
  await assert.rejects(verifyBackendAccountOtp({...req,transport}),AccountLoginTransportUnavailable);
  assert.equal(cancelled,true);
 });
@@ -98,6 +98,29 @@ test('private account transport rejects spoofed length, malformed JSON and forbi
  ]){
   await assert.rejects(verifyBackendAccountOtp({...req,transport:async()=>response}),AccountLoginTransportUnavailable);
  }
+});
+
+test('private OTP bearer receipt requires no-store exact JSON and no partial response',async()=>{
+ const good={session_token:token,expires_in_seconds:300};
+ for(const headers of [
+  {'content-type':'application/json'},
+  {'content-type':'application/json','cache-control':'public, max-age=60'},
+  {'content-type':'application/json','cache-control':'no-cache'},
+  {'content-type':'application/json;profile=secret','cache-control':'no-store'},
+  {'content-type':'application/json; charset=iso-8859-1','cache-control':'no-store'},
+  {'content-type':'application/json','cache-control':'no-store','content-range':'bytes 0-100/200'},
+ ]){
+  await assert.rejects(verifyBackendAccountOtp({...req,transport:async()=>new Response(
+   JSON.stringify(good),{status:200,headers},
+  )}),AccountLoginTransportUnavailable);
+ }
+ const result=await verifyBackendAccountOtp({...req,transport:async()=>new Response(
+  JSON.stringify(good),{status:200,headers:{
+   'content-type':'application/json; charset=utf-8',
+   'cache-control':'private, no-store, max-age=0',
+  }},
+ )});
+ assert.deepEqual(result,{sessionToken:token,expiresInSeconds:300});
 });
 
 test('OTP compositions preflight cookie encryption keys before consuming upstream OTP',()=>{
