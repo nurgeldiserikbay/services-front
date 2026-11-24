@@ -43,6 +43,9 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  const epoch=useRef(0);
  // A completed decision must not request account data after this view unmounts.
  const mounted=useRef(false);
+ // Decision lifetime is independent of fetch epochs: post-write refresh advances
+ // the fetch epoch but must still release pendingId for the live decision.
+ const decisionLifetime=useRef(0);
  const current=useRef<Page|null>(null);
  const retry=useRef(new Map<string,string>());
  const seenCursors=useRef(new Set<string>());
@@ -98,14 +101,14 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
    // An account/session boundary must unmount this component on logout.
    mounted.current=true;
    void load();
-   return ()=>{mounted.current=false;epoch.current++;run.current=false;current.current=null;retry.current.clear();seenCursors.current.clear();};
+   return ()=>{mounted.current=false;decisionLifetime.current++;epoch.current++;run.current=false;current.current=null;retry.current.clear();seenCursors.current.clear();};
  },[load]);
 
  async function decide(item:SellerRequestSummary,decision:'accept'|'decline'){
    if(run.current||decisionGate.current.active||pendingId||item.state!=='pending'||
       blocked[item.id]===item.version||!page?.csrf)return;
    await decisionGate.current.run(async()=>{
-   const decisionEpoch=epoch.current;
+   const decisionEpoch=decisionLifetime.current;
    const key=item.id+':'+item.version+':'+decision;
    let nonce=retry.current.get(key);
    if(!nonce){nonce=crypto.randomUUID();retry.current.set(key,nonce);}
@@ -114,7 +117,7 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
      const outcome=await sendSellerDecision({requestId:item.id,version:item.version,
        decision,csrf:page.csrf,idempotencyKey:nonce});
      // An old account's response must never issue a fresh read or update this view.
-     if(!mounted.current||decisionEpoch!==epoch.current)return;
+     if(!mounted.current||decisionEpoch!==decisionLifetime.current)return;
      if(outcome==='unauthorized'){
        retry.current.clear();current.current=null;setPage(null);
        setMessage(t.unauthorized);
@@ -131,11 +134,11 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
        setMessage(t.failed);
      }
    }catch{
-     if(!mounted.current||decisionEpoch!==epoch.current)return;
+     if(!mounted.current||decisionEpoch!==decisionLifetime.current)return;
      current.current=null;setPage(null);seenCursors.current.clear();
      setMessage(t.failed);
    }
-   finally{if(mounted.current&&decisionEpoch===epoch.current)setPendingId(null);}
+   finally{if(mounted.current&&decisionEpoch===decisionLifetime.current)setPendingId(null);}
    });
  }
  return <section className={styles.wrap} aria-label={t.heading}>
