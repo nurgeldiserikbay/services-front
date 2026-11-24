@@ -121,8 +121,10 @@ export function SellerRequestList({
           req.state==='declined'?t.declined:t.other}</span>
         {mayOfferSellerDecision(req,sellerContext)&&<div className={styles.actions}>
           <button type="button" onClick={()=>void decide(req,'accept')}
+            aria-label={t.accept+': '+req.title+' № '+req.id.slice(0,8)}
             disabled={refreshing||busy!==null||settled[req.id]===req.version}>{t.accept}</button>
           <button type="button" onClick={()=>void decide(req,'decline')}
+            aria-label={t.decline+': '+req.title+' № '+req.id.slice(0,8)}
             disabled={refreshing||busy!==null||settled[req.id]===req.version}>{t.decline}</button>
         </div>}
         {busy===req.id&&<p role="status">{t.working}</p>}
