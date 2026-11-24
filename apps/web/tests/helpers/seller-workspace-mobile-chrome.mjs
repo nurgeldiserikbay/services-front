@@ -192,8 +192,8 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
      const expectedClosed=locale==='kk'?'Жабылған':'Закрытые';
      const accessibility=await send('Accessibility.getFullAXTree');
      assert.ok(accessibility.nodes?.some(node=>
-      !node.ignored&&node.role?.value==='button'&&
-      node.name?.value===expectedClosed),
+      !node.ignored&&['button','toggleButton'].includes(node.role?.value)&&
+      node.name?.value?.trim()===expectedClosed),
       locale+' closed filter must have a named Chrome AX button');
      // With two seeded PENDING rows, keyboard-only Closed must show a
      // localized empty state, hide decisions and preserve the backend rows.
