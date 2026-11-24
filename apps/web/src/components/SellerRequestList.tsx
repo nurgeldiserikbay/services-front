@@ -8,7 +8,7 @@ import {
   type SellerRequestSummary,
 } from '@/lib/seller-requests';
 import styles from './SellerRequestList.module.css';
-import {createSellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
+import {createSellerDecisionSingleFlight,sellerRefreshBlocked} from '@/lib/seller-decision-single-flight.mjs';
 import type {SellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
 
 type Decision='accept'|'decline';
@@ -74,8 +74,12 @@ export function SellerRequestList({
   const inFlight=useRef(new Set<string>());
   // Serializes different rows as well: React state is not a synchronous mutex.
   const decisionGate=useRef(createSellerDecisionSingleFlight());
-  async function refresh(){
-    if(!onRefresh||refreshLock.current)return;
+  async function refresh(afterDecision=false){
+    // A user-triggered refresh cannot race any pending write in either seller
+    // scope. Only the decision owner may refresh under its own write gate.
+    // Avoid reading ref.current in JSX: the click handler enforces the shared gate.
+    const gate=sharedDecisionGate??decisionGate.current;
+    if(!onRefresh||refreshLock.current||sellerRefreshBlocked(gate.active,afterDecision))return;
     refreshLock.current=true;setRefreshing(true);
     try{
       await onRefresh();
@@ -102,7 +106,7 @@ export function SellerRequestList({
         setSettled(prev=>({...prev,[req.id]:req.version}));
         // A failed refresh must be visible; the request stays locked until a
         // later server snapshot changes its version.
-        await refresh();
+        await refresh(true);
       }
       if(result!=='ok')setErrors(prev=>({
         ...prev,[req.id]:result==='conflict'?t.conflict:result==='forbidden'?t.forbidden:result==='unauthorized'?t.unauthorized:t.error,

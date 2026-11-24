@@ -18,7 +18,7 @@ test('caller controls post-decision refresh without optimistic state changes',()
   assert.match(src,/onRefresh\?:\(\)=>Promise<void>/);
   assert.match(src,/refreshLock\.current/);
   assert.match(src,/await onRefresh\(\)/);
-  assert.match(src,/await refresh\(\)/);
+  assert.match(src,/await refresh\(true\);/);
   assert.match(src,/result==='ok'\|\|result==='conflict'/);
   assert.match(src,/settled\[req\.id\]===req\.version/);
   assert.doesNotMatch(src,/fetch\(|localStorage|sessionStorage/);
@@ -34,7 +34,7 @@ test('refresh is accessible in both locales and exposes failures',()=>{
 
 test('seller request list uses the tested single-flight gate across different request rows',()=>{
   const src=read('components/SellerRequestList.tsx');
-  assert.match(src,/import \{createSellerDecisionSingleFlight\} from '@\/lib\/seller-decision-single-flight\.mjs'/);
+  assert.match(src,/import \{createSellerDecisionSingleFlight,sellerRefreshBlocked\} from '@\/lib\/seller-decision-single-flight\.mjs'/);
   assert.match(src,/const decisionGate=useRef\(createSellerDecisionSingleFlight\(\)\)/);
   assert.match(src,/const gate=sharedDecisionGate\?\?decisionGate\.current/);
   assert.match(src,/if\(refreshLock\.current\|\|gate\.active\|\|inFlight\.current\.has\(req\.id\)/);
@@ -46,7 +46,7 @@ test('seller request list uses the tested single-flight gate across different re
   assert.match(handler,/inFlight\.current\.add\(req\.id\)/,
     'existing per-request lock must remain');
   assert.match(handler,/finally\{inFlight\.current\.delete\(req\.id\);setBusy\(null\);\}/);
-  assert.match(handler,/await refresh\(\)/,
+  assert.match(handler,/await refresh\(true\);/,
     'the lock must cover the post-decision server refresh');
 });
 
@@ -59,5 +59,5 @@ test('seller workspace provides one shared gate to both seller scopes',()=>{
   assert.match(child,/sharedDecisionGate\?:SellerDecisionSingleFlight/);
   assert.match(child,/const gate=sharedDecisionGate\?\?decisionGate\.current/);
   assert.match(child,/await gate\.run\(async\(\)=>\{/);
-  assert.match(child,/await refresh\(\)/);
+  assert.match(child,/await refresh\(true\);/);
 });

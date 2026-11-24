@@ -30,3 +30,8 @@ export function isCurrentSellerDecision(mounted, capturedLifetime, activeLifetim
     Number.isSafeInteger(capturedLifetime) && capturedLifetime>=0 &&
     capturedLifetime===activeLifetime;
 }
+
+/** Only the decision owner may reload under a held shared write gate. */
+export function sellerRefreshBlocked(active,afterDecision=false){
+  return active===true && afterDecision!==true;
+}
