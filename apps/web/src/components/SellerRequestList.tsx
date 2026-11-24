@@ -8,6 +8,7 @@ import {
   type SellerRequestSummary,
 } from '@/lib/seller-requests';
 import styles from './SellerRequestList.module.css';
+import {createSellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
 
 type Decision='accept'|'decline';
 type Result='ok'|'conflict'|'forbidden'|'unauthorized'|'unavailable';
@@ -68,6 +69,8 @@ export function SellerRequestList({
   const [settled,setSettled]=useState<Record<string,number>>({});
   const [errors,setErrors]=useState<Record<string,string>>({});
   const inFlight=useRef(new Set<string>());
+  // Serializes different rows as well: React state is not a synchronous mutex.
+  const decisionGate=useRef(createSellerDecisionSingleFlight());
   async function refresh(){
     if(!onRefresh||refreshLock.current)return;
     refreshLock.current=true;setRefreshing(true);
@@ -80,8 +83,10 @@ export function SellerRequestList({
     finally{refreshLock.current=false;setRefreshing(false);}
   }
   async function decide(req:SellerRequestSummary,decision:Decision){
-    if(refreshLock.current||inFlight.current.has(req.id)||settled[req.id]===req.version||
+    if(refreshLock.current||decisionGate.current.active||inFlight.current.has(req.id)||
+       settled[req.id]===req.version||
        !mayOfferSellerDecision(req,sellerContext))return;
+    await decisionGate.current.run(async()=>{
     inFlight.current.add(req.id);setBusy(req.id);
     setErrors(prev=>({...prev,[req.id]:''}));
     try{
@@ -101,6 +106,7 @@ export function SellerRequestList({
     }catch{
       setErrors(prev=>({...prev,[req.id]:t.error}));
     }finally{inFlight.current.delete(req.id);setBusy(null);}
+    });
   }
   const rows=filterSellerRequests(requests,sellerContext,filter);
   const counts=countSellerInbox(requests,sellerContext);

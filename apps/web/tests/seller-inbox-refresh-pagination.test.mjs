@@ -31,3 +31,20 @@ test('refresh is accessible in both locales and exposes failures',()=>{
   assert.match(src,/errors\.__refresh&&<p role="alert">/);
   assert.match(src,/disabled=\{refreshing\|\|busy!==null\}/);
 });
+
+test('seller request list uses the tested single-flight gate across different request rows',()=>{
+  const src=read('components/SellerRequestList.tsx');
+  assert.match(src,/import \{createSellerDecisionSingleFlight\} from '@\/lib\/seller-decision-single-flight\.mjs'/);
+  assert.match(src,/const decisionGate=useRef\(createSellerDecisionSingleFlight\(\)\)/);
+  assert.match(src,/if\(refreshLock\.current\|\|decisionGate\.current\.active\|\|inFlight\.current\.has\(req\.id\)/);
+  const handler=src.split('async function decide(req:SellerRequestSummary,decision:Decision)')[1];
+  assert.ok(handler,'decision handler required');
+  assert.ok(handler.indexOf('await decisionGate.current.run(async()=>{')<
+    handler.indexOf('await onDecision('),
+    'single-flight must acquire before dispatching a seller decision');
+  assert.match(handler,/inFlight\.current\.add\(req\.id\)/,
+    'existing per-request lock must remain');
+  assert.match(handler,/finally\{inFlight\.current\.delete\(req\.id\);setBusy\(null\);\}/);
+  assert.match(handler,/await refresh\(\)/,
+    'the lock must cover the post-decision server refresh');
+});
