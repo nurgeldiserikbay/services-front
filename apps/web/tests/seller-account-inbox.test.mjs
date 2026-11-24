@@ -50,3 +50,18 @@ test('account-wide seller actions identify request and seller scope for screen r
   assert.match(src,/onClick=\{\(\)=>void decide\(item,'accept'\)\}>\{t\.accept\}<\/button>/);
   assert.match(src,/onClick=\{\(\)=>void decide\(item,'decline'\)\}>\{t\.decline\}<\/button>/);
 });
+
+test('account-wide seller decisions serialize before React disabled state updates',()=>{
+  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+  const handler=src.split("async function decide(item:SellerRequestSummary,decision:'accept'|'decline')")[1];
+  assert.ok(handler,'decision handler is present');
+  assert.match(src,/const decisionLock=useRef\(false\)/);
+  assert.match(handler,/if\(run\.current\|\|decisionLock\.current\|\|pendingId\|\|item\.state!=='pending'/);
+  assert.ok(handler.indexOf('decisionLock.current=true;')<
+    handler.indexOf('await sendSellerDecision('),
+    'lock must be acquired before the first network write');
+  assert.match(handler,/finally\{decisionLock\.current=false;setPendingId\(null\);\}/);
+  assert.match(handler,/retry\.current\.get\(key\)/,
+    'existing stable idempotency key must remain unchanged');
+  assert.match(handler,/retry\.current\.set\(key,nonce\)/);
+});

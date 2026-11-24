@@ -36,6 +36,9 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  const [pendingId,setPendingId]=useState<string|null>(null);
  const [blocked,setBlocked]=useState<Record<string,number>>({});
  const run=useRef(false);
+ // A ref locks decisions synchronously, before React can commit disabled buttons.
+ // This prevents back-to-back clicks from issuing overlapping writes.
+ const decisionLock=useRef(false);
  const epoch=useRef(0);
  const current=useRef<Page|null>(null);
  const retry=useRef(new Map<string,string>());
@@ -88,11 +91,12 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  },[load]);
 
  async function decide(item:SellerRequestSummary,decision:'accept'|'decline'){
-   if(run.current||pendingId||item.state!=='pending'||
+   if(run.current||decisionLock.current||pendingId||item.state!=='pending'||
       blocked[item.id]===item.version||!page?.csrf)return;
    const key=item.id+':'+item.version+':'+decision;
    let nonce=retry.current.get(key);
    if(!nonce){nonce=crypto.randomUUID();retry.current.set(key,nonce);}
+   decisionLock.current=true;
    setPendingId(item.id);setMessage('');
    try{
      const outcome=await sendSellerDecision({requestId:item.id,version:item.version,
@@ -116,7 +120,7 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
      current.current=null;setPage(null);seenCursors.current.clear();
      setMessage(t.failed);
    }
-   finally{setPendingId(null);}
+   finally{decisionLock.current=false;setPendingId(null);}
  }
  return <section className={styles.wrap} aria-label={t.heading}>
    <h2>{t.heading}</h2><p>{t.notice}</p>
