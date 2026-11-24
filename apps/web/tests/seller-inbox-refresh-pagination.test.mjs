@@ -53,8 +53,8 @@ test('seller request list uses the tested single-flight gate across different re
 test('seller workspace provides one shared gate to both seller scopes',()=>{
   const parent=read('components/SellerWorkspace.tsx');
   const child=read('components/SellerRequestList.tsx');
-  assert.match(parent,/const sharedDecisionGate=useRef\(createSellerDecisionSingleFlight\(\)\)/);
-  assert.equal((parent.match(/sharedDecisionGate=\{sharedDecisionGate\.current\}/g)??[]).length,2,
+  assert.match(parent,/const \[sharedDecisionGate\]=useState\(createSellerDecisionSingleFlight\)/);
+  assert.equal((parent.match(/sharedDecisionGate=\{sharedDecisionGate\}/g)??[]).length,2,
     'both specialist and organization sections must share the same gate');
   assert.match(child,/sharedDecisionGate\?:SellerDecisionSingleFlight/);
   assert.match(child,/const gate=sharedDecisionGate\?\?decisionGate\.current/);
