@@ -308,7 +308,8 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
      try{
       view=await evaluate('(()=>{'+
        'const main=document.querySelector("main#main-content");'+
-       'const inbox=main?.querySelector("section[aria-label]");'+
+       'const inbox=[...main?.querySelectorAll("section[aria-label]")??[]].find(el=>'+
+       'el.getAttribute("aria-label")==='+JSON.stringify(locale==='kk'?'Өтінімдер':'Заявки')+');'+
        'const rows=[...inbox?.querySelectorAll("ul li")??[]];'+
        'const controls=[...inbox?.querySelectorAll("button")??[]].map(el=>{'+
         'const rect=el.getBoundingClientRect();'+
