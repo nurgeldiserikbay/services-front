@@ -6,6 +6,7 @@ import type {SellerRequestSummary} from '@/lib/seller-requests';
 import {loadSellerInbox,sendSellerDecision,
  SellerClientAuthenticationRequired} from '@/lib/seller-bff-client.mjs';
 import styles from './SellerRequestList.module.css';
+import {createSellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
 
 type Page={items:SellerRequestSummary[];nextCursor:string|null;csrf:string};
 const labels={
@@ -38,7 +39,7 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  const run=useRef(false);
  // A ref locks decisions synchronously, before React can commit disabled buttons.
  // This prevents back-to-back clicks from issuing overlapping writes.
- const decisionLock=useRef(false);
+ const decisionGate=useRef(createSellerDecisionSingleFlight());
  const epoch=useRef(0);
  const current=useRef<Page|null>(null);
  const retry=useRef(new Map<string,string>());
@@ -91,12 +92,12 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  },[load]);
 
  async function decide(item:SellerRequestSummary,decision:'accept'|'decline'){
-   if(run.current||decisionLock.current||pendingId||item.state!=='pending'||
+   if(run.current||decisionGate.current.active||pendingId||item.state!=='pending'||
       blocked[item.id]===item.version||!page?.csrf)return;
+   await decisionGate.current.run(async()=>{
    const key=item.id+':'+item.version+':'+decision;
    let nonce=retry.current.get(key);
    if(!nonce){nonce=crypto.randomUUID();retry.current.set(key,nonce);}
-   decisionLock.current=true;
    setPendingId(item.id);setMessage('');
    try{
      const outcome=await sendSellerDecision({requestId:item.id,version:item.version,
@@ -120,7 +121,8 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
      current.current=null;setPage(null);seenCursors.current.clear();
      setMessage(t.failed);
    }
-   finally{decisionLock.current=false;setPendingId(null);}
+   finally{setPendingId(null);}
+   });
  }
  return <section className={styles.wrap} aria-label={t.heading}>
    <h2>{t.heading}</h2><p>{t.notice}</p>
