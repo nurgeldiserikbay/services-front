@@ -50,7 +50,9 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
    if(run.current||(decisionGate.current.active&&!afterDecision))return false;
    const selected=next?current.current?.nextCursor:null;
    if(next&&(!selected||seenCursors.current.has(selected)))return false;
-   run.current=true;setBusy(true);setMessage('');
+   // Keep a decision outcome visible while the authorized post-write refresh runs.
+   // Manual/user-initiated refresh still clears the previous message.
+   run.current=true;setBusy(true);if(!afterDecision)setMessage('');
    const seq=++epoch.current;
    const previous=current.current;
    try{
