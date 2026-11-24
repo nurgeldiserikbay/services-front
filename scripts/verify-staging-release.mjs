@@ -62,6 +62,13 @@ export function validateStagingRelease(text) {
       !/^Status: \*\*VERIFIED\*\*(?:[.!?]|\s|$)/m.test(introduction)) {
     problems.push('Staging status must be VERIFIED exactly once in the document introduction');
   }
+  // Duplicate sections can leave a forged second table invisible to rows().
+  // Reject ambiguous evidence rather than choosing whichever heading appears first.
+  for (const heading of ['Immutable revision record', 'Required acceptance gates', 'Signed release evidence']) {
+    const matches = [...text.matchAll(/^## (.+)$/gm)]
+      .filter(match => match[1].trim() === heading);
+    if (matches.length !== 1) problems.push(heading + ': missing or duplicate section');
+  }
   const revisions = rows(text, 'Immutable revision record');
   for (const repo of EXPECTED_REPOS) {
     const matching = revisions.filter(c => c[0] === repo);
@@ -80,6 +87,7 @@ export function validateStagingRelease(text) {
   for (const gate of EXPECTED_GATES) {
     const matching = gates.filter(c => c[0] === gate);
     if (matching.length !== 1) { problems.push(gate + ': missing or duplicate gate'); continue; }
+    if (!matching[0][1] || /^(?:TODO|TBD|N\/A|-)$/i.test(matching[0][1])) problems.push(gate + ': missing evidence description');
     if (matching[0][2] !== 'PASS') problems.push(gate + ': not PASS');
     if (matching[0].length !== 4) problems.push(gate + ': missing HTTPS evidence URL (invalid row format)');
     if (!validEvidenceUrl(matching[0][3])) problems.push(gate + ': missing HTTPS evidence URL');
