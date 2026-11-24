@@ -2,7 +2,8 @@
 
 import {useRouter} from 'next/navigation';
 import {useRef,useState} from 'react';
-import {canAttemptCustomerCompletion} from '@/lib/customer-completion-ui-core.mjs';
+import {canAttemptCustomerCompletion,readCommittedCustomerCompletionReceipt}
+ from '@/lib/customer-completion-ui-core.mjs';
 
 type Props={requestId:string;version:number;csrf:string;locale:'kk'|'ru'};
 
@@ -27,10 +28,10 @@ export function CustomerCompletionAction({requestId,version,csrf,locale}:Props){
     body:'{}',credentials:'same-origin',cache:'no-store',redirect:'manual',
     signal:AbortSignal.timeout(8000),
    });
-   if(response.status===200){
-    setStatus('done');router.refresh();
-   }else if(response.status===409||response.status===404){
+   if(response.status===409||response.status===404){
     setStatus('conflict');
+   }else if(await readCommittedCustomerCompletionReceipt(response,requestId,version)){
+    setStatus('done');router.refresh();
    }else setStatus('unavailable');
   }catch{setStatus('unavailable');}
   finally{inFlight.current=false;setBusy(false);}
