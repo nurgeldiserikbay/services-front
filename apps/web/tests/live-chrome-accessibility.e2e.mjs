@@ -295,16 +295,28 @@ try{
         await pause(100);
       }
       assert.equal(sourceReady,true,locale+' filtered source must render before switching');
-      const languageLink=await evaluate(`(()=>{
-        const link=document.querySelector('.language a[href^="/${targetLocale}"]');
-        if(!link)return null;
-        const rect=link.getBoundingClientRect();
-        link.focus();
-        return {focused:document.activeElement===link,href:link.getAttribute('href'),
-          width:rect.width,left:rect.left,right:rect.right};
-      })()`);
+      let languageLink;
+      // The Next.js client runtime can replace a hydrated nav link after
+      // document.readyState is already complete. Wait for stable, live focus
+      // instead of accepting a transient detached element or skipping a11y.
+      for(let attempt=0;attempt<60;attempt++){
+        try{
+          languageLink=await evaluate(`(()=>{
+            const link=document.querySelector('.language a[href^="/${targetLocale}"]');
+            if(!link||!link.isConnected)return null;
+            const rect=link.getBoundingClientRect();
+            link.focus();
+            return {focused:document.activeElement===link&&link.isConnected,
+              href:link.getAttribute('href'),width:rect.width,
+              left:rect.left,right:rect.right};
+          })()`);
+        }catch{languageLink=null;}
+        if(languageLink?.focused&&languageLink.width>0)break;
+        await pause(100);
+      }
       assert.ok(languageLink&&languageLink.focused,
-        locale+' language switch must be keyboard focusable');
+        locale+' language switch must be keyboard focusable: '+
+          JSON.stringify(languageLink));
       assert.ok(languageLink.width>0&&languageLink.left>=-1&&languageLink.right<=376,
         locale+' language switch must fit a 375px mobile viewport');
       const linkUrl=new URL(languageLink.href,base);
@@ -454,6 +466,110 @@ try{
       }
     }
   }
+  // Real keyboard journey: public discovery → seller profile → published
+  // service. Unlike isolated direct URL smoke, follow links rendered by
+  // the live PostgreSQL-backed search/profile responses in both languages.
+  await send('Emulation.setDeviceMetricsOverride',{
+    width:375,height:680,deviceScaleFactor:1,mobile:true,
+  });
+  for(const locale of ['kk','ru']){
+    for(const [kind,profilePath,offerPath] of [
+      ['professional','/professionals/ci-stage2-specialist',
+        '/services/10000000-0000-4000-8000-000000000007'],
+      ['organization','/organizations/10000000-0000-4000-8000-000000000006',
+        '/services/10000000-0000-4000-8000-000000000008'],
+    ]){
+      const searchUrl=new URL('/'+locale,base);
+      searchUrl.searchParams.set('q','Stage 2 Journey');
+      await send('Page.navigate',{url:searchUrl.href});
+      let searchLink;
+      for(let n=0;n<100;n++){
+        try{
+          searchLink=await evaluate('(()=>{'+
+            'const expected='+JSON.stringify('/'+locale+profilePath)+';'+
+            'const link=[...document.querySelectorAll("main .resultItem a.resultLink")].find(a=>'+
+              'new URL(a.href).pathname===expected);'+
+            'if(!link)return null;'+
+            'const rect=link.getBoundingClientRect();link.focus();'+
+            'return {name:link.textContent?.trim()??"",focused:document.activeElement===link,'+
+              'width:rect.width,left:rect.left,right:rect.right};'+
+          '})()');
+        }catch{searchLink=null;}
+        if(searchLink?.focused&&searchLink.width>0)break;
+        await pause(100);
+      }
+      assert.ok(searchLink?.focused,kind+' '+locale+' seeded search result must be keyboard focusable');
+      assert.ok(searchLink.left>=-1&&searchLink.right<=376,
+        kind+' '+locale+' search result link must fit mobile viewport');
+      const searchAX=await send('Accessibility.getFullAXTree');
+      assert.ok(searchAX.nodes?.some(node=>!node.ignored&&node.role?.value==='link'&&
+        node.name?.value?.trim()===searchLink.name),
+        kind+' '+locale+' search result must have a Chrome accessibility link name');
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',
+        code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
+      await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',
+        code:'Enter',windowsVirtualKeyCode:13});
+      let profile;
+      for(let n=0;n<100;n++){
+        try{
+          profile=await evaluate('(()=>{'+
+            'const expected='+JSON.stringify('/'+locale+profilePath)+';'+
+            'const link=[...document.querySelectorAll("main .publicOffers a.resultLink")].find(a=>'+
+              'new URL(a.href).pathname==='+JSON.stringify('/'+locale+offerPath)+');'+
+            'return {path:location.pathname,lang:document.documentElement.lang,'+
+              'heading:document.querySelector("main h1")?.textContent?.trim()??"",'+
+              'offerName:link?.textContent?.trim()??"",offerVisible:!!link&&link.getBoundingClientRect().width>0,'+
+              'ready:document.readyState==="complete"};'+
+          '})()');
+        }catch{profile=null;}
+        if(profile?.path==='/'+locale+profilePath&&profile?.offerVisible&&profile?.lang===locale)break;
+        await pause(100);
+      }
+      assert.equal(profile?.path,'/'+locale+profilePath,kind+' Chrome Enter must open matching profile');
+      assert.equal(profile?.lang,locale,'document language must survive client navigation');
+      assert.ok(profile?.heading&&profile.offerVisible,
+        kind+' profile must render its backend-published service');
+      const offerLink=await evaluate('(()=>{'+
+        'const link=[...document.querySelectorAll("main .publicOffers a.resultLink")].find(a=>'+
+          'new URL(a.href).pathname==='+JSON.stringify('/'+locale+offerPath)+');'+
+        'const rect=link?.getBoundingClientRect();link?.focus();'+
+        'return {focused:document.activeElement===link,name:link?.textContent?.trim()??"",'+
+          'left:rect?.left??-1,right:rect?.right??-1,width:rect?.width??0};'+
+      '})()');
+      assert.ok(offerLink?.focused&&offerLink.width>0&&
+        offerLink.left>=-1&&offerLink.right<=376,
+        kind+' '+locale+' published offer must be keyboard reachable at 375px');
+      const offerAX=await send('Accessibility.getFullAXTree');
+      assert.ok(offerAX.nodes?.some(node=>!node.ignored&&node.role?.value==='link'&&
+        node.name?.value?.trim()===offerLink.name),
+        kind+' '+locale+' published offer must have a Chrome accessibility name');
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',
+        code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
+      await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',
+        code:'Enter',windowsVirtualKeyCode:13});
+      let offer;
+      for(let n=0;n<100;n++){
+        try{
+          offer=await evaluate('(()=>({'+
+            'path:location.pathname,lang:document.documentElement.lang,'+
+            'heading:document.querySelector("main h1")?.textContent?.trim()??"",'+
+            'width:document.documentElement.scrollWidth,viewport:innerWidth'+
+          '}))()');
+        }catch{offer=null;}
+        if(offer?.path==='/'+locale+offerPath&&offer.heading&&offer.lang===locale)break;
+        await pause(100);
+      }
+      assert.equal(offer?.path,'/'+locale+offerPath,
+        kind+' '+locale+' Enter must open the linked service');
+      assert.equal(offer?.lang,locale,'service document language must stay localized');
+      assert.equal(offer?.heading,offerLink.name,
+        kind+' service heading must match the published offer clicked');
+      assert.ok(offer.width<=offer.viewport+1,
+        kind+' '+locale+' published offer has mobile overflow: '+JSON.stringify(offer));
+      console.log('Chrome real keyboard search -> '+kind+' -> service '+locale+' PASS');
+    }
+  }
+
   // Use the separately launched outage server to check the actual error
   // recovery control in Chrome's accessibility tree at a mobile viewport.
   await send('Emulation.setDeviceMetricsOverride',{
