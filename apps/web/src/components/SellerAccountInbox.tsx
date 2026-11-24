@@ -85,12 +85,15 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
        }
      }
      return false;
-   }finally{run.current=false;setBusy(false);}
+   }finally{
+     // A stale fetch must never release the lock held by a newer mount/refresh.
+     if(seq===epoch.current){run.current=false;setBusy(false);}
+   }
  },[t.failed]);
  useEffect(()=>{
    // An account/session boundary must unmount this component on logout.
    void load();
-   return ()=>{epoch.current++;current.current=null;retry.current.clear();seenCursors.current.clear();};
+   return ()=>{epoch.current++;run.current=false;current.current=null;retry.current.clear();seenCursors.current.clear();};
  },[load]);
 
  async function decide(item:SellerRequestSummary,decision:'accept'|'decline'){
