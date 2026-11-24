@@ -31,7 +31,11 @@ export default async function ServiceOfferPage({params}:Props) {
   catch(error) {
     if(error instanceof OfferNotFound) notFound();
     return <main id="main-content" className="shell offerPage">
-      <Link href={'/'+locale}>{t.brand}</Link><p role="status">{t.unavailable}</p>
+      <Link href={'/'+locale}>{t.brand}</Link>
+      <div role="alert" className="message">
+        <p>{t.unavailable}</p>
+        <a className="retrySearch" href={`/${locale}/services/${encodeURIComponent(id)}`}>{t.retryDetail}</a>
+      </div>
     </main>;
   }
   // Only render authenticated creation after backend revalidates the sealed
