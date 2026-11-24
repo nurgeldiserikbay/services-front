@@ -19,3 +19,14 @@ export function createSellerDecisionSingleFlight(){
     },
   };
 }
+
+/**
+ * Allow a completed request to affect only the currently mounted seller inbox.
+ * Fetches have separate sequence numbers; a post-decision inbox refresh must
+ * not invalidate the lifetime of the decision that triggered it.
+ */
+export function isCurrentSellerDecision(mounted, capturedLifetime, activeLifetime){
+  return mounted===true &&
+    Number.isSafeInteger(capturedLifetime) && capturedLifetime>=0 &&
+    capturedLifetime===activeLifetime;
+}
