@@ -32,3 +32,29 @@ test('account seller single-flight unlocks on transport errors and reentrancy',a
  assert.equal(await gate.run(async()=>{calls++;}),true);
  assert.equal(calls,2);
 });
+
+test('two seller scopes sharing one gate cannot dispatch decisions during refresh',async()=>{
+ const gate=createSellerDecisionSingleFlight();
+ let completeTransport;
+ const transport=new Promise(resolve=>{completeTransport=resolve;});
+ let completeRefresh;
+ const refresh=new Promise(resolve=>{completeRefresh=resolve;});
+ const writes=[];
+ const specialist=gate.run(async()=>{
+  writes.push('professional:accept');
+  await transport;
+  await refresh;
+ });
+ assert.equal(gate.active,true);
+ assert.equal(await gate.run(async()=>{writes.push('organization:decline');}),false);
+ completeTransport();
+ await Promise.resolve();
+ assert.equal(gate.active,true,'server refresh must remain inside shared decision gate');
+ assert.equal(await gate.run(async()=>{writes.push('organization:accept');}),false);
+ assert.deepEqual(writes,['professional:accept']);
+ completeRefresh();
+ assert.equal(await specialist,true);
+ assert.equal(gate.active,false);
+ assert.equal(await gate.run(async()=>{writes.push('organization:accept');}),true);
+ assert.deepEqual(writes,['professional:accept','organization:accept']);
+});
