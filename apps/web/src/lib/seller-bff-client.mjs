@@ -31,9 +31,38 @@ async function limitedJson(response,expectedStatus){
   const size=response.headers.get('content-length');
   if(size!==null&&(!/^\d+$/.test(size)||Number(size)>MAX_RESPONSE))
     throw new SellerClientUnavailable();
-  const text=await response.text();
-  if(new TextEncoder().encode(text).byteLength>MAX_RESPONSE)
-    throw new SellerClientUnavailable();
+  let text;
+  if(response.body&&typeof response.body.getReader==='function'){
+    const reader=response.body.getReader();
+    const chunks=[];
+    let received=0;
+    try{
+      while(true){
+        const {done,value}=await reader.read();
+        if(done)break;
+        if(!(value instanceof Uint8Array)||received+value.byteLength>MAX_RESPONSE){
+          // Do not buffer an untrusted body beyond the response size budget.
+          await reader.cancel();
+          throw new SellerClientUnavailable();
+        }
+        received+=value.byteLength;
+        chunks.push(value);
+      }
+    }finally{
+      reader.releaseLock();
+    }
+    const bytes=new Uint8Array(received);
+    let offset=0;
+    for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+    try{text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);}
+    catch{throw new SellerClientUnavailable();}
+  }else{
+    // Compatibility for small synthetic transport stubs in unit tests.
+    // Real fetch Response objects always supply a readable body stream.
+    text=await response.text();
+    if(new TextEncoder().encode(text).byteLength>MAX_RESPONSE)
+      throw new SellerClientUnavailable();
+  }
   try{return JSON.parse(text);}catch{throw new SellerClientUnavailable();}
 }
 export function parseSellerBffInbox(raw){
