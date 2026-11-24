@@ -93,8 +93,10 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
       data=await evaluate('(()=>{'+
        'const main=document.querySelector("main#main-content");'+
        'const sections=[...document.querySelectorAll("main section[aria-label]")];'+
-       'const expected='+JSON.stringify(locale==='kk'?'Өтінімдер':'Заявки')+';'+
-       'const inbox=sections.filter(x=>x.getAttribute("aria-label")===expected);'+
+       'const expected='+JSON.stringify(locale==='kk'?
+         ['Маманның өтінімдері','Компанияның өтінімдері']:
+         ['Заявки специалиста','Заявки компании'])+';'+
+       'const inbox=sections.filter(x=>expected.includes(x.getAttribute("aria-label")));'+
        'const rows=inbox.flatMap(x=>[...x.querySelectorAll("ul li")]);'+
        'const buttons=inbox.flatMap(x=>[...x.querySelectorAll("button")]);'+
        'const controls=buttons.map(x=>{const r=x.getBoundingClientRect();'+
@@ -130,6 +132,24 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
       'seller control clipped at '+width+' '+locale+': '+JSON.stringify(control));
      assert.ok(control.height>=44,
       'seller control shorter than 44px at '+width+' '+locale+': '+JSON.stringify(control));
+    }
+    if(width===375){
+     const expectedScopes=locale==='kk'?
+       ['Маманның өтінімдері','Компанияның өтінімдері']:
+       ['Заявки специалиста','Заявки компании'];
+     const axScopes=await send('Accessibility.getFullAXTree');
+     for(const name of expectedScopes){
+      assert.ok(axScopes.nodes?.some(node=>
+       !node.ignored&&node.role?.value==='region'&&
+       node.name?.value===name),
+       locale+' seller scope needs a named Chrome AX region: '+name);
+     }
+     const distinctGroupNames=await evaluate('(()=>['+
+       '...document.querySelectorAll("main div[role=group][aria-label]")'+
+       '].map(node=>node.getAttribute("aria-label")))()');
+     assert.deepEqual(distinctGroupNames,expectedScopes,
+       locale+' seller filters need distinct group names');
+     console.log('Chrome seller distinct scope landmarks '+locale+' PASS');
     }
     // Even requests with identical titles require unique accessible
     // action names. The short request id disambiguates them for screen
