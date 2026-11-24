@@ -57,6 +57,10 @@ export function SellerRequestList({
   onRefresh?:()=>Promise<void>;
 }){
   const t=copy[locale];
+  // These two scopes coexist; duplicate region names confuse landmark navigation.
+  const scopeHeading=sellerContext==='professional'?
+    (locale==='kk'?'Маманның өтінімдері':'Заявки специалиста'):
+    (locale==='kk'?'Компанияның өтінімдері':'Заявки компании');
   const [busy,setBusy]=useState<string|null>(null);
   const [refreshing,setRefreshing]=useState(false);
   const refreshLock=useRef(false);
@@ -100,15 +104,15 @@ export function SellerRequestList({
   }
   const rows=filterSellerRequests(requests,sellerContext,filter);
   const counts=countSellerInbox(requests,sellerContext);
-  return <section className={styles.wrap} aria-label={t.heading}>
-    <h2>{t.heading}</h2>
+  return <section className={styles.wrap} aria-label={scopeHeading}>
+    <h2>{scopeHeading}</h2>
     <p>{t.notice}</p>
     {onRefresh&&<button type="button" className={styles.refresh}
       onClick={()=>void refresh()} disabled={refreshing||busy!==null}>
       {refreshing?t.refreshing:t.refresh}
     </button>}
     {errors.__refresh&&<p role="alert">{errors.__refresh}</p>}
-    <div className={styles.filters} role="group" aria-label={t.heading}>
+    <div className={styles.filters} role="group" aria-label={scopeHeading}>
       {filters.map(value=><button key={value} type="button"
         aria-pressed={filter===value} onClick={()=>setFilter(value)}>
         {t.filters[value]} <span aria-hidden="true">{counts[value]}</span>
