@@ -126,7 +126,7 @@ test('post-write inbox refetch cannot strand seller decision pending state',()=>
 
 test('effect restarts clear private seller rows and stale pending action before reload',()=>{
  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
- assert.match(src,/mounted\.current=true;[\s\S]*?current\.current=null;setPage\(null\);setPendingId\(null\);setBlocked\(\{\}\);[\s\S]*?setMessage\(''\);setBusy\(false\);[\s\S]*?void load\(\);/,
+ assert.match(src,/mounted\.current=true;\s*const lifetime=decisionLifetime\.current;[\s\S]*?Promise\.resolve\(\)\.then\(\(\)=>\{\s*if\(!isCurrentSellerDecision\(mounted\.current,lifetime,decisionLifetime\.current\)\)return;[\s\S]*?current\.current=null;setPage\(null\);setPendingId\(null\);setBlocked\(\{\}\);[\s\S]*?setMessage\(''\);setBusy\(false\);[\s\S]*?void load\(\);/,
    'locale or effect remount must not reuse private rows, disabled action state, or prior feedback');
  assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/,
    'prior response/decision lifetimes must be invalidated on cleanup');
