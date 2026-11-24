@@ -85,3 +85,14 @@ test('unmount invalidates old inbox lock without letting its stale finally unloc
  assert.match(src,/if\(seq!==epoch\.current\)return false;/,
    'stale response must never populate inbox after remount');
 });
+
+test('post-decision refresh preserves conflict and forbidden feedback until a fresh user refresh',()=>{
+ const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+ assert.match(src,/run\.current=true;setBusy\(true\);if\(!afterDecision\)setMessage\(''\);/,
+   'post-decision reload must not immediately clear outcome text');
+ assert.match(src,/if\(outcome==='forbidden'\)setMessage\(t\.forbidden\);/);
+ assert.match(src,/if\(outcome==='conflict'\)setMessage\(t\.conflict\);/);
+ assert.match(src,/await load\(false,true\);/);
+ assert.match(src,/setMessage\(t\.failed\);/,
+   'a failed refresh must still override outcome with a truthful load failure');
+});
