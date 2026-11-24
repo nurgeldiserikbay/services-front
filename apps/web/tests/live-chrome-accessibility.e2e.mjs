@@ -331,6 +331,8 @@ try{
               url.searchParams.get('delivery_mode')==='online'&&
               document.querySelector('input#query')?.value==='Stage 2 Journey'&&
               document.querySelector('#delivery_mode')?.value==='online'&&
+              document.querySelector('a.skipLink')?.textContent?.trim()===
+                (url.pathname==='/ru'?'Перейти к содержимому':'Негізгі мазмұнға өту')&&
               !!document.querySelector('main#main-content');
           })()`);
         }catch{switched=false;}
