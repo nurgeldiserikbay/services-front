@@ -59,7 +59,7 @@ export function SellerWorkspace({locale}:{locale:Locale}){
  const pageLock=useRef(false);
  const refreshLock=useRef(false);
  // Both seller sections share a synchronous gate through server refresh.
- const sharedDecisionGate=useRef(createSellerDecisionSingleFlight());
+ const [sharedDecisionGate]=useState(createSellerDecisionSingleFlight);
  const load=useCallback(async()=>{
    if(refreshLock.current)return;
    refreshLock.current=true;
@@ -195,10 +195,10 @@ export function SellerWorkspace({locale}:{locale:Locale}){
    {status==='ready'&&<>
      <SellerRequestList locale={locale} requests={items} sellerContext="professional"
        onDecision={decide} onRefresh={load}
-       sharedDecisionGate={sharedDecisionGate.current}/>
+       sharedDecisionGate={sharedDecisionGate}/>
      <SellerRequestList locale={locale} requests={items} sellerContext="organization"
        onDecision={decide} onRefresh={load}
-       sharedDecisionGate={sharedDecisionGate.current}/>
+       sharedDecisionGate={sharedDecisionGate}/>
      {moreError&&<p role="alert">{message.moreError}</p>}
      {cursor&&<button type="button" disabled={moreBusy} onClick={()=>void loadMore()}>
        {message.more}</button>}
