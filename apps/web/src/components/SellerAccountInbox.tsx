@@ -96,11 +96,19 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
      // A stale fetch must never release the lock held by a newer mount/refresh.
      if(seq===epoch.current){run.current=false;setBusy(false);}
    }
- },[t.failed]);
+ },[t.failed,t.unauthorized]);
  useEffect(()=>{
    // An account/session boundary must unmount this component on logout.
    mounted.current=true;
-   void load();
+   const lifetime=decisionLifetime.current;
+   // Defer the reset to a microtask: React forbids synchronous state updates
+   // during an effect. A superseded effect must not reload account data.
+   void Promise.resolve().then(()=>{
+     if(!isCurrentSellerDecision(mounted.current,lifetime,decisionLifetime.current))return;
+     current.current=null;setPage(null);setPendingId(null);setBlocked({});
+     setMessage('');setBusy(false);
+     void load();
+   });
    return ()=>{mounted.current=false;decisionLifetime.current++;epoch.current++;run.current=false;current.current=null;retry.current.clear();seenCursors.current.clear();};
  },[load]);
 

@@ -100,7 +100,7 @@ test('post-decision refresh preserves conflict and forbidden feedback until a fr
 test('seller decision completion cannot refresh a remounted or logged-out account inbox',()=>{
  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
  assert.match(src,/const mounted=useRef\(false\);/);
- assert.match(src,/mounted\.current=true;\s*void load\(\);/);
+ assert.match(src,/mounted\.current=true;/);
  assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/);
  assert.match(src,/const decisionEpoch=decisionLifetime\.current;/);
  assert.match(src,/if\(!isCurrentSellerDecision\(mounted\.current,decisionEpoch,decisionLifetime\.current\)\)return;\s*if\(outcome==='unauthorized'\)/,
@@ -122,4 +122,12 @@ test('post-write inbox refetch cannot strand seller decision pending state',()=>
    'successful refresh must still release pendingId and re-enable seller actions');
  assert.doesNotMatch(src,/decisionEpoch[!=]==epoch\.current/,
    'fetch epoch must not gate decision completion or finally');
+});
+
+test('effect restarts clear private seller rows and stale pending action before reload',()=>{
+ const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+ assert.match(src,/mounted\.current=true;\s*const lifetime=decisionLifetime\.current;[\s\S]*?Promise\.resolve\(\)\.then\(\(\)=>\{\s*if\(!isCurrentSellerDecision\(mounted\.current,lifetime,decisionLifetime\.current\)\)return;[\s\S]*?current\.current=null;setPage\(null\);setPendingId\(null\);setBlocked\(\{\}\);[\s\S]*?setMessage\(''\);setBusy\(false\);[\s\S]*?void load\(\);/,
+   'locale or effect remount must not reuse private rows, disabled action state, or prior feedback');
+ assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/,
+   'prior response/decision lifetimes must be invalidated on cleanup');
 });
