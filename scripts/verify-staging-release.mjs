@@ -65,7 +65,7 @@ export function validateStagingRelease(text) {
   // Duplicate sections can leave a forged second table invisible to rows().
   // Reject ambiguous evidence rather than choosing whichever heading appears first.
   for (const heading of ['Immutable revision record', 'Required acceptance gates', 'Signed release evidence']) {
-    const matches = [...text.matchAll(/^## (.+?)\\s*$/gm)]
+    const matches = [...text.matchAll(/^## (.+)$/gm)]
       .filter(match => match[1].trim() === heading);
     if (matches.length !== 1) problems.push(heading + ': missing or duplicate section');
   }
