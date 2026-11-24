@@ -77,6 +77,7 @@ export function SellerRequestList({
   async function refresh(afterDecision=false){
     // A user-triggered refresh cannot race any pending write in either seller
     // scope. Only the decision owner may refresh under its own write gate.
+    // Avoid reading ref.current in JSX: the click handler enforces the shared gate.
     const gate=sharedDecisionGate??decisionGate.current;
     if(!onRefresh||refreshLock.current||sellerRefreshBlocked(gate.active,afterDecision))return;
     refreshLock.current=true;setRefreshing(true);
@@ -121,7 +122,7 @@ export function SellerRequestList({
     <h2>{scopeHeading}</h2>
     <p>{t.notice}</p>
     {onRefresh&&<button type="button" className={styles.refresh}
-      onClick={()=>void refresh()} disabled={refreshing||busy!==null||sellerRefreshBlocked((sharedDecisionGate??decisionGate.current).active)}>
+      onClick={()=>void refresh()} disabled={refreshing||busy!==null}>
       {refreshing?t.refreshing:t.refresh}
     </button>}
     {errors.__refresh&&<p role="alert">{errors.__refresh}</p>}
