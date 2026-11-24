@@ -125,7 +125,9 @@ export async function exerciseRegisteredCreateChromeRetry({base,offer,sealedCook
     await send('Emulation.setDeviceMetricsOverride',{
       width,height:740,deviceScaleFactor:1,mobile:true,
     });
-    const responsive=await evaluate(`(()=>{
+    let responsive;
+    for(let attempt=0;attempt<60;attempt++){
+      responsive=await evaluate(`(()=>{
       const heading=document.getElementById('customer-create-heading');
       const note=document.getElementById('customer-request-note');
       const consent=document.querySelector('input[type="checkbox"]');
@@ -138,6 +140,14 @@ export async function exerciseRegisteredCreateChromeRetry({base,offer,sealedCook
         viewportWidth:innerWidth,heading:heading?.textContent?.trim()??'',
         bounds,submitDisabled:submit?.disabled};
     })()`);
+      // Streaming and hydration can briefly leave detached/replaced nodes
+      // with zero-sized geometry. Wait for connected, displayed controls.
+      // Do not bypass the assertion: timeout means the viewport test fails.
+      if(responsive.heading==='Оставить заявку'&&
+        responsive.bounds.length===3&&
+        responsive.bounds.every(box=>box.width>0))break;
+      await pause(100);
+    }
     assert.equal(responsive.heading,'Оставить заявку');
     assert.ok(responsive.documentWidth<=responsive.viewportWidth+1,
       'signed-in customer form horizontal overflow at '+width+'px: '+
