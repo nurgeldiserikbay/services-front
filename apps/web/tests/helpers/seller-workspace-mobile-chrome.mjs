@@ -131,6 +131,28 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
      assert.ok(control.height>=44,
       'seller control shorter than 44px at '+width+' '+locale+': '+JSON.stringify(control));
     }
+    // Even requests with identical titles require unique accessible
+    // action names. The short request id disambiguates them for screen
+    // readers without changing the visual action buttons or API payload.
+    if(width===375){
+     const axActions=await send('Accessibility.getFullAXTree');
+     const names=axActions.nodes?.filter(node=>
+       !node.ignored&&node.role?.value==='button'
+     ).map(node=>node.name?.value??'')??[];
+     for(const [verb,expected] of [
+       [locale==='kk'?'Қабылдау':'Принять',requestIds.length],
+       [locale==='kk'?'Бас тарту':'Отклонить',requestIds.length],
+     ]){
+      const matching=names.filter(name=>
+        name.startsWith(verb+': Signed seller CI offer № '));
+      assert.equal(matching.length,expected,
+        locale+' seller '+verb+' AX actions must identify each pending request: '+
+          JSON.stringify(matching));
+      assert.equal(new Set(matching).size,expected,
+        locale+' same-titled seller requests need distinct accessible names');
+     }
+     console.log('Chrome seller unique action accessible names '+locale+' PASS');
+    }
     // Exercise actual keyboard activation on the authenticated seller's
     // filter group, without clicking any accept/decline mutation control.
     // This checks hydrated React state, accessible pressed semantics and
