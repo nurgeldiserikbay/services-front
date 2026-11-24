@@ -1,4 +1,5 @@
 const CSRF=/^[A-Za-z0-9_-]{43}$/;
+const CHALLENGE_ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PROOF=/^v1\.[0-9a-f]{64}\.[0-9]{10,13}\.[0-9a-f]{64}$/;
 const EMAIL=/^[^\s@\x00-\x1f\x7f]+@[^\s@\x00-\x1f\x7f]+\.[^\s@\x00-\x1f\x7f]+$/;
 const PHONE=/^\+[1-9][0-9]{7,14}$/;
@@ -78,6 +79,7 @@ export async function startApprovedAccountOtp({
  });
  if(!receipt||typeof receipt!=='object'||
     typeof receipt.challengeId!=='string'||
+    !CHALLENGE_ID.test(receipt.challengeId)||
     receipt.expiresInSeconds!==300)
   throw new Error('account_otp_start_unavailable');
  const issued=issueChallenge({
