@@ -1,7 +1,7 @@
 'use client';
 
 import {useRouter} from 'next/navigation';
-import {useState} from 'react';
+import {useRef,useState} from 'react';
 
 type Props={requestId:string;version:number;csrf:string;locale:'kk'|'ru'};
 
@@ -9,17 +9,22 @@ type Props={requestId:string;version:number;csrf:string;locale:'kk'|'ru'};
 export function CustomerCompletionAction({requestId,version,csrf,locale}:Props){
  const router=useRouter();
  const [busy,setBusy]=useState(false);
+ const inFlight=useRef(false);
  const [status,setStatus]=useState<'idle'|'done'|'conflict'|'unavailable'>('idle');
  const kk=locale==='kk';
  const complete=async()=>{
-  if(busy||status==='done')return;
-  setBusy(true);setStatus('idle');
+  // A mutation can commit even if its HTTP response is lost. Never send
+  // another completion with stale version until the server page is reloaded.
+  if(inFlight.current||status!=='idle')return;
+  inFlight.current=true;
+  setBusy(true);
   try{
    const response=await fetch('/api/account/requests/'+encodeURIComponent(requestId)+'/complete',{
     method:'POST',
     headers:{'Content-Type':'application/json','If-Match':'"'+version+'"',
      'X-Services-CSRF':csrf},
     body:'{}',credentials:'same-origin',cache:'no-store',redirect:'manual',
+    signal:AbortSignal.timeout(8000),
    });
    if(response.status===200){
     setStatus('done');router.refresh();
@@ -27,10 +32,10 @@ export function CustomerCompletionAction({requestId,version,csrf,locale}:Props){
     setStatus('conflict');
    }else setStatus('unavailable');
   }catch{setStatus('unavailable');}
-  finally{setBusy(false);}
+  finally{inFlight.current=false;setBusy(false);}
  };
  return <div>
-  <button type="button" disabled={busy||status==='done'} onClick={complete}>
+  <button type="button" disabled={busy||status!=='idle'} onClick={complete}>
    {busy?(kk?'Расталуда…':'Подтверждение…'):
     status==='done'?(kk?'Расталды':'Подтверждено'):
     (kk?'Аяқталғанын растау':'Подтвердить завершение')}
@@ -41,5 +46,9 @@ export function CustomerCompletionAction({requestId,version,csrf,locale}:Props){
     status==='unavailable'?(kk?'Нәтиже белгісіз. Қайталап жібермей, күйін жаңартып тексеріңіз.':
      'Результат неизвестен. Проверьте статус перед повторной попыткой.'):null}
   </p>
+  {(status==='conflict'||status==='unavailable')&&
+   <button type="button" onClick={()=>window.location.reload()}>
+    {kk?'Күйін қайта жүктеп тексеру':'Перезагрузить и проверить статус'}
+   </button>}
  </div>;
 }
