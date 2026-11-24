@@ -51,17 +51,12 @@ test('account-wide seller actions identify request and seller scope for screen r
   assert.match(src,/onClick=\{\(\)=>void decide\(item,'decline'\)\}>\{t\.decline\}<\/button>/);
 });
 
-test('account-wide seller decisions serialize before React disabled state updates',()=>{
-  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
-  const handler=src.split("async function decide(item:SellerRequestSummary,decision:'accept'|'decline')")[1];
-  assert.ok(handler,'decision handler is present');
-  assert.match(src,/const decisionLock=useRef\(false\)/);
-  assert.match(handler,/if\(run\.current\|\|decisionLock\.current\|\|pendingId\|\|item\.state!=='pending'/);
-  assert.ok(handler.indexOf('decisionLock.current=true;')<
-    handler.indexOf('await sendSellerDecision('),
-    'lock must be acquired before the first network write');
-  assert.match(handler,/finally\{decisionLock\.current=false;setPendingId\(null\);\}/);
-  assert.match(handler,/retry\.current\.get\(key\)/,
-    'existing stable idempotency key must remain unchanged');
-  assert.match(handler,/retry\.current\.set\(key,nonce\)/);
+test('account-wide seller decisions use executable synchronous gate',()=>{
+ const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+ assert.match(src,/const decisionGate=useRef\(createSellerDecisionSingleFlight\(\)\)/);
+ assert.match(src,/if\(run\.current\|\|decisionGate\.current\.active\|\|pendingId\|\|item\.state!=='pending'/);
+ assert.match(src,/await decisionGate\.current\.run\(async\(\)=>\{/);
+ assert.match(src,/retry\.current\.get\(key\)/);
+ assert.match(src,/retry\.current\.set\(key,nonce\)/);
+ assert.match(src,/finally\{setPendingId\(null\);\}/);
 });
