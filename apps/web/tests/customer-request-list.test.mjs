@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {canAttemptCustomerCompletion}
+ from '../src/lib/customer-completion-ui-core.mjs';
 import {
  listBackendCustomerRequests,AccountSessionTransportUnavailable,
 } from '../src/lib/account-session-transport.mjs';
@@ -83,4 +85,22 @@ test('client completion UI only sends CSRF and exact If-Match, not bearer',()=>{
  assert.match(wrapper,/readAccountWebSession\(cookieValue\)/);
  assert.match(wrapper,/listBackendCustomerRequests/);
  assert.doesNotMatch(action,/Authorization|Bearer|accountBearer/);
+});
+
+test('customer completion never resends after unknown, conflict or completed result',()=>{
+ assert.equal(canAttemptCustomerCompletion('idle',false),true);
+ for(const state of ['idle','done','conflict','unavailable']){
+  assert.equal(canAttemptCustomerCompletion(state,true),false);
+ }
+ for(const state of ['done','conflict','unavailable',null,undefined]){
+  assert.equal(canAttemptCustomerCompletion(state,false),false);
+ }
+ const source=readFileSync(new URL('../src/components/CustomerCompletionAction.tsx',import.meta.url),'utf8');
+ assert.match(source,/if\(!canAttemptCustomerCompletion\(status,inFlight\.current\)\)return/);
+ assert.match(source,/signal:AbortSignal\.timeout\(8000\)/);
+ assert.match(source,/status!=='idle'/);
+ assert.match(source,/onClick=\{\(\)=>window\.location\.reload\(\)\}/);
+ assert.match(source,/status==='conflict'\|\|status==='unavailable'/);
+ assert.match(source,/setStatus\('done'\);router\.refresh\(\)/);
+ assert.doesNotMatch(source,/Authorization|Bearer|accountBearer/);
 });
