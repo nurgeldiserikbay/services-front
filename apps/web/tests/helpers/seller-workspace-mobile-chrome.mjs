@@ -292,6 +292,85 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
     console.log('Chrome seller authenticated mobile '+locale+' '+width+'px PASS');
    }
   }
+  // Authenticated account-wide seller inbox: this is a separate guarded
+  // Next.js route, not the legacy /seller/requests workspace above. Use the
+  // same real sealed test session, live BFF authorization and DB fixtures.
+  for(const width of [320,375,768]){
+   await send('Emulation.setDeviceMetricsOverride',{
+    width,height:740,deviceScaleFactor:1,mobile:true,
+   });
+   for(const locale of ['kk','ru']){
+    await send('Page.navigate',{
+     url:new URL('/'+locale+'/account/requests',base).href,
+    });
+    let view;
+    for(let attempt=0;attempt<110;attempt++){
+     try{
+      view=await evaluate('(()=>{'+
+       'const main=document.querySelector("main#main-content");'+
+       'const inbox=main?.querySelector("section[aria-label]");'+
+       'const rows=[...inbox?.querySelectorAll("ul li")??[]];'+
+       'const controls=[...inbox?.querySelectorAll("button")??[]].map(el=>{'+
+        'const rect=el.getBoundingClientRect();'+
+        'return {name:el.getAttribute("aria-label")??el.textContent?.trim()??"",'+
+         'disabled:el.disabled,width:rect.width,height:rect.height,'+
+         'left:rect.left,right:rect.right};'+
+       '});'+
+       'return {ready:document.readyState==="complete",'+
+        'lang:document.documentElement.lang,'+
+        'path:location.pathname,hasMain:!!main,'+
+        'title:main?.querySelector("h1")?.textContent?.trim()??"",'+
+        'region:inbox?.getAttribute("aria-label")??"",'+
+        'rows:rows.length,buttons:controls,'+
+        'text:main?.textContent??"",'+
+        'alert:!!main?.querySelector("[role=alert]"),'+
+        'documentWidth:document.documentElement.scrollWidth,'+
+        'viewport:innerWidth};'+
+       '})()');
+     }catch{view=null;}
+     if(view?.ready&&view.region&&(view.rows>=requestIds.length)&&
+        view.buttons.length>=5&&view.lang===locale)break;
+     await pause(100);
+    }
+    assert.equal(view?.path,'/'+locale+'/account/requests',
+     'authenticated account inbox route must be reachable');
+    assert.equal(view?.hasMain,true,'account inbox must provide main landmark');
+    assert.equal(view?.lang,locale,'account inbox HTML language must match locale');
+    assert.equal(view?.title,locale==='kk'?'Менің өтінімдерім':'Мои заявки');
+    assert.equal(view?.region,locale==='kk'?'Өтінімдер':'Заявки');
+    assert.equal(view?.alert,false,'live authorized inbox must not report error');
+    assert.equal(view?.rows,requestIds.length,
+     'account-wide inbox must show only its own committed seller requests');
+    assert.ok(!view.text.includes(sealedCookie),
+     'account cookie must never be reflected in private DOM');
+    assert.ok(view.documentWidth<=view.viewport+1,
+     'account inbox mobile horizontal overflow: '+JSON.stringify(view));
+    for(const control of view.buttons){
+     assert.ok(control.width>0&&control.left>=-1&&control.right<=width+1,
+      'account inbox button clipped at '+width+' '+locale+': '+JSON.stringify(control));
+     assert.ok(control.height>=44,
+      'account inbox button shorter than 44px: '+JSON.stringify(control));
+    }
+    if(width===375){
+     const ax=await send('Accessibility.getFullAXTree');
+     assert.ok(ax.nodes?.some(node=>!node.ignored&&
+       node.role?.value==='region'&&node.name?.value===view.region),
+       'account inbox needs a named Chrome AX region');
+     const actions=ax.nodes?.filter(node=>!node.ignored&&
+       node.role?.value==='button').map(node=>node.name?.value??'')??[];
+     for(const verb of [locale==='kk'?'Қабылдау':'Принять',
+                        locale==='kk'?'Бас тарту':'Отклонить']){
+      const matches=actions.filter(name=>name.startsWith(verb+': Компания · Signed seller CI offer № '));
+      assert.equal(matches.length,requestIds.length,
+       locale+' account inbox AX must name each real seller request '+verb);
+      assert.equal(new Set(matches).size,requestIds.length,
+       'duplicate seller titles must retain distinct accessible request IDs');
+     }
+    }
+    console.log('Chrome authenticated account-wide seller inbox '+locale+
+      ' '+width+'px PASS');
+   }
+  }
  }finally{
   if(socket)socket.close();
   if(child&&!ended)child.kill('SIGTERM');
