@@ -36,10 +36,11 @@ test('seller request list uses the tested single-flight gate across different re
   const src=read('components/SellerRequestList.tsx');
   assert.match(src,/import \{createSellerDecisionSingleFlight\} from '@\/lib\/seller-decision-single-flight\.mjs'/);
   assert.match(src,/const decisionGate=useRef\(createSellerDecisionSingleFlight\(\)\)/);
-  assert.match(src,/if\(refreshLock\.current\|\|decisionGate\.current\.active\|\|inFlight\.current\.has\(req\.id\)/);
+  assert.match(src,/const gate=sharedDecisionGate\?\?decisionGate\.current/);
+  assert.match(src,/if\(refreshLock\.current\|\|gate\.active\|\|inFlight\.current\.has\(req\.id\)/);
   const handler=src.split('async function decide(req:SellerRequestSummary,decision:Decision)')[1];
   assert.ok(handler,'decision handler required');
-  assert.ok(handler.indexOf('await decisionGate.current.run(async()=>{')<
+  assert.ok(handler.indexOf('await gate.run(async()=>{')<
     handler.indexOf('await onDecision('),
     'single-flight must acquire before dispatching a seller decision');
   assert.match(handler,/inFlight\.current\.add\(req\.id\)/,
@@ -47,4 +48,16 @@ test('seller request list uses the tested single-flight gate across different re
   assert.match(handler,/finally\{inFlight\.current\.delete\(req\.id\);setBusy\(null\);\}/);
   assert.match(handler,/await refresh\(\)/,
     'the lock must cover the post-decision server refresh');
+});
+
+test('seller workspace provides one shared gate to both seller scopes',()=>{
+  const parent=read('components/SellerWorkspace.tsx');
+  const child=read('components/SellerRequestList.tsx');
+  assert.match(parent,/const sharedDecisionGate=useRef\(createSellerDecisionSingleFlight\(\)\)/);
+  assert.equal((parent.match(/sharedDecisionGate=\{sharedDecisionGate\.current\}/g)??[]).length,2,
+    'both specialist and organization sections must share the same gate');
+  assert.match(child,/sharedDecisionGate\?:SellerDecisionSingleFlight/);
+  assert.match(child,/const gate=sharedDecisionGate\?\?decisionGate\.current/);
+  assert.match(child,/await gate\.run\(async\(\)=>\{/);
+  assert.match(child,/await refresh\(\)/);
 });
