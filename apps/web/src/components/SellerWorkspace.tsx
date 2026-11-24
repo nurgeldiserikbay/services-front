@@ -4,6 +4,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import type {SellerRequestSummary} from '@/lib/seller-requests';
 import {SellerRequestList} from './SellerRequestList';
+import {createSellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
 import {readBoundedSellerUiJson,parseSellerDecisionUiAck}
  from '@/lib/seller-workspace-response.mjs';
 
@@ -57,6 +58,8 @@ export function SellerWorkspace({locale}:{locale:Locale}){
  const seenCursors=useRef(new Set<string>());
  const pageLock=useRef(false);
  const refreshLock=useRef(false);
+ // Both seller sections share a synchronous gate through server refresh.
+ const sharedDecisionGate=useRef(createSellerDecisionSingleFlight());
  const load=useCallback(async()=>{
    if(refreshLock.current)return;
    refreshLock.current=true;
@@ -191,9 +194,11 @@ export function SellerWorkspace({locale}:{locale:Locale}){
    </>}
    {status==='ready'&&<>
      <SellerRequestList locale={locale} requests={items} sellerContext="professional"
-       onDecision={decide} onRefresh={load}/>
+       onDecision={decide} onRefresh={load}
+       sharedDecisionGate={sharedDecisionGate.current}/>
      <SellerRequestList locale={locale} requests={items} sellerContext="organization"
-       onDecision={decide} onRefresh={load}/>
+       onDecision={decide} onRefresh={load}
+       sharedDecisionGate={sharedDecisionGate.current}/>
      {moreError&&<p role="alert">{message.moreError}</p>}
      {cursor&&<button type="button" disabled={moreBusy} onClick={()=>void loadMore()}>
        {message.more}</button>}
