@@ -131,10 +131,11 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
        setMessage(t.failed);
      }
    }catch{
+     if(!mounted.current||decisionEpoch!==epoch.current)return;
      current.current=null;setPage(null);seenCursors.current.clear();
      setMessage(t.failed);
    }
-   finally{setPendingId(null);}
+   finally{if(mounted.current&&decisionEpoch===epoch.current)setPendingId(null);}
    });
  }
  return <section className={styles.wrap} aria-label={t.heading}>
