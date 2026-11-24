@@ -327,6 +327,50 @@ try{
           kind+' '+locale+' '+width+'px overflow: '+JSON.stringify(page));
         assert.ok(page.backWidth>0&&page.backLeft>=-1&&page.backRight<=width+1,
           kind+' '+locale+' '+width+'px return link clipped: '+JSON.stringify(page));
+        if(width===375){
+          const label=locale==='kk'?'Іздеуге қайту':'Назад к поиску';
+          // Confirm the actual computed Chrome AX name, then use a native
+          // keyboard Enter on the visible detail-page search return link.
+          const candidate=await evaluate('(()=>{'+
+            'const links=[...document.querySelectorAll("main a")];'+
+            'const link=links.find(a=>a.textContent?.trim()==='+JSON.stringify(label)+');'+
+            'if(!link)return null;'+
+            'const rect=link.getBoundingClientRect();link.focus();'+
+            'return {href:link.getAttribute("href"),focused:document.activeElement===link,'+
+            'width:rect.width,height:rect.height,left:rect.left,right:rect.right};})()');
+          assert.ok(candidate,kind+' '+locale+' back-to-search link required');
+          assert.equal(candidate.href,'/'+locale);
+          assert.equal(candidate.focused,true,kind+' back link keyboard focus');
+          assert.ok(candidate.width>0&&candidate.left>=-1&&candidate.right<=width+1,
+            kind+' back link must remain in the mobile viewport');
+          const ax=await send('Accessibility.getFullAXTree');
+          assert.ok(ax.nodes?.some(node=>
+            !node.ignored&&node.role?.value==='link'&&
+            node.name?.value?.trim()===label),
+            kind+' '+locale+' back link must have a localized Chrome accessible name');
+          await send('Input.dispatchKeyEvent',{
+            type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
+            text:'\r',unmodifiedText:'\r',
+          });
+          await send('Input.dispatchKeyEvent',{
+            type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
+          });
+          let returned=false;
+          for(let attempt=0;attempt<90;attempt++){
+            try{
+              returned=await evaluate('(()=>location.pathname==='+JSON.stringify('/'+locale)+
+                '&&!!document.querySelector("main#main-content input#query"))()');
+            }catch{
+              // Navigation may replace Chrome's execution context.
+              returned=false;
+            }
+            if(returned)break;
+            await pause(100);
+          }
+          assert.equal(returned,true,
+            kind+' '+locale+' native Enter must return to the search page');
+          console.log('Chrome public detail keyboard back link '+kind+' '+locale+' PASS');
+        }
         console.log('Chrome mobile public detail '+kind+' '+locale+' '+width+'px OK');
       }
     }
