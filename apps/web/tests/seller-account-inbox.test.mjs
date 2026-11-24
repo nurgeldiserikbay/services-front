@@ -131,3 +131,11 @@ test('effect restarts clear private seller rows and stale pending action before 
  assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/,
    'prior response/decision lifetimes must be invalidated on cleanup');
 });
+
+test('locale restart replaces an in-flight seller write gate before new inbox loading',()=>{
+ const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+ assert.match(src,/decisionGate\.current=createSellerDecisionSingleFlight\(\);\s*void load\(\);/,
+   'fresh account inbox fetch must not be blocked by a write from the old effect');
+ assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/,
+   'cleanup must invalidate outstanding seller decision responses');
+});
