@@ -275,6 +275,62 @@ try{
     console.log('Chrome responsive keyboard/landmark smoke '+locale+' '+width+'px OK');
     }
   }
+
+  // Expand mobile Chrome coverage beyond the catalog to seeded public detail
+  // pages. This does not attest to physical devices or screen-reader behavior.
+  for(const width of [320,375,768]){
+    await send('Emulation.setDeviceMetricsOverride',{
+      width,height:680,deviceScaleFactor:1,mobile:true,
+    });
+    for(const locale of ['kk','ru']){
+      for(const [kind,route] of [
+        ['professional','/professionals/ci-stage2-specialist'],
+        ['organization','/organizations/10000000-0000-4000-8000-000000000006'],
+        ['offer','/services/10000000-0000-4000-8000-000000000007'],
+      ]){
+        await send('Page.navigate',{url:new URL('/'+locale+route,base).href});
+        let page;
+        for(let attempt=0;attempt<90;attempt++){
+          try{
+          page=await evaluate('(()=>{'+
+            'const main=document.querySelector("main#main-content");'+
+            'const heading=main?.querySelector("h1");'+
+            'const back=main?.querySelector(\'a[href="/'+locale+'"]\');'+
+            'const bounds=back?.getBoundingClientRect();'+
+            'return {ready:document.readyState==="complete",'+
+            'locale:document.documentElement.lang,main:!!main,'+
+            'heading:heading?.textContent?.trim()??"",'+
+            'headingCount:main?.querySelectorAll("h1").length??0,'+
+            'backWidth:bounds?.width??0,backLeft:bounds?.left??-1,'+
+            'backRight:bounds?.right??-1,'+
+            'documentWidth:document.documentElement.scrollWidth,'+
+            'viewportWidth:innerWidth,'+
+            'isError:!!main?.querySelector("[role=alert],[role=status]")};'+
+          '})()');
+          }catch(error){
+            // Next.js streamed navigation can replace the document's JS
+            // execution context between DevTools command and evaluation.
+            // Retry only until a fresh context loads; never skip assertions.
+            if(attempt===89)throw error;
+            await pause(100);
+            continue;
+          }
+          if(page.ready&&page.main&&page.heading&&page.backWidth>0)break;
+          await pause(100);
+        }
+        assert.equal(page.locale,locale,kind+' locale mismatch');
+        assert.equal(page.main,true,kind+' main landmark missing');
+        assert.equal(page.headingCount,1,kind+' must have one primary heading');
+        assert.ok(page.heading,kind+' heading missing from seeded backend');
+        assert.equal(page.isError,false,kind+' rendered an unavailable state');
+        assert.ok(page.documentWidth<=page.viewportWidth+1,
+          kind+' '+locale+' '+width+'px overflow: '+JSON.stringify(page));
+        assert.ok(page.backWidth>0&&page.backLeft>=-1&&page.backRight<=width+1,
+          kind+' '+locale+' '+width+'px return link clipped: '+JSON.stringify(page));
+        console.log('Chrome mobile public detail '+kind+' '+locale+' '+width+'px OK');
+      }
+    }
+  }
   // Use the separately launched outage server to check the actual error
   // recovery control in Chrome's accessibility tree at a mobile viewport.
   await send('Emulation.setDeviceMetricsOverride',{
