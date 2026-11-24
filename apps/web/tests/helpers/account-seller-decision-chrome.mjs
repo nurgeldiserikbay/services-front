@@ -44,9 +44,14 @@ export async function exerciseAccountSellerDecisionChrome({
    socket.addEventListener('open',resolve,{once:true});
    socket.addEventListener('error',reject,{once:true});
   });
-  let seq=0;const pending=new Map(),decisionStatuses=[];
+  let seq=0;const pending=new Map(),decisionStatuses=[],requestAttempts=[],networkFailures=[];
   socket.addEventListener('message',event=>{
    const reply=JSON.parse(event.data);
+   if(reply.method==='Network.requestWillBeSent'&&
+      reply.params?.request?.url?.includes('/api/seller/requests/'))
+     requestAttempts.push({url:reply.params.request.url,method:reply.params.request.method});
+   if(reply.method==='Network.loadingFailed')
+     networkFailures.push(reply.params?.errorText??'unknown network failure');
    if(reply.method==='Network.responseReceived'&&
       reply.params?.response?.url?.includes('/api/seller/requests/'+requestId+'/accept')){
     decisionStatuses.push(reply.params.response.status);
@@ -150,8 +155,17 @@ export async function exerciseAccountSellerDecisionChrome({
       state.pendingActions===0)break;
    await pause(100);
   }
+  const diagnostic=await evaluate('(()=>({'+
+    'active:document.activeElement?.getAttribute("aria-label")??null,'+
+    'path:location.pathname,ready:document.readyState,'+
+    'errors:[...document.querySelectorAll("[role=alert]")].map(n=>n.textContent?.trim()),'+
+    'pendingButtons:[...document.querySelectorAll("button[aria-label]")].map(n=>({'+
+      'name:n.getAttribute("aria-label"),disabled:n.disabled}))'+
+   '}))()');
   assert.deepEqual(decisionStatuses,[200],
-   'real browser must send exactly one authorized seller accept request');
+   'real browser decision response: '+JSON.stringify({
+     requestAttempts,networkFailures,diagnostic,state,decisionStatuses,
+   }));
   assert.equal(state?.lang,locale);
   assert.ok(state?.statuses.includes('accepted'),
    'React inbox must refresh and render accepted status after BFF commit: '+JSON.stringify(state));
