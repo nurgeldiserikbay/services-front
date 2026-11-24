@@ -132,8 +132,10 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
        <span>{item.state}</span>
        {item.state==='pending'&&<div className={styles.actions}>
          <button type="button" disabled={busy||pendingId!==null||blocked[item.id]===item.version}
+           aria-label={t.accept+': '+t[item.sellerKind]+' · '+item.title+' № '+item.id.slice(0,8)}
            onClick={()=>void decide(item,'accept')}>{t.accept}</button>
          <button type="button" disabled={busy||pendingId!==null||blocked[item.id]===item.version}
+           aria-label={t.decline+': '+t[item.sellerKind]+' · '+item.title+' № '+item.id.slice(0,8)}
            onClick={()=>void decide(item,'decline')}>{t.decline}</button>
        </div>}
      </li>)}</ul>}

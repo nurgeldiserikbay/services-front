@@ -37,3 +37,16 @@ test('account inbox is not publicly mounted before registered-account login',()=
   const src=readFileSync(new URL('../src/app/[locale]/page.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(src,/SellerAccountInbox/);
 });
+
+test('account-wide seller actions identify request and seller scope for screen readers',()=>{
+  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+  for(const action of ['accept','decline']){
+    const accessible="aria-label={t."+action+
+      "+': '+t[item.sellerKind]+' · '+item.title+' № '+item.id.slice(0,8)}";
+    assert.ok(src.includes(accessible),'missing scoped accessible label: '+action);
+  }
+  assert.match(src,/professional:'Маман',organization:'Компания'/);
+  assert.match(src,/professional:'Специалист',organization:'Компания'/);
+  assert.match(src,/onClick=\{\(\)=>void decide\(item,'accept'\)\}>\{t\.accept\}<\/button>/);
+  assert.match(src,/onClick=\{\(\)=>void decide\(item,'decline'\)\}>\{t\.decline\}<\/button>/);
+});
