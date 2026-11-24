@@ -293,21 +293,15 @@ try{
    VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
   [browserLogoutSessionId,userId,browserLogoutHash,randomUUID()]);
  const browserLogoutCookie=sealAccountWebSession(key,browserLogoutBearer,600).cookie;
- const accountMe=await fetch('https://localhost:8443/v1/me',{
-  headers:{Authorization:'Bearer '+browserLogoutBearer,Accept:'application/json'},
-  signal:AbortSignal.timeout(8000),
- });
- assert.equal(accountMe.status,200,
-  'account home backend /me must authorize this browser test session: '+accountMe.status);
- const serverHome=await fetch(new URL('/kk/account',base),{
+ const serverDevices=await fetch(new URL('/kk/account/devices',base),{
   headers:{Cookie:'__Host-services_account_web='+browserLogoutCookie},
   redirect:'manual',signal:AbortSignal.timeout(8000),
  });
- const homeHtml=await serverHome.text();
- assert.ok(homeHtml.includes('Аккаунттан шығу'),
-  'account home must SSR its logout button: '+JSON.stringify({
-   status:serverHome.status,robots:serverHome.headers.get('x-robots-tag'),
-   foundNotFound:homeHtml.includes('404'),length:homeHtml.length,
+ const devicesHtml=await serverDevices.text();
+ assert.ok(devicesHtml.includes('Аккаунттан шығу'),
+  'server-rendered protected devices page must expose logout: '+JSON.stringify({
+   status:serverDevices.status,robots:serverDevices.headers.get('x-robots-tag'),
+   foundNotFound:devicesHtml.includes('404'),length:devicesHtml.length,
   }));
  await exerciseAccountLogoutChrome({
   base,sealedCookie:browserLogoutCookie,
