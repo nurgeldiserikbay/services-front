@@ -101,11 +101,25 @@ test('seller decision completion cannot refresh a remounted or logged-out accoun
  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
  assert.match(src,/const mounted=useRef\(false\);/);
  assert.match(src,/mounted\.current=true;\s*void load\(\);/);
- assert.match(src,/return \(\)=>\{mounted\.current=false;epoch\.current\+\+;/);
- assert.match(src,/const decisionEpoch=epoch\.current;/);
- assert.match(src,/if\(!mounted\.current\|\|decisionEpoch!==epoch\.current\)return;\s*if\(outcome==='unauthorized'\)/,
+ assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/);
+ assert.match(src,/const decisionEpoch=decisionLifetime\.current;/);
+ assert.match(src,/if\(!mounted\.current\|\|decisionEpoch!==decisionLifetime\.current\)return;\s*if\(outcome==='unauthorized'\)/,
    'late successful response must not perform an account-scoped read');
- assert.match(src,/\}catch\{\s*if\(!mounted\.current\|\|decisionEpoch!==epoch\.current\)return;/,
+ assert.match(src,/\}catch\{\s*if\(!mounted\.current\|\|decisionEpoch!==decisionLifetime\.current\)return;/,
    'late network failures must not alter the next account view');
- assert.match(src,/finally\{if\(mounted\.current&&decisionEpoch===epoch\.current\)setPendingId\(null\);\}/);
+ assert.match(src,/finally\{if\(mounted\.current&&decisionEpoch===decisionLifetime\.current\)setPendingId\(null\);\}/);
+});
+
+test('post-write inbox refetch cannot strand seller decision pending state',()=>{
+ const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+ assert.match(src,/const epoch=useRef\(0\);/,'fetches retain their own response epoch');
+ assert.match(src,/const decisionLifetime=useRef\(0\);/,
+   'seller decisions require a separate mount lifetime');
+ assert.match(src,/const decisionEpoch=decisionLifetime\.current;/);
+ assert.match(src,/await load\(false,true\);/,
+   'post-decision refresh advances the fetch epoch');
+ assert.match(src,/finally\{if\(mounted\.current&&decisionEpoch===decisionLifetime\.current\)setPendingId\(null\);\}/,
+   'successful refresh must still release pendingId and re-enable seller actions');
+ assert.doesNotMatch(src,/decisionEpoch[!=]==epoch\.current/,
+   'fetch epoch must not gate decision completion or finally');
 });
