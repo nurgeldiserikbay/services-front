@@ -47,6 +47,16 @@ export async function exerciseAccountSellerDecisionChrome({
   let seq=0;const pending=new Map(),decisionStatuses=[],requestAttempts=[],networkFailures=[];
   socket.addEventListener('message',event=>{
    const reply=JSON.parse(event.data);
+   if(reply.method==='Fetch.requestPaused'){
+     const request=reply.params?.request;
+     const headers=Object.entries(request?.headers??{})
+       .filter(([name])=>name.toLowerCase()!=='origin')
+       .map(([name,value])=>({name,value:String(value)}));
+     headers.push({name:'Origin',value:'https://services.example.test'});
+     void send('Fetch.continueRequest',{
+       requestId:reply.params.requestId,headers,
+     }).catch(error=>networkFailures.push('continueRequest: '+error.message));
+   }
    if(reply.method==='Network.requestWillBeSent'&&
       reply.params?.request?.url?.includes('/api/seller/requests/'))
      requestAttempts.push({url:reply.params.request.url,method:reply.params.request.method});
@@ -121,10 +131,11 @@ export async function exerciseAccountSellerDecisionChrome({
   assert.ok(ax.nodes?.some(n=>!n.ignored&&n.role?.value==='button'&&
     n.name?.value===button.label),'seller decision must have Chrome AX name');
   // The deployment origin is HTTPS; the test-only transport is loopback HTTP.
-  // Map Origin only, never CSRF, cookies, bearer or backend response.
-  await send('Network.setExtraHTTPHeaders',{
-   headers:{Origin:'https://services.example.test'},
-  });
+  // Intercept only seller-accept POST and map Origin at the network layer;
+  // browser authentication, CSRF, body, session and backend response stay real.
+  await send('Fetch.enable',{patterns:[{
+   urlPattern:'*/api/seller/requests/*/accept',requestStage:'Request',
+  }]});
   await send('Input.dispatchKeyEvent',{
    type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
    text:'\r',unmodifiedText:'\r',
