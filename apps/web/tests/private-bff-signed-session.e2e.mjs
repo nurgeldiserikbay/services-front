@@ -441,6 +441,43 @@ try{
  assert.equal(browserEvents.rows[0].contact_id,browserGuestId);
  console.log('Account Chrome accept -> BFF -> PostgreSQL/outbox/intent PASS');
 
+ // A separate live browser decline verifies the other seller decision path
+ // without altering the original two request HTTP/ACL/idempotency matrix.
+ const declinedGuestId=randomUUID(),declinedRequestId=randomUUID();
+ fixture.guestIds.push(declinedGuestId);fixture.requestIds.push(declinedRequestId);
+ await db.query('INSERT INTO guest_contacts(id,channel,encrypted_value,digest,verified_at,expires_at) VALUES($1,\'email\',\'test-encrypted\',$2,now(),now()+interval \'1 day\')',
+  [declinedGuestId,'ci-browser-decline-guest-'+randomUUID()]);
+ await db.query('INSERT INTO service_requests(id,offer_id,guest_contact_id,source_context,seller_organization_id,status) VALUES($1,$2,$3,\'ORGANIZATION\',$4,\'PENDING\')',
+  [declinedRequestId,fixture.offerId,declinedGuestId,fixture.orgId]);
+ await exerciseAccountSellerDecisionChrome({
+  base,sealedCookie:sealed.cookie,requestId:declinedRequestId,locale:'ru',action:'decline',
+ });
+ const declinedCommitted=await db.query(
+  'SELECT status,version FROM service_requests WHERE id=$1',[declinedRequestId]);
+ assert.deepEqual(declinedCommitted.rows[0],{status:'DECLINED',version:2},
+  'Chrome Enter decline must persist PostgreSQL status version 2');
+ const declinedEvents=await db.query(
+  'SELECT o.id::text AS event_id,o.topic,n.domain_event_id::text AS intent_event,n.audience,n.channel,n.guest_contact_id::text AS contact_id FROM domain_outbox_events o JOIN notification_intents n ON n.domain_event_id=o.id WHERE o.subject_id=$1::uuid',
+  [declinedRequestId]);
+ assert.equal(declinedEvents.rowCount,1,'browser decline creates one linked event/intent');
+ assert.equal(declinedEvents.rows[0].topic,'service_request.declined');
+ assert.equal(declinedEvents.rows[0].event_id,declinedEvents.rows[0].intent_event);
+ assert.equal(declinedEvents.rows[0].audience,'CLIENT');
+ assert.equal(declinedEvents.rows[0].channel,'EMAIL');
+ assert.equal(declinedEvents.rows[0].contact_id,declinedGuestId);
+ const declinedReplay=await decision(declinedRequestId,'decline',randomUUID(),1);
+ assert.equal(declinedReplay.status,409,'declined browser request rejects new-key stale retry');
+ const oppositeBrowserDecision=await decision(declinedRequestId,'accept',randomUUID(),1);
+ assert.equal(oppositeBrowserDecision.status,409,'declined browser request rejects opposite accept');
+ const declinedStable=await db.query(
+  'SELECT status,version FROM service_requests WHERE id=$1',[declinedRequestId]);
+ assert.deepEqual(declinedStable.rows[0],{status:'DECLINED',version:2});
+ const oppositeBrowserNotice=await db.query(
+  'SELECT count(*)::integer AS n FROM notification_intents WHERE dedupe_key=$1',
+  ['request-accept:guest:'+declinedRequestId]);
+ assert.equal(oppositeBrowserNotice.rows[0].n,0,'no opposite notification after browser decline');
+ console.log('Account Chrome decline -> BFF -> PostgreSQL/outbox/intent PASS');
+
  // A still-active other device must remain safe if the browser's own
  // backing PostgreSQL session is later revoked while its cookie remains valid.
  const postRevocationTargetId=randomUUID();
