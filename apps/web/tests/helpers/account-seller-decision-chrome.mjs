@@ -12,9 +12,10 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  * cookie, CSRF, session, seller membership and decision authorization are real.
  */
 export async function exerciseAccountSellerDecisionChrome({
- base,sealedCookie,requestId,locale='kk',
+ base,sealedCookie,requestId,locale='kk',action='accept',
 }){
  assert.equal(process.env.CI,'true');
+ assert.ok(action==='accept'||action==='decline','supported seller decision only');
  const dir=await mkdtemp(join(tmpdir(),'account-seller-decision-chrome-'));
  let child,socket,ended=false;
  try{
@@ -63,7 +64,7 @@ export async function exerciseAccountSellerDecisionChrome({
    if(reply.method==='Network.loadingFailed')
      networkFailures.push(reply.params?.errorText??'unknown network failure');
    if(reply.method==='Network.responseReceived'&&
-      reply.params?.response?.url?.includes('/api/seller/requests/'+requestId+'/accept')){
+      reply.params?.response?.url?.includes('/api/seller/requests/'+requestId+'/'+action)){
     decisionStatuses.push(reply.params.response.status);
    }
    if(!reply.id)return;
@@ -112,7 +113,7 @@ export async function exerciseAccountSellerDecisionChrome({
      'const name='+JSON.stringify(shortId)+';'+
      'const node=[...inbox?.querySelectorAll("button[aria-label]")??[]].find(b=>'+
        'b.getAttribute("aria-label")?.startsWith('+
-         JSON.stringify(locale==='kk'?'Қабылдау:':'Принять:')+')&&'+
+         JSON.stringify(action==='accept'?(locale==='kk'?'Қабылдау:':'Принять:'):(locale==='kk'?'Бас тарту:':'Отклонить:'))+')&&'+
        'b.getAttribute("aria-label")?.endsWith("№ "+name));'+
      'if(!node||node.disabled||!node.isConnected)return null;'+
      'const rect=node.getBoundingClientRect();node.focus();'+
@@ -123,7 +124,7 @@ export async function exerciseAccountSellerDecisionChrome({
    if(button?.focused&&button.width>0)break;
    await pause(100);
   }
-  assert.ok(button?.focused,'real pending row must have focusable accept button');
+  assert.ok(button?.focused,'real pending row must have focusable '+action+' button');
   assert.equal(button.lang,locale);
   assert.ok(button.width>0&&button.left>=-1&&button.right<=376,
    'seller decision must not be clipped at 375px');
@@ -131,10 +132,10 @@ export async function exerciseAccountSellerDecisionChrome({
   assert.ok(ax.nodes?.some(n=>!n.ignored&&n.role?.value==='button'&&
     n.name?.value===button.label),'seller decision must have Chrome AX name');
   // The deployment origin is HTTPS; the test-only transport is loopback HTTP.
-  // Intercept only seller-accept POST and map Origin at the network layer;
+  // Intercept only this seller decision POST and map Origin at the network layer;
   // browser authentication, CSRF, body, session and backend response stay real.
   await send('Fetch.enable',{patterns:[{
-   urlPattern:'*/api/seller/requests/*/accept',requestStage:'Request',
+   urlPattern:'*/api/seller/requests/*/'+action,requestStage:'Request',
   }]});
   await send('Input.dispatchKeyEvent',{
    type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
@@ -162,7 +163,7 @@ export async function exerciseAccountSellerDecisionChrome({
       'text:section?.textContent??""};'+
     '})()');
    }catch{state=null;}
-   if(decisionStatuses.includes(200)&&state?.statuses.includes('accepted')&&
+   if(decisionStatuses.includes(200)&&state?.statuses.includes(action==='accept'?'accepted':'declined')&&
       state.pendingActions===0)break;
    await pause(100);
   }
@@ -178,12 +179,12 @@ export async function exerciseAccountSellerDecisionChrome({
      requestAttempts,networkFailures,diagnostic,state,decisionStatuses,
    }));
   assert.equal(state?.lang,locale);
-  assert.ok(state?.statuses.includes('accepted'),
-   'React inbox must refresh and render accepted status after BFF commit: '+JSON.stringify(state));
+  assert.ok(state?.statuses.includes(action==='accept'?'accepted':'declined'),
+   'React inbox must refresh and render '+action+' status after BFF commit: '+JSON.stringify(state));
   assert.equal(state?.pendingActions,0,'finalized request cannot retain action buttons');
   assert.deepEqual(state?.alerts,[],'successful decision must not show an error');
   assert.ok(!state.text.includes(sealedCookie));
-  console.log('Chrome authenticated account seller accept -> live refreshed status '+locale+' PASS');
+  console.log('Chrome authenticated account seller '+action+' -> live refreshed status '+locale+' PASS');
  }finally{
   if(socket)socket.close();
   if(child&&!ended)child.kill('SIGTERM');
