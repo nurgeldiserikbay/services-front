@@ -83,6 +83,54 @@ export async function exerciseRegisteredCreateChromeRetry({base,offer,sealedCook
   const cookies=(await send('Network.getCookies',{urls:[base]})).cookies??[];
   assert.ok(cookies.some(c=>c.name==='__Host-services_account_web'&&
    c.httpOnly&&c.secure),'cookie must remain HttpOnly and Secure');
+  // Browser-backed layout contract for the actual authenticated customer
+  // form, not just the public catalog. All checks use an isolated CI-only
+  // sealed session and the production-built Next.js server.
+  for(const width of [320,375,768]){
+   await send('Emulation.setDeviceMetricsOverride',{
+    width,height:740,deviceScaleFactor:1,mobile:true,
+   });
+   await send('Page.navigate',{url:url.href});
+   let measured;
+   for(let attempt=0;attempt<100;attempt++){
+    try{
+     measured=await evaluate(`(()=>{
+       const section=document.querySelector('section[aria-labelledby="customer-create-heading"]');
+       const note=document.getElementById('customer-request-note');
+       const consent=section?.querySelector('input[type="checkbox"]');
+       const submit=section?.querySelector('button');
+       const bounds=[note,consent,submit].map(el=>{
+         const rect=el?.getBoundingClientRect();
+         return {width:rect?.width??0,left:rect?.left??-1,right:rect?.right??-1};
+       });
+       return {
+         ready:document.readyState==='complete',section:!!section,
+         heading:document.getElementById('customer-create-heading')?.textContent??'',
+         viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,
+         bounds,
+       };
+     })()`);
+    }catch(error){
+     // Chrome discards the old JS context during Next navigation.
+     if(attempt===99)throw error;
+     await pause(100);continue;
+    }
+    if(measured.ready&&measured.heading&&measured.bounds.every(b=>b.width>0))break;
+    await pause(100);
+   }
+   assert.equal(measured.heading,'Оставить заявку');
+   assert.equal(measured.section,true,'authenticated form section required');
+   assert.ok(measured.scrollWidth<=measured.viewport+1,
+    'authenticated form overflows at '+width+'px: '+JSON.stringify(measured));
+   assert.equal(measured.bounds.length,3);
+   for(const control of measured.bounds){
+    assert.ok(control.width>0&&control.left>=-1&&control.right<=width+1,
+     'authenticated form control clipped at '+width+'px: '+JSON.stringify(control));
+   }
+   console.log('Chrome registered customer form mobile '+width+'px PASS');
+  }
+  // Restore the original 375px viewport for the real keyboard and
+  // uncertain-commit retry interaction assertions below.
   await send('Emulation.setDeviceMetricsOverride',{
    width:375,height:740,deviceScaleFactor:1,mobile:true,
   });
