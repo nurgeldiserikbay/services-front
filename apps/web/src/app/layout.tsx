@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import {headers} from 'next/headers';
 import {OfflineRegistration} from '@/components/OfflineRegistration';
+import {LocaleDocumentLanguage} from '@/components/LocaleDocumentLanguage';
 
 export const metadata: Metadata = {
   title: 'Services — мамандар мен қызметтер',
@@ -20,5 +21,5 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const requestHeaders = await headers();
   const locale = requestHeaders.get('x-services-locale');
   const documentLanguage = locale === 'ru' ? 'ru' : 'kk';
-  return <html lang={documentLanguage}><body><a className="skipLink" href="#main-content">{documentLanguage === 'ru' ? 'Перейти к содержимому' : 'Негізгі мазмұнға өту'}</a>{children}<OfflineRegistration/></body></html>;
+  return <html lang={documentLanguage}><body><LocaleDocumentLanguage initialLocale={documentLanguage}/>{children}<OfflineRegistration/></body></html>;
 }

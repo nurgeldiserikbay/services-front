@@ -13,9 +13,12 @@ function pages(dir){return readdirSync(dir,{withFileTypes:true}).flatMap(item=>{
 });}
 
 test('keyboard skip link is localized and visible on focus',()=>{
-  assert.match(layout,/className="skipLink" href="#main-content"/);
-  assert.match(layout,/Негізгі мазмұнға өту/);
-  assert.match(layout,/Перейти к содержимому/);
+  const localeLink=readFileSync(new URL('../src/components/LocaleDocumentLanguage.tsx',import.meta.url),'utf8');
+  assert.match(layout,/LocaleDocumentLanguage initialLocale=\{documentLanguage\}/);
+  assert.match(localeLink,/className="skipLink" href="#main-content"/);
+  assert.match(localeLink,/Негізгі мазмұнға өту/);
+  assert.match(localeLink,/Перейти к содержимому/);
+  assert.match(localeLink,/document\.documentElement\.lang=locale;/);
   assert.match(css,/\.skipLink:focus-visible/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });
