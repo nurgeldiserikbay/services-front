@@ -213,3 +213,23 @@ test('online CI provenance fails closed for rate limits, redirects and oversized
     assert.ok(problems.length>=1);
   }
 });
+
+test('duplicate required section headings fail closed even if the first table passes', () => {
+  const valid = approvedDocument();
+  for (const heading of ['Immutable revision record', 'Required acceptance gates', 'Signed release evidence']) {
+    const tampered = valid + '\n## ' + heading + '\n';
+    assert.ok(validateStagingRelease(tampered).some(p => p.includes(heading + ': missing or duplicate section')), heading);
+  }
+});
+
+test('PASS gates cannot hide a placeholder or empty evidence description', () => {
+  const valid = approvedDocument();
+  const row = valid.split('\n').find(line => line.startsWith('| Authentication |'));
+  assert.ok(row);
+  for (const description of ['TODO', 'TBD', 'N/A', '-', '']) {
+    const parts = row.split('|');
+    parts[2] = ' ' + description + ' ';
+    const tampered = valid.replace(row, parts.join('|'));
+    assert.ok(validateStagingRelease(tampered).some(p => p.includes('Authentication: missing evidence description')), description);
+  }
+});
