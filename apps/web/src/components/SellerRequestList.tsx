@@ -9,6 +9,7 @@ import {
 } from '@/lib/seller-requests';
 import styles from './SellerRequestList.module.css';
 import {createSellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
+import type {SellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
 
 type Decision='accept'|'decline';
 type Result='ok'|'conflict'|'forbidden'|'unauthorized'|'unavailable';
@@ -48,7 +49,7 @@ const copy={
  * This component is deliberately not mounted on public pages.
  */
 export function SellerRequestList({
-  locale,requests,sellerContext,onDecision,onRefresh,
+  locale,requests,sellerContext,onDecision,onRefresh,sharedDecisionGate,
 }:{
   locale:Locale;
   requests:readonly SellerRequestSummary[];
@@ -56,6 +57,8 @@ export function SellerRequestList({
   onDecision:(id:string,version:number,decision:Decision)=>Promise<Result>;
   /** Caller re-fetches only its authenticated seller scope, never a public API. */
   onRefresh?:()=>Promise<void>;
+  /** Shared across specialist/company sections when rendered in one workspace. */
+  sharedDecisionGate?:SellerDecisionSingleFlight;
 }){
   const t=copy[locale];
   // These two scopes coexist; duplicate region names confuse landmark navigation.
@@ -83,10 +86,11 @@ export function SellerRequestList({
     finally{refreshLock.current=false;setRefreshing(false);}
   }
   async function decide(req:SellerRequestSummary,decision:Decision){
-    if(refreshLock.current||decisionGate.current.active||inFlight.current.has(req.id)||
+    const gate=sharedDecisionGate??decisionGate.current;
+    if(refreshLock.current||gate.active||inFlight.current.has(req.id)||
        settled[req.id]===req.version||
        !mayOfferSellerDecision(req,sellerContext))return;
-    await decisionGate.current.run(async()=>{
+    await gate.run(async()=>{
     inFlight.current.add(req.id);setBusy(req.id);
     setErrors(prev=>({...prev,[req.id]:''}));
     try{
