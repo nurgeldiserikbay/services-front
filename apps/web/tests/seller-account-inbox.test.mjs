@@ -74,3 +74,14 @@ test('external account inbox reloads cannot race an in-flight seller decision',(
  assert.match(src,/void load\(\);/,
    'initial mount fetch remains protected by the same gate');
 });
+
+
+test('unmount invalidates old inbox lock without letting its stale finally unlock a new fetch',()=>{
+ const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+ assert.match(src,/return \(\)=>\{epoch\.current\+\+;run\.current=false;/,
+   'Strict Mode cleanup must release the old mount lock before refetch');
+ assert.match(src,/if\(seq===epoch\.current\)\{run\.current=false;setBusy\(false\);\}/,
+   'old in-flight request may not clear the new fetch lock');
+ assert.match(src,/if\(seq!==epoch\.current\)return false;/,
+   'stale response must never populate inbox after remount');
+});
