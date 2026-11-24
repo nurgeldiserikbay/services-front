@@ -44,8 +44,10 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  const current=useRef<Page|null>(null);
  const retry=useRef(new Map<string,string>());
  const seenCursors=useRef(new Set<string>());
- const load=useCallback(async(next=false)=>{
-   if(run.current)return false;
+ const load=useCallback(async(next=false,afterDecision=false)=>{
+   // Avoid racing a live decision with a stale, externally triggered inbox read.
+   // Only the decision handler may refresh under its exclusive write gate.
+   if(run.current||(decisionGate.current.active&&!afterDecision))return false;
    const selected=next?current.current?.nextCursor:null;
    if(next&&(!selected||seenCursors.current.has(selected)))return false;
    run.current=true;setBusy(true);setMessage('');
@@ -110,7 +112,7 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
        if(outcome==='forbidden')setMessage(t.forbidden);
        if(outcome==='conflict')setMessage(t.conflict);
        retry.current.delete(key);
-       await load();
+       await load(false,true);
      }else{
        // Ambiguous completion: do not keep showing stale private rows.
        // Stable idempotency key remains available for a later retry.
