@@ -6,7 +6,7 @@ import type {SellerRequestSummary} from '@/lib/seller-requests';
 import {loadSellerInbox,sendSellerDecision,
  SellerClientAuthenticationRequired} from '@/lib/seller-bff-client.mjs';
 import styles from './SellerRequestList.module.css';
-import {createSellerDecisionSingleFlight} from '@/lib/seller-decision-single-flight.mjs';
+import {createSellerDecisionSingleFlight,isCurrentSellerDecision} from '@/lib/seller-decision-single-flight.mjs';
 
 type Page={items:SellerRequestSummary[];nextCursor:string|null;csrf:string};
 const labels={
@@ -117,7 +117,7 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
      const outcome=await sendSellerDecision({requestId:item.id,version:item.version,
        decision,csrf:page.csrf,idempotencyKey:nonce});
      // An old account's response must never issue a fresh read or update this view.
-     if(!mounted.current||decisionEpoch!==decisionLifetime.current)return;
+     if(!isCurrentSellerDecision(mounted.current,decisionEpoch,decisionLifetime.current))return;
      if(outcome==='unauthorized'){
        retry.current.clear();current.current=null;setPage(null);
        setMessage(t.unauthorized);
@@ -134,11 +134,11 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
        setMessage(t.failed);
      }
    }catch{
-     if(!mounted.current||decisionEpoch!==decisionLifetime.current)return;
+     if(!isCurrentSellerDecision(mounted.current,decisionEpoch,decisionLifetime.current))return;
      current.current=null;setPage(null);seenCursors.current.clear();
      setMessage(t.failed);
    }
-   finally{if(mounted.current&&decisionEpoch===decisionLifetime.current)setPendingId(null);}
+   finally{if(isCurrentSellerDecision(mounted.current,decisionEpoch,decisionLifetime.current))setPendingId(null);}
    });
  }
  return <section className={styles.wrap} aria-label={t.heading}>
