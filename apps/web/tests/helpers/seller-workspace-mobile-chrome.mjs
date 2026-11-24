@@ -131,6 +131,63 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
      assert.ok(control.height>=44,
       'seller control shorter than 44px at '+width+' '+locale+': '+JSON.stringify(control));
     }
+    // Exercise actual keyboard activation on the authenticated seller's
+    // filter group, without clicking any accept/decline mutation control.
+    // This checks hydrated React state, accessible pressed semantics and
+    // native Enter activation rather than relying on source-level aria attrs.
+    if(width===375){
+     const focused=await evaluate('(()=>{'+
+      'const groups=[...document.querySelectorAll("main section[aria-label]")];'+
+      'const target=groups[1]?.querySelectorAll("button[aria-pressed]")[1];'+
+      'if(!target)return false;target.focus();'+
+      'return document.activeElement===target&&'+
+      'target.getAttribute("aria-pressed")==="false";})()');
+     assert.equal(focused,true,'seller pending filter must take keyboard focus');
+     await send('Input.dispatchKeyEvent',{
+      type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\\r',
+      unmodifiedText:'\\r',
+     });
+     await send('Input.dispatchKeyEvent',{
+      type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
+     });
+     let pendingActive=false;
+     for(let attempt=0;attempt<40;attempt++){
+      pendingActive=await evaluate('(()=>{'+
+       'const groups=[...document.querySelectorAll("main section[aria-label]")];'+
+       'const group=groups[1];'+
+       'const buttons=group?.querySelectorAll("button[aria-pressed]");'+
+       'return buttons?.[1]?.getAttribute("aria-pressed")==="true"&&'+
+       'buttons?.[0]?.getAttribute("aria-pressed")==="false"&&'+
+       'group?.querySelectorAll("ul li").length==='+requestIds.length+';})()');
+      if(pendingActive)break;
+      await pause(100);
+     }
+     assert.equal(pendingActive,true,'Enter must activate seller pending filter');
+     const focusedAll=await evaluate('(()=>{'+
+      'const groups=[...document.querySelectorAll("main section[aria-label]")];'+
+      'const all=groups[1]?.querySelectorAll("button[aria-pressed]")[0];'+
+      'all?.focus();return document.activeElement===all;})()');
+     assert.equal(focusedAll,true,'seller all filter must take keyboard focus');
+     await send('Input.dispatchKeyEvent',{
+      type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\\r',
+      unmodifiedText:'\\r',
+     });
+     await send('Input.dispatchKeyEvent',{
+      type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
+     });
+     let restored=false;
+     for(let attempt=0;attempt<40;attempt++){
+      restored=await evaluate('(()=>{'+
+       'const groups=[...document.querySelectorAll("main section[aria-label]")];'+
+       'const buttons=groups[1]?.querySelectorAll("button[aria-pressed]");'+
+       'return buttons?.[0]?.getAttribute("aria-pressed")==="true"&&'+
+       'buttons?.[1]?.getAttribute("aria-pressed")==="false";})()');
+      if(restored)break;
+      await pause(100);
+     }
+     assert.equal(restored,true,'Enter must restore all seller requests');
+     console.log('Chrome seller keyboard Enter filters '+locale+' PASS');
+    }
     console.log('Chrome seller authenticated mobile '+locale+' '+width+'px PASS');
    }
   }
