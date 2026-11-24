@@ -7,6 +7,7 @@ import {sealAccountWebSession} from '../src/lib/account-web-session-core.mjs';
 import {exerciseSellerWorkspaceMobileChrome} from './helpers/seller-workspace-mobile-chrome.mjs';
 import {exerciseAccountSellerDecisionChrome} from './helpers/account-seller-decision-chrome.mjs';
 import {exerciseSellerSessionRevocationChrome} from './helpers/seller-session-revocation-chrome.mjs';
+import {exerciseAccountLogoutChrome} from './helpers/account-logout-chrome.mjs';
 
 // CI-only real HTTP and PostgreSQL boundary test: verifies a legitimately
 // sealed *test fixture* web cookie reaches backend bearer authorization.
@@ -281,6 +282,29 @@ try{
   'logout with stale cookie must not falsely report repeated backend success');
  assert.match(repeatLogout.headers.get('set-cookie')??'',/Max-Age=0/i,
   'failed backend logout still clears the local cookie');
+
+ // An independent third account session drives the actual React logout
+ // button without disturbing the primary seller decision/ACL fixtures.
+ const browserLogoutSessionId=randomUUID();
+ const browserLogoutBearer=randomBytes(32).toString('base64url');
+ const browserLogoutHash=createHmac('sha256',hmacKey)
+  .update('services-session:v1\\0').update(browserLogoutBearer).digest('hex');
+ await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
+   VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
+  [browserLogoutSessionId,userId,browserLogoutHash,randomUUID()]);
+ await exerciseAccountLogoutChrome({
+  base,sealedCookie:sealAccountWebSession(key,browserLogoutBearer,600).cookie,
+  locale:'kk',
+ });
+ const browserLogoutProof=await db.query(
+  'SELECT revoked_at FROM sessions WHERE id=$1',[browserLogoutSessionId]);
+ assert.ok(browserLogoutProof.rows[0].revoked_at instanceof Date,
+  'real browser logout must commit PostgreSQL session revocation');
+ const afterBrowserLogout=await db.query(
+  'SELECT revoked_at FROM sessions WHERE id=$1',[sessionId]);
+ assert.equal(afterBrowserLogout.rows[0].revoked_at,null,
+  'browser logout must not revoke the other active seller device');
+ console.log('Account Chrome logout -> PostgreSQL revocation + other session isolation PASS');
 
  const populated=await inbox();
  assert.equal(populated.status,200,'seller must read only own committed requests');

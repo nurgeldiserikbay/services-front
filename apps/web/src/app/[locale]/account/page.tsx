@@ -4,6 +4,7 @@ import Link from 'next/link';
 import {isLocale} from '@/lib/i18n';
 import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
 import {getAccountWebIdentity} from '@/lib/account-session-bff.server';
+import {AccountSignOut} from '@/components/AccountSignOut';
 
 export const dynamic='force-dynamic';
 export const revalidate=0;
@@ -33,6 +34,7 @@ export default async function AccountPage({params}:{params:Promise<{locale:strin
     {links.filter(item=>item.enabled).map(item=><Link key={item.path} href={'/'+locale+'/account/'+item.path}>{item.label}</Link>)}
     <Link href={'/'+locale}>{kk?'Каталогқа қайту':'Вернуться в каталог'}</Link>
    </nav>
+   <AccountSignOut locale={locale}/>
   </section>
  </main>;
 }
