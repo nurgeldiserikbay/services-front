@@ -96,3 +96,16 @@ test('post-decision refresh preserves conflict and forbidden feedback until a fr
  assert.match(src,/setMessage\(t\.failed\);/,
    'a failed refresh must still override outcome with a truthful load failure');
 });
+
+test('seller decision completion cannot refresh a remounted or logged-out account inbox',()=>{
+ const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
+ assert.match(src,/const mounted=useRef\(false\);/);
+ assert.match(src,/mounted\.current=true;\s*void load\(\);/);
+ assert.match(src,/return \(\)=>\{mounted\.current=false;epoch\.current\+\+;/);
+ assert.match(src,/const decisionEpoch=epoch\.current;/);
+ assert.match(src,/if\(!mounted\.current\|\|decisionEpoch!==epoch\.current\)return;\s*if\(outcome==='unauthorized'\)/,
+   'late successful response must not perform an account-scoped read');
+ assert.match(src,/\}catch\{\s*if\(!mounted\.current\|\|decisionEpoch!==epoch\.current\)return;/,
+   'late network failures must not alter the next account view');
+ assert.match(src,/finally\{if\(mounted\.current&&decisionEpoch===epoch\.current\)setPendingId\(null\);\}/);
+});
