@@ -107,6 +107,9 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
      if(!isCurrentSellerDecision(mounted.current,lifetime,decisionLifetime.current))return;
      current.current=null;setPage(null);setPendingId(null);setBlocked({});
      setMessage('');setBusy(false);
+     // The old write may still be settling. It owns its old gate; a fresh
+     // lifecycle must not be prevented from loading its authorized inbox.
+     decisionGate.current=createSellerDecisionSingleFlight();
      void load();
    });
    return ()=>{mounted.current=false;decisionLifetime.current++;epoch.current++;run.current=false;current.current=null;retry.current.clear();seenCursors.current.clear();};

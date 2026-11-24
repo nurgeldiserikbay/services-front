@@ -104,3 +104,28 @@ test('seller lifetime guard rejects stale, unmounted and malformed tokens',()=>{
    assert.equal(isCurrentSellerDecision(...args),false,JSON.stringify(args));
  }
 });
+
+test('new locale lifecycle can fetch while old decision still owns its retired gate',async()=>{
+ let currentGate=createSellerDecisionSingleFlight();
+ let mounted=true,lifetime=0,oldMutations=0,loads=0;
+ let release;
+ const pendingTransport=new Promise(resolve=>{release=resolve;});
+ const oldGate=currentGate;
+ const captured=lifetime;
+ const oldDecision=oldGate.run(async()=>{
+   await pendingTransport;
+   if(isCurrentSellerDecision(mounted,captured,lifetime))oldMutations++;
+ });
+ assert.equal(oldGate.active,true);
+ // Simulate effect cleanup and the guarded setup microtask for the next locale.
+ mounted=false;lifetime++;
+ mounted=true;
+ currentGate=createSellerDecisionSingleFlight();
+ assert.equal(currentGate.active,false,'new lifecycle must not inherit pending write lock');
+ assert.equal(await currentGate.run(async()=>{loads++;}),true);
+ release();
+ await oldDecision;
+ assert.equal(loads,1,'new inbox may fetch without waiting on the old write');
+ assert.equal(oldMutations,0,'late previous-locale decision may not mutate new view');
+ assert.equal(oldGate.active,false);
+});
