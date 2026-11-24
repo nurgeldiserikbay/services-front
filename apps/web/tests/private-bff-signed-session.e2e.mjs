@@ -6,6 +6,7 @@ import {join} from 'node:path';
 import {sealAccountWebSession} from '../src/lib/account-web-session-core.mjs';
 import {exerciseSellerWorkspaceMobileChrome} from './helpers/seller-workspace-mobile-chrome.mjs';
 import {exerciseAccountSellerDecisionChrome} from './helpers/account-seller-decision-chrome.mjs';
+import {exerciseSellerSessionRevocationChrome} from './helpers/seller-session-revocation-chrome.mjs';
 
 // CI-only real HTTP and PostgreSQL boundary test: verifies a legitimately
 // sealed *test fixture* web cookie reaches backend bearer authorization.
@@ -487,7 +488,15 @@ try{
  await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
   VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
   [postRevocationTargetId,userId,postRevocationHash,randomUUID()]);
- await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
+ // Keep the signed-in browser open while PostgreSQL revokes the backing
+ // session. The React refresh must purge its previously visible private rows
+ // before an SSR reload proves the same sealed cookie cannot render workspace.
+ await exerciseSellerSessionRevocationChrome({
+  base,sealedCookie:sealed.cookie,locale:'kk',minimumRows:4,
+  onRevoke:async()=>{
+   await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
+  },
+ });
  const deniedRemoteFromRevoked=await revokeRequest(postRevocationTargetId);
  assert.equal(deniedRemoteFromRevoked.status,503,
   'expired backing auth must not revoke an active other session via sealed cookie');
