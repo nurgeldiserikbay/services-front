@@ -94,7 +94,10 @@ function fixture(){
     used=true;
     return new Response(JSON.stringify({
      session_token:verifiedToken,expires_in_seconds:600,
-    }),{status:200,headers:{'Content-Type':'application/json'}});
+    }),{status:200,headers:{
+     'Content-Type':'application/json',
+     'Cache-Control':'private, no-store, max-age=0',
+    }});
    },
   });
   const session=sealAccountWebSession(keys.session,
