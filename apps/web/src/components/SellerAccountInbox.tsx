@@ -41,6 +41,8 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  // This prevents back-to-back clicks from issuing overlapping writes.
  const decisionGate=useRef(createSellerDecisionSingleFlight());
  const epoch=useRef(0);
+ // A completed decision must not request account data after this view unmounts.
+ const mounted=useRef(false);
  const current=useRef<Page|null>(null);
  const retry=useRef(new Map<string,string>());
  const seenCursors=useRef(new Set<string>());
@@ -94,14 +96,16 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  },[t.failed]);
  useEffect(()=>{
    // An account/session boundary must unmount this component on logout.
+   mounted.current=true;
    void load();
-   return ()=>{epoch.current++;run.current=false;current.current=null;retry.current.clear();seenCursors.current.clear();};
+   return ()=>{mounted.current=false;epoch.current++;run.current=false;current.current=null;retry.current.clear();seenCursors.current.clear();};
  },[load]);
 
  async function decide(item:SellerRequestSummary,decision:'accept'|'decline'){
    if(run.current||decisionGate.current.active||pendingId||item.state!=='pending'||
       blocked[item.id]===item.version||!page?.csrf)return;
    await decisionGate.current.run(async()=>{
+   const decisionEpoch=epoch.current;
    const key=item.id+':'+item.version+':'+decision;
    let nonce=retry.current.get(key);
    if(!nonce){nonce=crypto.randomUUID();retry.current.set(key,nonce);}
@@ -109,6 +113,8 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
    try{
      const outcome=await sendSellerDecision({requestId:item.id,version:item.version,
        decision,csrf:page.csrf,idempotencyKey:nonce});
+     // An old account's response must never issue a fresh read or update this view.
+     if(!mounted.current||decisionEpoch!==epoch.current)return;
      if(outcome==='unauthorized'){
        retry.current.clear();current.current=null;setPage(null);
        setMessage(t.unauthorized);
