@@ -585,7 +585,8 @@ try{
     await send('Page.navigate',{url:outageUrl.href});
     let retryState;
     for(let attempt=0;attempt<100;attempt++){
-      retryState=await evaluate(`(()=>{
+      try{
+        retryState=await evaluate(`(()=>{
         const a=document.querySelector('a.retrySearch');
         const rect=a?.getBoundingClientRect();
         return {
@@ -599,7 +600,11 @@ try{
           hasErrorStatus:!!document.querySelector('[role="status"].message'),
         };
       })()`);
-      if(retryState.lang===locale&&retryState.href&&retryState.width>0)break;
+      }catch{
+        // Chrome can destroy the old execution context while navigating.
+        retryState=null;
+      }
+      if(retryState?.lang===locale&&retryState.href&&retryState.width>0)break;
       await pause(100);
     }
     assert.equal(retryState.lang,locale);

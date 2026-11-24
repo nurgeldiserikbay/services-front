@@ -57,12 +57,35 @@ test('invalid config, untrusted proof and malformed contact fail before request'
   {contact:''},
   {contact:'a'.repeat(255)},
   {contact:'test@example.test\nInjected: yes'},
+  {contact:'not-an-email'},
+  {contact:'wrong@domain'},
+  {contact:'other@example.test',channel:'SMS'},
+  {channel:'SMS',contact:'07001234567'},
+  {channel:'SMS',contact:'+77001234abc'},
+  {contact:' person@example.test'},
+  {contact:'person@example.test '},
  ]){
   await assert.rejects(
    initiateBackendAccountOtp({...opts,...patch,transport}),
    AccountOtpInitiationUnavailable);
  }
  assert.equal(calls,0);
+});
+
+test('private initiation accepts canonical SMS contact without normalizing it',async()=>{
+ let count=0;
+ const sms='+77011234567';
+ const result=await initiateBackendAccountOtp({...opts,
+  channel:'SMS',contact:sms,transport:async(_url,init)=>{
+   count++;
+   const sent=JSON.parse(init.body);
+   assert.equal(sent.channel,'SMS');
+   assert.equal(sent.contact,sms);
+   return json(receipt);
+  },
+ });
+ assert.equal(count,1);
+ assert.deepEqual(result,{challengeId:receipt.challenge_id,expiresInSeconds:300});
 });
 
 test('strict no-store receipt rejects backend leakage, redirects, oversized bodies and unknown TTL',async()=>{

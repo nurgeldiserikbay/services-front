@@ -3,6 +3,8 @@ const PROOF=/^v1\.[0-9a-f]{64}\.[0-9]{10,13}\.[0-9a-f]{64}$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_RESPONSE_BYTES=512;
 const MAX_REQUEST_CONTACT_LENGTH=254;
+const EMAIL=/^[^\s@\x00-\x1f\x7f]+@[^\s@\x00-\x1f\x7f]+\.[^\s@\x00-\x1f\x7f]+$/;
+const PHONE=/^\+[1-9][0-9]{7,14}$/;
 
 export class AccountOtpInitiationUnavailable extends Error{
  constructor(){super('Account verification temporarily unavailable');}
@@ -35,7 +37,8 @@ function validateInput(value){
     !['kk','ru'].includes(value.locale)||
     typeof value.contact!=='string'||value.contact.length===0||
     value.contact.length>MAX_REQUEST_CONTACT_LENGTH||
-    /[\x00-\x1f\x7f]/.test(value.contact))
+    (value.channel==='EMAIL'&&!EMAIL.test(value.contact))||
+    (value.channel==='SMS'&&!PHONE.test(value.contact)))
    throw unavailable();
  return {channel:value.channel,purpose:value.purpose,
   locale:value.locale,contact:value.contact};
