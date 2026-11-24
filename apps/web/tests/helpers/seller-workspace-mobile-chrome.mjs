@@ -186,7 +186,66 @@ export async function exerciseSellerWorkspaceMobileChrome({base,sealedCookie,req
       await pause(100);
      }
      assert.equal(restored,true,'Enter must restore all seller requests');
-     console.log('Chrome seller keyboard Enter filters '+locale+' PASS');
+     // The Chrome accessibility tree, not merely DOM text, must expose
+     // localized filter buttons with their names. Numeric counts are
+     // aria-hidden and must never replace a meaningful accessible name.
+     const expectedClosed=locale==='kk'?'Жабылған':'Закрытые';
+     const accessibility=await send('Accessibility.getFullAXTree');
+     assert.ok(accessibility.nodes?.some(node=>
+      !node.ignored&&['button','toggleButton'].includes(node.role?.value)&&
+      node.name?.value?.trim()===expectedClosed),
+      locale+' closed filter must have a named Chrome AX button');
+     // With two seeded PENDING rows, keyboard-only Closed must show a
+     // localized empty state, hide decisions and preserve the backend rows.
+     const focusedClosed=await evaluate('(()=>{'+
+      'const groups=[...document.querySelectorAll("main section[aria-label]")];'+
+      'const closed=groups[1]?.querySelectorAll("button[aria-pressed]")[3];'+
+      'closed?.focus();return document.activeElement===closed;})()');
+     assert.equal(focusedClosed,true,'closed filter must take keyboard focus');
+     await send('Input.dispatchKeyEvent',{
+      type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',
+      unmodifiedText:'\r',
+     });
+     await send('Input.dispatchKeyEvent',{
+      type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
+     });
+     const noFilter=locale==='kk'?'Бұл сүзгіде өтінім жоқ':'В этом разделе заявок нет';
+     let empty=false;
+     for(let attempt=0;attempt<40;attempt++){
+      empty=await evaluate('(()=>{'+
+       'const groups=[...document.querySelectorAll("main section[aria-label]")];'+
+       'const group=groups[1];const buttons=group?.querySelectorAll("button[aria-pressed]");'+
+       'return buttons?.[3]?.getAttribute("aria-pressed")==="true"&&'+
+       'group?.querySelectorAll("ul li").length===0&&'+
+       'group?.querySelector("[role=status]")?.textContent?.trim()==='+JSON.stringify(noFilter)+';})()');
+      if(empty)break;
+      await pause(100);
+     }
+     assert.equal(empty,true,'Closed filter must announce localized empty state');
+     const backToAll=await evaluate('(()=>{'+
+      'const groups=[...document.querySelectorAll("main section[aria-label]")];'+
+      'const all=groups[1]?.querySelectorAll("button[aria-pressed]")[0];'+
+      'all?.focus();return document.activeElement===all;})()');
+     assert.equal(backToAll,true,'All filter must regain keyboard focus');
+     await send('Input.dispatchKeyEvent',{
+      type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',
+      unmodifiedText:'\r',
+     });
+     await send('Input.dispatchKeyEvent',{
+      type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
+     });
+     let rowsRestored=false;
+     for(let attempt=0;attempt<40;attempt++){
+      rowsRestored=await evaluate('(()=>{'+
+       'const groups=[...document.querySelectorAll("main section[aria-label]")];'+
+       'const group=groups[1];'+
+       'return group?.querySelectorAll("ul li").length==='+requestIds.length+'&&'+
+       'group?.querySelectorAll("button[aria-pressed]")[0]?.getAttribute("aria-pressed")==="true";})()');
+      if(rowsRestored)break;
+      await pause(100);
+     }
+     assert.equal(rowsRestored,true,'All filter must restore actual seller rows');
+     console.log('Chrome seller keyboard Enter/empty-state filters '+locale+' PASS');
     }
     console.log('Chrome seller authenticated mobile '+locale+' '+width+'px PASS');
    }
