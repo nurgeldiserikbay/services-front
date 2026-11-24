@@ -293,6 +293,15 @@ try{
    VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
   [browserLogoutSessionId,userId,browserLogoutHash,randomUUID()]);
  const browserLogoutCookie=sealAccountWebSession(key,browserLogoutBearer,600).cookie;
+ const browserInventory=await fetch(new URL('/api/account/sessions',base),{
+  headers:{'Sec-Fetch-Site':'same-origin',
+    Cookie:'__Host-services_account_web='+browserLogoutCookie},
+  redirect:'manual',signal:AbortSignal.timeout(8000),
+ });
+ assert.equal(browserInventory.status,200,
+  'browser logout fixture must pass live session inventory before SSR: '+
+   JSON.stringify({status:browserInventory.status}));
+ await browserInventory.arrayBuffer();
  const serverDevices=await fetch(new URL('/kk/account/devices',base),{
   headers:{Cookie:'__Host-services_account_web='+browserLogoutCookie},
   redirect:'manual',signal:AbortSignal.timeout(8000),
