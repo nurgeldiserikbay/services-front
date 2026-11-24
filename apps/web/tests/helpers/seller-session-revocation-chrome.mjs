@@ -44,15 +44,17 @@ export async function exerciseSellerSessionRevocationChrome({
    socket.addEventListener('open',resolve,{once:true});
    socket.addEventListener('error',reject,{once:true});
   });
-  let sequence=0,requestStatuses=[],documentStatuses=[];
+  let sequence=0,requestStatuses=[],documentStatuses=[],documentHeaders=[];
   const pending=new Map();
   socket.addEventListener('message',event=>{
    const reply=JSON.parse(event.data);
    if(reply.method==='Network.responseReceived'){
     const url=reply.params?.response?.url??'';
     if(url.includes('/api/seller/requests'))requestStatuses.push(reply.params.response.status);
-    if(reply.params?.type==='Document'&&url.includes('/'+locale+'/account/requests'))
+    if(reply.params?.type==='Document'&&url.includes('/'+locale+'/account/requests')){
      documentStatuses.push(reply.params.response.status);
+     documentHeaders.push(reply.params.response.headers??{});
+    }
    }
    if(!reply.id)return;
    const call=pending.get(reply.id);
@@ -158,21 +160,37 @@ export async function exerciseSellerSessionRevocationChrome({
    try{
     denied=await evaluate('(()=>({'+
      'ready:document.readyState==="complete",lang:document.documentElement.lang,'+
+     'robots:document.querySelector(\'meta[name="robots"]\')?.content??"",'+
      'text:document.body?.textContent??"",privateRows:document.querySelectorAll("main ul li").length,'+
      'inbox:!![...document.querySelectorAll("main section[aria-label]")].find(s=>'+
       's.getAttribute("aria-label")==='+JSON.stringify(locale==='kk'?'Өтінімдер':'Заявки')+')'+
     '}))()');
    }catch{denied=null;}
-   if(documentStatuses.includes(404)&&denied?.ready)break;
+   if(denied?.ready&&denied.text.includes('404')&&!denied.inbox)break;
    await sleep(100);
   }
-  assert.ok(documentStatuses.includes(404),
-   'SSR page must fail closed after session revocation: '+JSON.stringify(documentStatuses));
+  // Next.js can stream a notFound() UI with HTTP 200 after headers have
+  // already flushed. The security invariant is NO private content in the
+  // stream and noindex/no-store on the private route, not the transport status.
+  assert.ok(documentStatuses.length>1,'full denied navigation must reach the server');
+  const headers=documentHeaders.at(-1)??{};
+  const header=(name)=>Object.entries(headers).find(([key])=>key.toLowerCase()===name)?.[1]??'';
+  assert.match(header('x-robots-tag'),/noindex/i,
+   'revoked SSR response must not be indexed even if streamed with HTTP 200');
+  assert.match(header('cache-control'),/no-store/i,
+   'revoked SSR response must never be cached');
+  assert.equal(denied?.ready,true,'denied navigation must complete');
+  assert.ok(denied?.text.includes('404'),
+   'revoked session must see not-found UI: '+JSON.stringify({
+    statuses:documentStatuses,denied,
+   }));
+  assert.match(denied?.robots??'',/noindex/i,
+   'streamed Next.js notFound() must add robots noindex');
   assert.equal(denied?.inbox,false,'revoked session must not hydrate seller workspace');
   assert.ok(!denied?.text.includes('Signed seller CI offer'),
    'SSR denial must never expose the cached private request title');
   assert.ok(!denied?.text.includes(sealedCookie),'session cookie must not appear in SSR HTML');
-  console.log('Chrome seller session revocation -> React private rows purged + SSR 404 PASS');
+  console.log('Chrome seller revocation -> React rows purged + SSR not-found/noindex PASS');
  }finally{
   if(socket)socket.close();
   if(child&&!processExited)child.kill('SIGTERM');
