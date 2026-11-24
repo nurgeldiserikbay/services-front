@@ -130,7 +130,11 @@ test('a provider or receipt failure cannot mint challenge cookie',async()=>{
   issueChallenge:()=>{issues++;return {csrf,cookie:{value:'sealed'}};},
  };
  for(const receipt of [undefined,null,{challengeId:uuid,expiresInSeconds:0},
-  {challengeId:uuid,expiresInSeconds:600}]){
+  {challengeId:uuid,expiresInSeconds:600},
+  {challengeId:'not-a-uuid',expiresInSeconds:300},
+  {challengeId:'00000000-0000-0000-0000-000000000000',expiresInSeconds:300},
+  {challengeId:uuid+'-extra',expiresInSeconds:300},
+  {challengeId:uuid,expiresInSeconds:'300'}]){
   await assert.rejects(startApprovedAccountOtp({...base,
    dispatch:async()=>receipt}));
  }
