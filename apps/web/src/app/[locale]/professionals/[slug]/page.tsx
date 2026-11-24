@@ -34,6 +34,9 @@ export default async function ProfessionalPage({params}:Params) {
         <p className="intro">{t.publicOnlyNotice}</p>
       </section>
       <PublicOffers locale={locale} offers={profile.offers}/>
-    </> : <p role="alert" className="message">{t.profileUnavailable}</p>}
+    </> : <div role="alert" className="message">
+      <p>{t.profileUnavailable}</p>
+      <a className="retrySearch" href={`/${locale}/professionals/${encodeURIComponent(slug)}`}>{t.retryDetail}</a>
+    </div>}
   </main>;
 }
