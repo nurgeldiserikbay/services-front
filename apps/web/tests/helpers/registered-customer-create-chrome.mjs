@@ -164,6 +164,56 @@ export async function exerciseRegisteredCreateChromeRetry({base,offer,sealedCook
   assert.ok(layout.width<=layout.innerWidth+1,
    'registered form must not overflow mobile viewport');
 
+
+  // The signed-in customer form has a separate responsive acceptance surface
+  // from the public catalog. Exercise the actual hydrated account form at
+  // narrow, standard mobile and tablet widths before testing the POST retry.
+  // Preserve the existing real browser/server session, not a fake DOM.
+  for(const width of [320,375,768]){
+    await send('Emulation.setDeviceMetricsOverride',{
+      width,height:740,deviceScaleFactor:1,mobile:true,
+    });
+    let responsive;
+    for(let attempt=0;attempt<60;attempt++){
+      responsive=await evaluate(`(()=>{
+      const heading=document.getElementById('customer-create-heading');
+      const note=document.getElementById('customer-request-note');
+      const consent=document.querySelector('input[type="checkbox"]');
+      const submit=document.querySelector('section[aria-labelledby="customer-create-heading"] button');
+      const bounds=[note,consent,submit].map(node=>{
+        const rect=node?.getBoundingClientRect();
+        return {width:rect?.width??0,left:rect?.left??-1,right:rect?.right??-1};
+      });
+      return {documentWidth:document.documentElement.scrollWidth,
+        viewportWidth:innerWidth,heading:heading?.textContent?.trim()??'',
+        bounds,submitDisabled:submit?.disabled};
+    })()`);
+      // Streaming and hydration can briefly leave detached/replaced nodes
+      // with zero-sized geometry. Wait for connected, displayed controls.
+      // Do not bypass the assertion: timeout means the viewport test fails.
+      if(responsive.heading==='Оставить заявку'&&
+        responsive.bounds.length===3&&
+        responsive.bounds.every(box=>box.width>0))break;
+      await pause(100);
+    }
+    assert.equal(responsive.heading,'Оставить заявку');
+    assert.ok(responsive.documentWidth<=responsive.viewportWidth+1,
+      'signed-in customer form horizontal overflow at '+width+'px: '+
+      JSON.stringify(responsive));
+    for(const box of responsive.bounds){
+      assert.ok(box.width>0&&box.left>=-1&&box.right<=width+1,
+        'signed-in customer interactive control clipped at '+width+'px: '+
+        JSON.stringify(responsive));
+    }
+    assert.equal(responsive.submitDisabled,true,
+      'consent gate must persist after responsive resize');
+    console.log('Chrome authenticated customer form '+width+'px responsive PASS');
+  }
+  // Restore the original mobile width for the existing React retry journey.
+  await send('Emulation.setDeviceMetricsOverride',{
+    width:375,height:740,deviceScaleFactor:1,mobile:true,
+  });
+
   // This shim affects ONLY this Chrome page, not the real backend. It
   // captures what the hydrated React component actually attempts to send.
   const installed=await evaluate(`(()=>{
