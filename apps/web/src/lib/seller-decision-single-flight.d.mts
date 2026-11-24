@@ -3,3 +3,5 @@ export interface SellerDecisionSingleFlight {
   run(operation:()=>Promise<void>):Promise<boolean>;
 }
 export function createSellerDecisionSingleFlight():SellerDecisionSingleFlight;
+
+export function isCurrentSellerDecision(mounted:boolean,capturedLifetime:number,activeLifetime:number):boolean;
