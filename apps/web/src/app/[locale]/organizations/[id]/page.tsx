@@ -33,6 +33,9 @@ export default async function OrganizationPage({params}:Params){
         <p className="intro">{t.publicOnlyNotice}</p>
       </section>
       <PublicOffers locale={locale} offers={organization.offers}/>
-    </> : <p role="alert" className="message">{t.profileUnavailable}</p>}
+    </> : <div role="alert" className="message">
+      <p>{t.profileUnavailable}</p>
+      <a className="retrySearch" href={`/${locale}/organizations/${encodeURIComponent(id)}`}>{t.retryDetail}</a>
+    </div>}
   </main>;
 }
