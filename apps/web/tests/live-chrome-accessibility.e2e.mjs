@@ -295,16 +295,28 @@ try{
         await pause(100);
       }
       assert.equal(sourceReady,true,locale+' filtered source must render before switching');
-      const languageLink=await evaluate(`(()=>{
-        const link=document.querySelector('.language a[href^="/${targetLocale}"]');
-        if(!link)return null;
-        const rect=link.getBoundingClientRect();
-        link.focus();
-        return {focused:document.activeElement===link,href:link.getAttribute('href'),
-          width:rect.width,left:rect.left,right:rect.right};
-      })()`);
+      let languageLink;
+      // The Next.js client runtime can replace a hydrated nav link after
+      // document.readyState is already complete. Wait for stable, live focus
+      // instead of accepting a transient detached element or skipping a11y.
+      for(let attempt=0;attempt<60;attempt++){
+        try{
+          languageLink=await evaluate(`(()=>{
+            const link=document.querySelector('.language a[href^="/${targetLocale}"]');
+            if(!link||!link.isConnected)return null;
+            const rect=link.getBoundingClientRect();
+            link.focus();
+            return {focused:document.activeElement===link&&link.isConnected,
+              href:link.getAttribute('href'),width:rect.width,
+              left:rect.left,right:rect.right};
+          })()`);
+        }catch{languageLink=null;}
+        if(languageLink?.focused&&languageLink.width>0)break;
+        await pause(100);
+      }
       assert.ok(languageLink&&languageLink.focused,
-        locale+' language switch must be keyboard focusable');
+        locale+' language switch must be keyboard focusable: '+
+          JSON.stringify(languageLink));
       assert.ok(languageLink.width>0&&languageLink.left>=-1&&languageLink.right<=376,
         locale+' language switch must fit a 375px mobile viewport');
       const linkUrl=new URL(languageLink.href,base);
