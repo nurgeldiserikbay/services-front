@@ -316,7 +316,7 @@ try{
         node.role?.value==='link'&&node.name?.value?.includes(targetLocale==='kk'?'ҚАЗ':'РУС')),
         locale+' switch must appear as a named Chrome accessibility link');
       await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',
-        code:'Enter',windowsVirtualKeyCode:13,text:'\\r',unmodifiedText:'\\r'});
+        code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
       await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',
         code:'Enter',windowsVirtualKeyCode:13});
       let switched=false;
