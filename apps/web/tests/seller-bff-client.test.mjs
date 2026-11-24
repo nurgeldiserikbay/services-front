@@ -130,8 +130,12 @@ test('seller request list manual refresh cannot race shared account write gate',
  assert.match(src,/sellerRefreshBlocked\(gate\.active,afterDecision\)/);
  assert.match(src,/await refresh\(true\);/,
   'decision handler alone must bypass the gate for its authorized read');
- assert.match(src,/disabled=\{refreshing\|\|busy!==null\|\|sellerRefreshBlocked\(\(sharedDecisionGate\?\?decisionGate\.current\)\.active\)\}/,
-  'manual refresh control must be disabled while any shared decision is active');
+ assert.match(src,/disabled=\{refreshing\|\|busy!==null\}/,
+  'local pending action still disables the refresh button');
+ assert.doesNotMatch(src,/disabled=\{[^}]*decisionGate\.current/,
+  'React refs must not be accessed during render');
+ assert.match(src,/const gate=sharedDecisionGate\?\?decisionGate\.current;[\s\S]*?sellerRefreshBlocked\(gate\.active,afterDecision\)/,
+  'the click handler must enforce shared gate at execution time');
  assert.match(src,/if\(refreshLock\.current\|\|gate\.active\|\|inFlight\.current\.has\(req\.id\)/,
   'existing decision admission check must still reject refresh races');
 });
