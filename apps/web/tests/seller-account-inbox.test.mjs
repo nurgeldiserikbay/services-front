@@ -58,7 +58,7 @@ test('account-wide seller decisions use executable synchronous gate',()=>{
  assert.match(src,/await decisionGate\.current\.run\(async\(\)=>\{/);
  assert.match(src,/retry\.current\.get\(key\)/);
  assert.match(src,/retry\.current\.set\(key,nonce\)/);
- assert.match(src,/finally\{setPendingId\(null\);\}/);
+ assert.match(src,/finally\{if\(isCurrentSellerDecision\(mounted\.current,decisionEpoch,decisionLifetime\.current\)\)setPendingId\(null\);\}/);
 });
 
 test('external account inbox reloads cannot race an in-flight seller decision',()=>{
@@ -78,7 +78,7 @@ test('external account inbox reloads cannot race an in-flight seller decision',(
 
 test('unmount invalidates old inbox lock without letting its stale finally unlock a new fetch',()=>{
  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
- assert.match(src,/return \(\)=>\{epoch\.current\+\+;run\.current=false;/,
+ assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;run\.current=false;/,
    'Strict Mode cleanup must release the old mount lock before refetch');
  assert.match(src,/if\(seq===epoch\.current\)\{run\.current=false;setBusy\(false\);\}/,
    'old in-flight request may not clear the new fetch lock');
@@ -103,11 +103,11 @@ test('seller decision completion cannot refresh a remounted or logged-out accoun
  assert.match(src,/mounted\.current=true;\s*void load\(\);/);
  assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/);
  assert.match(src,/const decisionEpoch=decisionLifetime\.current;/);
- assert.match(src,/if\(!mounted\.current\|\|decisionEpoch!==decisionLifetime\.current\)return;\s*if\(outcome==='unauthorized'\)/,
+ assert.match(src,/if\(!isCurrentSellerDecision\(mounted\.current,decisionEpoch,decisionLifetime\.current\)\)return;\s*if\(outcome==='unauthorized'\)/,
    'late successful response must not perform an account-scoped read');
- assert.match(src,/\}catch\{\s*if\(!mounted\.current\|\|decisionEpoch!==decisionLifetime\.current\)return;/,
+ assert.match(src,/\}catch\{\s*if\(!isCurrentSellerDecision\(mounted\.current,decisionEpoch,decisionLifetime\.current\)\)return;/,
    'late network failures must not alter the next account view');
- assert.match(src,/finally\{if\(mounted\.current&&decisionEpoch===decisionLifetime\.current\)setPendingId\(null\);\}/);
+ assert.match(src,/finally\{if\(isCurrentSellerDecision\(mounted\.current,decisionEpoch,decisionLifetime\.current\)\)setPendingId\(null\);\}/);
 });
 
 test('post-write inbox refetch cannot strand seller decision pending state',()=>{
@@ -118,7 +118,7 @@ test('post-write inbox refetch cannot strand seller decision pending state',()=>
  assert.match(src,/const decisionEpoch=decisionLifetime\.current;/);
  assert.match(src,/await load\(false,true\);/,
    'post-decision refresh advances the fetch epoch');
- assert.match(src,/finally\{if\(mounted\.current&&decisionEpoch===decisionLifetime\.current\)setPendingId\(null\);\}/,
+ assert.match(src,/finally\{if\(isCurrentSellerDecision\(mounted\.current,decisionEpoch,decisionLifetime\.current\)\)setPendingId\(null\);\}/,
    'successful refresh must still release pendingId and re-enable seller actions');
  assert.doesNotMatch(src,/decisionEpoch[!=]==epoch\.current/,
    'fetch epoch must not gate decision completion or finally');
