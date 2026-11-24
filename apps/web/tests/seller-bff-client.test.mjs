@@ -123,3 +123,15 @@ test('seller BFF rejects declared oversized response without reading body',async
  await assert.rejects(loadSellerInbox({transport:async()=>response}),SellerClientUnavailable);
  assert.equal(consumed,false);
 });
+
+test('seller request list manual refresh cannot race shared account write gate',()=>{
+ const src=readFileSync(new URL('../src/components/SellerRequestList.tsx',import.meta.url),'utf8');
+ assert.match(src,/async function refresh\(afterDecision=false\)/);
+ assert.match(src,/sellerRefreshBlocked\(gate\.active,afterDecision\)/);
+ assert.match(src,/await refresh\(true\);/,
+  'decision handler alone must bypass the gate for its authorized read');
+ assert.match(src,/disabled=\{refreshing\|\|busy!==null\|\|sellerRefreshBlocked\(\(sharedDecisionGate\?\?decisionGate\.current\)\.active\)\}/,
+  'manual refresh control must be disabled while any shared decision is active');
+ assert.match(src,/if\(refreshLock\.current\|\|gate\.active\|\|inFlight\.current\.has\(req\.id\)/,
+  'existing decision admission check must still reject refresh races');
+});
