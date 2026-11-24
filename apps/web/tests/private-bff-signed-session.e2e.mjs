@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {join} from 'node:path';
 import {sealAccountWebSession} from '../src/lib/account-web-session-core.mjs';
+import {exerciseSellerMobileChrome} from './helpers/seller-mobile-chrome.mjs';
 
 // CI-only real HTTP and PostgreSQL boundary test: verifies a legitimately
 // sealed *test fixture* web cookie reaches backend bearer authorization.
@@ -174,6 +175,11 @@ try{
     ) VALUES($1,$2,$3,'ORGANIZATION',$4,'PENDING')`,
    [fixture.requestIds[i],fixture.offerId,fixture.guestIds[i],fixture.orgId]);
  }
+ // The authorized seller UI must show the same PostgreSQL-backed rows on
+ // narrow mobile and tablet Chrome, with all filters/actions in viewport.
+ await exerciseSellerMobileChrome({
+  base,sealedCookie:sealed.cookie,requestId:fixture.requestIds[0],
+ });
  // A valid but unrelated account must not inherit another seller's grants.
  await db.query('INSERT INTO users(id) VALUES($1)',[outsiderId]);
  await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
