@@ -100,6 +100,10 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
  useEffect(()=>{
    // An account/session boundary must unmount this component on logout.
    mounted.current=true;
+   // A locale/effect restart invalidates the previous request and its private
+   // rows. Clear stale action state even when the preceding decision was pending.
+   current.current=null;setPage(null);setPendingId(null);setBlocked({});
+   setMessage('');setBusy(false);
    void load();
    return ()=>{mounted.current=false;decisionLifetime.current++;epoch.current++;run.current=false;current.current=null;retry.current.clear();seenCursors.current.clear();};
  },[load]);
