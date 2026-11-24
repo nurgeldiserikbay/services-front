@@ -2,6 +2,7 @@
 
 import {useRouter} from 'next/navigation';
 import {useRef,useState} from 'react';
+import {canAttemptCustomerCompletion} from '@/lib/customer-completion-ui-core.mjs';
 
 type Props={requestId:string;version:number;csrf:string;locale:'kk'|'ru'};
 
@@ -15,7 +16,7 @@ export function CustomerCompletionAction({requestId,version,csrf,locale}:Props){
  const complete=async()=>{
   // A mutation can commit even if its HTTP response is lost. Never send
   // another completion with stale version until the server page is reloaded.
-  if(inFlight.current||status!=='idle')return;
+  if(!canAttemptCustomerCompletion(status,inFlight.current))return;
   inFlight.current=true;
   setBusy(true);
   try{
