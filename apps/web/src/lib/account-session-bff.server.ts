@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,readBackendAppealableProfileRejection,requestBackendProfessionalProfileAppeal,completeBackendCustomerRequest,listBackendCustomerRequests,mutateBackendAccountSchedule,type ScheduleProposalBody,type ProfessionalEdit}
+ revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,readBackendAppealableProfileRejection,requestBackendProfessionalProfileAppeal,completeBackendCustomerRequest,listBackendCustomerRequests,mutateBackendAccountSchedule,readBackendActiveSchedule,type ScheduleProposalBody,type ProfessionalEdit}
  from './account-session-transport.mjs';
 
 function config(){
@@ -151,4 +151,10 @@ export async function mutateAccountSchedule(input:{
  return input.action==='propose'
   ?mutateBackendAccountSchedule({...common,action:input.action,body:input.body})
   :mutateBackendAccountSchedule({...common,action:input.action,proposalId:input.proposalId});
+}
+
+export async function getActiveAccountSchedule(cookieValue:string|undefined,requestId:string){
+ const session=readAccountWebSession(cookieValue);
+ if(!session)throw new Error('unauthorized');
+ return readBackendActiveSchedule({...config(),accountBearer:session.token,requestId});
 }
