@@ -4,7 +4,7 @@ import {useRouter} from 'next/navigation';
 import type {ActiveScheduleView} from '@/lib/account-session-transport.mjs';
 import {readScheduleResolutionReceipt} from '@/lib/customer-schedule-ui-core.mjs';
 
-export function ScheduleResolution({view,csrf,locale}:{view:ActiveScheduleView;csrf:string;locale:'kk'|'ru'}){
+export function ScheduleResolution({view,csrf,locale,onChanged}:{view:ActiveScheduleView;csrf:string;locale:'kk'|'ru';onChanged?:()=>void}){
  const kk=locale==='kk',router=useRouter(),p=view.proposal;
  const [status,setStatus]=useState<'idle'|'busy'|'done'|'unknown'>('idle');
  const busy=useRef(false);
@@ -18,7 +18,7 @@ export function ScheduleResolution({view,csrf,locale}:{view:ActiveScheduleView;c
      'Idempotency-Key':crypto.randomUUID(),'X-Services-CSRF':csrf},
     body:'{}',credentials:'same-origin',cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(8000),
    });
-   if(await readScheduleResolutionReceipt(response,view,action)){setStatus('done');router.refresh();}
+   if(await readScheduleResolutionReceipt(response,view,action)){setStatus('done');if(onChanged)onChanged();else router.refresh();}
    else setStatus('unknown');
   }catch{setStatus('unknown');}
   finally{busy.current=false;}
