@@ -179,6 +179,7 @@ jobs:
             SERVICES_ENABLE_GUEST_STATUS_HTTP=enabled \
             SERVICES_ENABLE_GUEST_CREATE_HTTP=enabled \
             SERVICES_ENABLE_REGISTERED_REQUEST_CREATE_HTTP=enabled \
+            SERVICES_ENABLE_PROFILE_PUBLISH=enabled \
             GUEST_CONTACT_ENCRYPTION_KEY="$(cat "$RUNNER_TEMP/services-guest-contact-encryption-key")" \
             GUEST_REQUEST_HMAC_KEY="$(cat "$RUNNER_TEMP/services-guest-capability-hmac-key")" \
             npm start > "$RUNNER_TEMP/services-back.log" 2>&1 &)
@@ -296,6 +297,11 @@ jobs:
             SERVICES_WEB_ENABLE_CUSTOMER_REQUESTS=enabled \
             SERVICES_WEB_ENABLE_CUSTOMER_COMPLETION=enabled \
             SERVICES_WEB_ENABLE_CUSTOMER_REQUEST_CREATE=enabled \
+            SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILES=enabled \
+            SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_CREATION=enabled \
+            SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_EDITING=enabled \
+            SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_PREVIEW=enabled \
+            SERVICES_WEB_ENABLE_PROFESSIONAL_PROFILE_PUBLICATION=enabled \
             SERVICES_WEB_GUEST_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-guest-key")" \
             SERVICES_WEB_ACCOUNT_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-account-key")" \
             SERVICES_WEB_ACCOUNT_OTP_PREAUTH_KEY="$(cat "$RUNNER_TEMP/services-private-bff-account-otp-preauth-key")" \
@@ -323,6 +329,9 @@ jobs:
       - name: Verify signed web session reaches backend and revocation invalidates access
         id: signed_seller_session_e2e
         run: node apps/web/tests/private-bff-signed-session.e2e.mjs
+      - name: Verify owner profile create edit approve publish and public search in real stack
+        id: professional_lifecycle_e2e
+        run: node apps/web/tests/private-bff-professional-publish-search.e2e.mjs
       - name: Verify registered customer create via real BFF, backend and PostgreSQL inventory
         id: registered_customer_create_e2e
         run: node apps/web/tests/private-bff-registered-create-journey.e2e.mjs
