@@ -2,7 +2,7 @@ import 'server-only';
 import {readAccountWebSession,authenticateAccountWebMutation}
  from './account-web-session.server';
 import {listBackendAccountSessions,revokeBackendAccountSession,
- revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,readBackendAppealableProfileRejection,requestBackendProfessionalProfileAppeal,completeBackendCustomerRequest,listBackendCustomerRequests,type ProfessionalEdit}
+ revokeBackendAccountSessionById,readBackendAccountMe,listBackendProfessionalProfiles,createBackendProfessionalProfile,updateBackendProfessionalProfile,readBackendProfessionalProfilePreview,publishBackendProfessionalProfile,readBackendAppealableProfileRejection,requestBackendProfessionalProfileAppeal,completeBackendCustomerRequest,listBackendCustomerRequests,mutateBackendAccountSchedule,type ScheduleProposalBody,type ProfessionalEdit}
  from './account-session-transport.mjs';
 
 function config(){
@@ -138,4 +138,17 @@ export async function getOwnCustomerRequestPage(
  const page=await listBackendCustomerRequests({...config(),
   accountBearer:session.token,cursor});
  return {...page,csrf:session.csrf};
+}
+
+/** Both customer and seller accounts are authorized by the live backend. */
+export async function mutateAccountSchedule(input:{
+ cookieValue:string|undefined;csrfToken:string|undefined;origin:string|null;fetchSite:string|null;
+ requestId:string;version:number;key:string;
+}&({action:'propose';body:ScheduleProposalBody}|{action:'confirm'|'decline';proposalId:string})){
+ const auth=authenticateAccountWebMutation(input);
+ if(!auth)throw new Error('unauthorized');
+ const common={...config(),accountBearer:auth.accountBearer,requestId:input.requestId,version:input.version,key:input.key};
+ return input.action==='propose'
+  ?mutateBackendAccountSchedule({...common,action:input.action,body:input.body})
+  :mutateBackendAccountSchedule({...common,action:input.action,proposalId:input.proposalId});
 }
