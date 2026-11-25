@@ -287,7 +287,7 @@ try{
   new Set(['service_request.created','service_request.accepted','service_request.completed']));
  assert.ok(events.rows.every(row=>JSON.stringify(row.safe_payload)==='{}'),
   'outbox excludes private customer request note');
- for(const prefix of ['request-created:seller:','request-accept:guest:','request-completed:seller:']){
+ for(const prefix of ['request-created:seller:','request-accept:client:','request-completed:seller:']){
   const intent=await db.query('SELECT count(*)::int AS n FROM notification_intents WHERE dedupe_key=$1',
    [prefix+receipt.id]);
   assert.equal(intent.rows[0].n,1,'one notification intent for '+prefix);
