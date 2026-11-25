@@ -50,7 +50,7 @@ export default async function AccountRequestsPage({
       <p className="intro">{kk
         ?'Жеке маман және компания өтінімдері бір жерде. Әр өтінім бойынша құқықтар серверде тексеріледі.'
         :'Личные и корпоративные заявки в одном месте. Права проверяются сервером для каждой заявки.'}</p>
-      <SellerAccountInbox locale={locale}/>
+      <SellerAccountInbox locale={locale} canSchedule={process.env.SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF==='enabled'&&process.env.SERVICES_WEB_ENABLE_ACCOUNT_SCHEDULE==='enabled'}/>
     </section>
   </main>;
 }
