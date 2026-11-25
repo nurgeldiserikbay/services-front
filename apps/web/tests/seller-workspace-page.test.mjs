@@ -26,7 +26,7 @@ test('seller workspace is default-off and backend validates live seller bearer b
  assert.match(page,/ACCOUNT_WEB_COOKIE/);
  assert.match(page,/await getOwnSellerInbox\(cookie,\{limit:1,state:null,cursor:null\}\)/);
  assert.match(page,/catch\s*\{[\s\S]*?notFound\(\)/);
- assert.match(page,/<SellerAccountInbox locale=\{locale\}\/>/);
+ assert.match(page,/<SellerAccountInbox locale=\{locale\} canSchedule=\{process\.env\.SERVICES_WEB_ENABLE_ACCOUNT_SESSION_BFF==='enabled'&&process\.env\.SERVICES_WEB_ENABLE_ACCOUNT_SCHEDULE==='enabled'\}\/>/);
  assert.doesNotMatch(page,/Authorization|localStorage|sessionStorage|userId|user_id/);
 });
 test('seller inbox clears stale private state when session ends',()=>{
