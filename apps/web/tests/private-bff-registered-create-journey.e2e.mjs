@@ -306,7 +306,86 @@ try{
  assert.match(notificationHtml,/Уведомления/);
  assert.ok(!notificationHtml.includes(token)&&!notificationHtml.includes(body.note));
 
- const finish=({session=sealed,csrf=session.csrf,version=2}={})=>fetch(
+
+ // Keep the same registered request and prove both directions of schedule
+ // negotiation over the real BFF and migrated PostgreSQL.
+ const schedulePath='/api/account/requests/'+receipt.id+'/schedule-proposals';
+ const active=(session=sealed)=>fetch(new URL(schedulePath+'/active',base),{
+  headers:{Cookie:cookie(session),'Sec-Fetch-Site':'same-origin'},
+  redirect:'manual',signal:AbortSignal.timeout(8000),
+ });
+ const schedule=({session=sealed,csrf=session.csrf,version,key=randomUUID(),suffix='',payload={}})=>fetch(
+  new URL(schedulePath+suffix,base),{
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+   headers:{Cookie:cookie(session),Origin:'https://services.example.test','Sec-Fetch-Site':'same-origin',
+    'X-Services-CSRF':csrf,'If-Match':'"'+version+'"','Idempotency-Key':key,'Content-Type':'application/json'},
+   body:JSON.stringify(payload),
+  });
+ const start=new Date(Date.now()+7*86400000);
+ start.setUTCMinutes(0,0,0);
+ const proposalBody={start_at:start.toISOString(),end_at:new Date(start.getTime()+3600000).toISOString(),
+  timezone:'Asia/Almaty',local_start_at:new Date(start.getTime()+18000000).toISOString().slice(0,19),
+  utc_offset_seconds:18000};
+ assert.equal((await active(foreignSealed)).status,404);
+ const emptySchedule=await active();
+ assert.equal(emptySchedule.status,200);
+ assert.match(emptySchedule.headers.get('cache-control')??'',/no-store/);
+ assert.deepEqual(await emptySchedule.json(),{request_id:receipt.id,request_version:2,actor:'customer',can_propose:true,proposal:null});
+ assert.equal((await schedule({session:sellerSealed,csrf:randomBytes(32).toString('base64url'),version:2,payload:proposalBody})).status,404);
+ assert.equal((await schedule({session:foreignSealed,version:2,payload:proposalBody})).status,404);
+ assert.equal((await db.query('SELECT count(*)::int AS n FROM schedule_proposals WHERE request_id=$1',[receipt.id])).rows[0].n,0);
+ const proposeKey=randomUUID();
+ const proposedResponse=await schedule({session:sellerSealed,version:2,key:proposeKey,payload:proposalBody});
+ assert.equal(proposedResponse.status,201);
+ const proposed=await proposedResponse.json();
+ assert.equal(proposed.initiator,'seller');
+ assert.equal(proposed.request_version,3);
+ const replayProposal=await schedule({session:sellerSealed,version:2,key:proposeKey,payload:proposalBody});
+ assert.equal(replayProposal.status,201);
+ assert.deepEqual(await replayProposal.json(),{...proposed,replayed:true});
+ const customerView=await active();
+ assert.equal(customerView.status,200);
+ const view=await customerView.json();
+ assert.equal(view.proposal.id,proposed.id);
+ assert.equal(view.proposal.can_resolve,true);
+ assert.equal((await (await active(sellerSealed)).json()).proposal.can_resolve,false);
+ const confirmPath='/'+proposed.id+'/confirm';
+ assert.equal((await schedule({session:sellerSealed,version:3,suffix:confirmPath})).status,409);
+ assert.equal((await schedule({version:2,suffix:confirmPath})).status,409);
+ assert.equal((await schedule({session:foreignSealed,version:3,suffix:confirmPath})).status,404);
+ assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id])).rows[0].version,3);
+ const confirmKey=randomUUID();
+ const confirmation=await schedule({version:3,key:confirmKey,suffix:confirmPath});
+ assert.equal(confirmation.status,200);
+ const confirmedSchedule=await confirmation.json();
+ assert.equal(confirmedSchedule.status,'confirmed');
+ assert.equal(confirmedSchedule.request_version,4);
+ const confirmReplay=await schedule({version:3,key:confirmKey,suffix:confirmPath});
+ assert.equal(confirmReplay.status,200);
+ assert.deepEqual(await confirmReplay.json(),{...confirmedSchedule,replayed:true});
+ assert.equal((await (await active()).json()).proposal,null);
+ const persisted=await db.query('SELECT version,scheduled_start_at,scheduled_end_at FROM service_requests WHERE id=$1',[receipt.id]);
+ assert.equal(persisted.rows[0].version,4);
+ assert.equal(persisted.rows[0].scheduled_start_at.toISOString(),proposalBody.start_at);
+ assert.equal(persisted.rows[0].scheduled_end_at.toISOString(),proposalBody.end_at);
+ const counter=await schedule({version:4,payload:proposalBody});
+ assert.equal(counter.status,201);
+ const customerProposal=await counter.json();
+ assert.equal(customerProposal.initiator,'customer');
+ assert.equal(customerProposal.request_version,5);
+ assert.equal((await (await active(sellerSealed)).json()).proposal.can_resolve,true);
+ const decline=await schedule({session:sellerSealed,version:5,suffix:'/'+customerProposal.id+'/decline'});
+ assert.equal(decline.status,200);
+ assert.equal((await decline.json()).status,'declined');
+ assert.deepEqual((await db.query('SELECT status::text,version FROM service_requests WHERE id=$1',[receipt.id])).rows[0],{status:'ACCEPTED',version:6});
+ assert.equal((await (await active()).json()).proposal,null);
+ const proposalStates=await db.query('SELECT status::text FROM schedule_proposals WHERE request_id=$1 ORDER BY revision',[receipt.id]);
+ assert.deepEqual(proposalStates.rows,[{status:'CONFIRMED'},{status:'DECLINED'}]);
+ const scheduleEffects=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic LIKE 'service_request.schedule_%' GROUP BY topic ORDER BY topic",[receipt.id]);
+ assert.deepEqual(scheduleEffects.rows,[{topic:'service_request.schedule_confirmed',n:1},{topic:'service_request.schedule_declined',n:1},{topic:'service_request.schedule_proposed',n:2}]);
+ console.log('Registered bilateral schedule BFF -> backend -> PostgreSQL PASS');
+
+ const finish=({session=sealed,csrf=session.csrf,version=6}={})=>fetch(
   new URL('/api/account/requests/'+receipt.id+'/complete',base),{
    method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
    headers:{Cookie:cookie(session),'Sec-Fetch-Site':'same-origin',
@@ -320,7 +399,7 @@ try{
  // Denials must leave both the state and durable effects untouched, not
  // merely return an error to the browser.
  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',
-  [receipt.id])).rows[0],{status:'ACCEPTED',version:2});
+  [receipt.id])).rows[0],{status:'ACCEPTED',version:6});
  const deniedCompletionEffects=await db.query(`
   SELECT
    (SELECT count(*)::int FROM service_experiences WHERE request_id=$1) AS experiences,
@@ -333,9 +412,9 @@ try{
  const confirmed=await finish();
  assert.equal(confirmed.status,200,'registered owner confirms the accepted request');
  assert.match(confirmed.headers.get('cache-control')??'',/no-store/);
- assert.deepEqual(await confirmed.json(),{code:'COMPLETED',id:receipt.id,version:3});
+ assert.deepEqual(await confirmed.json(),{code:'COMPLETED',id:receipt.id,version:7});
  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',
-  [receipt.id])).rows[0],{status:'COMPLETED',version:3});
+  [receipt.id])).rows[0],{status:'COMPLETED',version:7});
  assert.equal((await finish()).status,409,'stale confirmation cannot commit twice');
  assert.equal((await db.query('SELECT count(*)::int AS n FROM service_experiences WHERE request_id=$1',
   [receipt.id])).rows[0].n,1,'completion creates exactly one experience');
@@ -348,8 +427,8 @@ try{
  const events=await db.query('SELECT topic,safe_payload FROM domain_outbox_events WHERE subject_id=$1',
   [receipt.id]);
  assert.deepEqual(new Set(events.rows.map(row=>row.topic)),
-  new Set(['service_request.created','service_request.accepted','service_request.completed']));
- assert.ok(events.rows.every(row=>JSON.stringify(row.safe_payload)==='{}'),
+  new Set(['service_request.created','service_request.accepted','service_request.completed','service_request.schedule_proposed','service_request.schedule_confirmed','service_request.schedule_declined']));
+ assert.ok(events.rows.every(row=>!JSON.stringify(row.safe_payload).includes(body.note)&&!JSON.stringify(row.safe_payload).includes(token)),
   'outbox excludes private customer request note');
  for(const prefix of ['request-created:seller:','request-accept:client:','request-completed:seller:']){
   const intent=await db.query('SELECT count(*)::int AS n FROM notification_intents WHERE dedupe_key=$1',
