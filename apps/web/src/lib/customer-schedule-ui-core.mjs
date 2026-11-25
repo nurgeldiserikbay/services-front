@@ -19,7 +19,7 @@ export function buildScheduleProposal(start,end,timezone,offsetMinutes){
   return {start_at:a.toISOString(),end_at:b.toISOString(),timezone,local_start_at:start+':00',utc_offset_seconds:offsetMinutes*60};
  }catch{return null;}
 }
-export async function readScheduleProposalReceipt(response,id,version,body){
+export async function readScheduleProposalReceipt(response,id,version,body,actor='customer'){
  if(response.status!==201||response.headers.has('content-range')||
   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(response.headers.get('cache-control')??'')||
@@ -41,7 +41,7 @@ export async function readScheduleProposalReceipt(response,id,version,body){
   return !!r&&typeof r==='object'&&!Array.isArray(r)&&
    Object.keys(r).sort().join(',')==='end_at,id,initiator,replayed,request_id,request_version,revision,start_at,status,timezone'&&
    typeof r.id==='string'&&UUID.test(r.id)&&r.request_id===id&&r.request_version===version+1&&
-   r.status==='proposed'&&r.initiator==='customer'&&typeof r.replayed==='boolean'&&
+   r.status==='proposed'&&r.initiator===actor&&typeof r.replayed==='boolean'&&
    Number.isSafeInteger(r.revision)&&r.revision>0&&
    r.start_at===body.start_at&&r.end_at===body.end_at&&r.timezone===body.timezone;
  }catch{return false;}

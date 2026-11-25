@@ -3,8 +3,8 @@ import {useRef,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {buildScheduleProposal,readScheduleProposalReceipt} from '@/lib/customer-schedule-ui-core.mjs';
 
-export function CustomerScheduleProposal({requestId,version,csrf,locale}:{
- requestId:string;version:number;csrf:string;locale:'kk'|'ru';
+export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='customer',onChanged}:{
+ requestId:string;version:number;csrf:string;locale:'kk'|'ru';actor?:'customer'|'seller';onChanged?:()=>void;
 }){
  const kk=locale==='kk',router=useRouter();
  const [start,setStart]=useState(''),[end,setEnd]=useState('');
@@ -25,8 +25,8 @@ export function CustomerScheduleProposal({requestId,version,csrf,locale}:{
     signal:AbortSignal.timeout(8000),
    });
    if(response.status===409||response.status===404)setStatus('conflict');
-   else if(await readScheduleProposalReceipt(response,requestId,version,body)){
-    setStatus('done');router.refresh();
+   else if(await readScheduleProposalReceipt(response,requestId,version,body,actor)){
+    setStatus('done');if(onChanged)onChanged();else router.refresh();
    }else setStatus('unknown');
   }catch{setStatus('unknown');}
   finally{inFlight.current=false;}
