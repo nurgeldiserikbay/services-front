@@ -1,6 +1,7 @@
 'use client';
 import {useRef,useState} from 'react';
 import {useRouter} from 'next/navigation';
+import {confirmedProfileMutation} from '@/lib/profile-mutation-ack.mjs';
 import type {OwnProfessionalProfile} from '@/lib/account-session-transport.mjs';
 export default function EditProfileForm({kk,csrf,profile}:{kk:boolean;csrf:string;profile:Pick<OwnProfessionalProfile,'id'|'version'|'title'|'about'>}){
  const router=useRouter();const [title,setTitle]=useState(profile.title??'');const [about,setAbout]=useState(profile.about??'');
@@ -13,10 +14,10 @@ export default function EditProfileForm({kk,csrf,profile}:{kk:boolean;csrf:strin
   inFlight.current=true;setBusy(true);setMessage('');
   try{
    const response=await fetch('/api/account/profiles/'+profile.id,{method:'PATCH',headers:{'Content-Type':'application/json','x-services-csrf':csrf,'If-Match':'"'+version+'"'},body:JSON.stringify(body),credentials:'same-origin',cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000)});
-   if(response.status===200){setSaved({title,about});setVersion(v=>v+1);setMessage(kk?'Сақталды.':'Сохранено.');router.refresh();}
+   if(await confirmedProfileMutation(response,'edit')){setSaved({title,about});setVersion(v=>v+1);setMessage(kk?'Сақталды.':'Сохранено.');router.refresh();}
    else if(response.status===409){setStale(true);setMessage(kk?'Профиль өзгерген. Соңғы нұсқаны жүктеңіз.':'Профиль изменился. Загрузите актуальную версию.');}
-   else setMessage(kk?'Сақтау расталмады. Қайта тексеріңіз.':'Сохранение не подтверждено. Проверьте снова.');
-  }catch{setMessage(kk?'Сақтау расталмады. Қайта тексеріңіз.':'Сохранение не подтверждено. Проверьте снова.');}
+   else {setStale(true);setMessage(kk?'Нәтиже белгісіз. Қайта жібермей, бетті жаңартыңыз.':'Результат неизвестен. Обновите страницу, не отправляя повторно.');}
+  }catch{setStale(true);setMessage(kk?'Нәтиже белгісіз. Қайта жібермей, бетті жаңартыңыз.':'Результат неизвестен. Обновите страницу, не отправляя повторно.');}
   finally{inFlight.current=false;setBusy(false);}
  }
  return <form onSubmit={submit}>
