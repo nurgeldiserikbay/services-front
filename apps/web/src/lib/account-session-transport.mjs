@@ -471,3 +471,62 @@ export async function listBackendCustomerRequests({
   return {items,next_cursor:row.next_cursor};
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+/** Server-side account schedule transport. Not a browser route or release switch. */
+export async function mutateBackendAccountSchedule({
+ baseUrl,production=true,accountBearer,requestId,version,key,action,proposalId,body,transport=fetch,
+}){
+ const propose=action==='propose';
+ if(!['propose','confirm','decline'].includes(action)||
+  typeof requestId!=='string'||!UUID.test(requestId)||
+  !Number.isSafeInteger(version)||version<1||version>2147483646||
+  typeof key!=='string'||! /^[A-Za-z0-9][A-Za-z0-9_-]{15,127}$/.test(key)||
+  (propose?proposalId!==undefined:(typeof proposalId!=='string'||!UUID.test(proposalId)))||
+  (!propose&&body!==undefined))
+  throw new AccountSessionTransportUnavailable();
+ const id=requestId.toLowerCase(),pid=propose?undefined:proposalId.toLowerCase();
+ if(propose&&(!body||typeof body!=='object'||Array.isArray(body)||
+  Object.keys(body).sort().join(',')!=='end_at,local_start_at,start_at,timezone,utc_offset_seconds'||
+  !validUtcDate(body.start_at)||!validUtcDate(body.end_at)||Date.parse(body.end_at)<=Date.parse(body.start_at)||
+  typeof body.timezone!=='string'||! /^[A-Za-z0-9_+/-]{1,64}$/.test(body.timezone)||
+  typeof body.local_start_at!=='string'||! /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(body.local_start_at)||
+  !Number.isSafeInteger(body.utc_offset_seconds)||Math.abs(body.utc_offset_seconds)>50400))
+  throw new AccountSessionTransportUnavailable();
+ try{
+  const response=await transport(endpoint(baseUrl,production,
+   '/requests/'+id+'/schedule-proposals'+(propose?'':'/'+pid+'/'+action)),{
+   method:'POST',headers:{...headers(accountBearer),'Content-Type':'application/json',
+    'If-Match':'"'+version+'"','Idempotency-Key':key},
+   body:JSON.stringify(propose?body:{}),cache:'no-store',credentials:'omit',
+   redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  if([403,404,409].includes(response.status)){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   return {kind:response.status===409?'conflict':'not_found'};
+  }
+  const cache=response.headers.get('cache-control')??'',length=response.headers.get('content-length');
+  if(response.status!==(propose?201:200)||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||/(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^(?:0|[1-9][0-9]*)$/.test(length)||Number(length)>MAX_BYTES))){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   throw new AccountSessionTransportUnavailable();
+  }
+  const row=await readBoundedJson(response);
+  const fields=['id','request_id','revision','status','initiator','start_at','end_at','timezone','request_version','replayed'];
+  if(action==='confirm')fields.push('confirmed_at','cancellation_deadline_at');
+  if(!row||typeof row!=='object'||Array.isArray(row)||Object.keys(row).sort().join(',')!==fields.sort().join(',')||
+   typeof row.id!=='string'||!UUID.test(row.id)||row.id!==row.id.toLowerCase()||
+   (!propose&&row.id!==pid)||row.request_id!==id||row.request_version!==version+1||
+   row.status!==({propose:'proposed',confirm:'confirmed',decline:'declined'})[action]||
+   !['customer','seller'].includes(row.initiator)||typeof row.replayed!=='boolean'||
+   !Number.isSafeInteger(row.revision)||row.revision<1||
+   !validUtcDate(row.start_at)||!validUtcDate(row.end_at)||Date.parse(row.end_at)<=Date.parse(row.start_at)||
+   typeof row.timezone!=='string'||! /^[A-Za-z0-9_+/-]{1,64}$/.test(row.timezone)||
+   (propose&&(row.start_at!==body.start_at||row.end_at!==body.end_at||row.timezone!==body.timezone))||
+   (action==='confirm'&&(!validUtcDate(row.confirmed_at)||!validUtcDate(row.cancellation_deadline_at)||
+    Date.parse(row.confirmed_at)>=Date.parse(row.start_at)||Date.parse(row.cancellation_deadline_at)>Date.parse(row.start_at))))
+   throw new AccountSessionTransportUnavailable();
+  return {kind:'ok',receipt:row};
+ }catch{throw new AccountSessionTransportUnavailable();}
+}

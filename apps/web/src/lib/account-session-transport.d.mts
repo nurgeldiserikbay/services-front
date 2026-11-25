@@ -53,3 +53,9 @@ export function completeBackendCustomerRequest(options:AccountSessionTransportOp
 export type CustomerRequestSummary={id:string;state:'pending'|'accepted'|'declined'|'cancelled_by_customer'|'cancelled_by_provider'|'cancelled_mutual'|'completed'|'expired';version:number;created_at:string};
 export type CustomerRequestInventory={items:CustomerRequestSummary[];next_cursor:string|null};
 export function listBackendCustomerRequests(options:AccountSessionTransportOptions&{cursor?:string|null}):Promise<CustomerRequestInventory>;
+
+export type ScheduleProposalBody={start_at:string;end_at:string;timezone:string;local_start_at:string;utc_offset_seconds:number};
+export type ScheduleReceipt={id:string;request_id:string;revision:number;status:'proposed'|'confirmed'|'declined';initiator:'customer'|'seller';start_at:string;end_at:string;timezone:string;request_version:number;replayed:boolean;confirmed_at?:string;cancellation_deadline_at?:string};
+export function mutateBackendAccountSchedule(options:AccountSessionTransportOptions&{
+ requestId:string;version:number;key:string;
+}&({action:'propose';body:ScheduleProposalBody;proposalId?:never}|{action:'confirm'|'decline';proposalId:string;body?:never})):Promise<{kind:'ok';receipt:ScheduleReceipt}|{kind:'conflict'|'not_found'}>;
