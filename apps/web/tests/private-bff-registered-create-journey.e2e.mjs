@@ -474,6 +474,10 @@ try{
   await db.query('DELETE FROM idempotency_records WHERE actor_scope=$1 AND route=$2',
    ['account:'+persons[0],'/account/requests']).catch(()=>{});
   await db.query('DELETE FROM service_experiences WHERE request_id=ANY($1::uuid[])',[requestIds]).catch(()=>{});
+  await db.query('DELETE FROM cancellation_snapshot_revisions WHERE request_id=ANY($1::uuid[])',[requestIds]).catch(()=>{});
+  await db.query('DELETE FROM cancellation_snapshots WHERE request_id=ANY($1::uuid[])',[requestIds]).catch(()=>{});
+  await db.query('DELETE FROM schedule_proposals WHERE request_id=ANY($1::uuid[])',[requestIds]).catch(()=>{});
+  await db.query("DELETE FROM idempotency_records WHERE actor_scope=ANY($1::text[]) AND route LIKE '%/schedule-proposals%'",[users.map(id=>'user:'+id)]).catch(()=>{});
   await db.query('DELETE FROM service_requests WHERE id=ANY($1::uuid[])',
    [requestIds]).catch(()=>{});
   await db.query('DELETE FROM service_offers WHERE id=$1',[offer]).catch(()=>{});
