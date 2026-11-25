@@ -3,10 +3,12 @@ import {notFound} from 'next/navigation';
 import Link from 'next/link';
 import {isLocale} from '@/lib/i18n';
 import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
-import {getOwnCustomerRequestPage} from '@/lib/account-session-bff.server';
+import {getOwnCustomerRequestPage,getActiveAccountSchedule} from '@/lib/account-session-bff.server';
 import {CustomerCompletionAction} from '@/components/CustomerCompletionAction';
 
 import {CustomerScheduleProposal} from '@/components/CustomerScheduleProposal';
+
+import {ScheduleResolution} from '@/components/ScheduleResolution';
 
 export const dynamic='force-dynamic';
 export const revalidate=0;
@@ -44,6 +46,19 @@ export default async function CustomerRequestsPage({
  catch{notFound();}
  const kk=locale==='kk';
  const canSchedule=process.env.SERVICES_WEB_ENABLE_ACCOUNT_SCHEDULE==='enabled';
+ const activeViews=new Map<string,Awaited<ReturnType<typeof getActiveAccountSchedule>>>();
+ if(canSchedule){
+  const accepted=result.items.filter(item=>item.state==='accepted');
+  // Bound parallel upstream reads; a failed or stale view never exposes actions.
+  for(let i=0;i<accepted.length;i+=5){
+   await Promise.all(accepted.slice(i,i+5).map(async item=>{
+    try{
+     const view=await getActiveAccountSchedule(cookie,item.id);
+     if(view.actor==='customer'&&view.request_version===item.version)activeViews.set(item.id,view);
+    }catch{/* fail closed for this request */}
+   }));
+  }
+ }
  const canComplete=process.env.SERVICES_WEB_ENABLE_CUSTOMER_COMPLETION==='enabled';
  return <main id="main-content" className="shell">
   <header className="header">
@@ -57,17 +72,20 @@ export default async function CustomerRequestsPage({
     'Ваши заявки доступны только вашему аккаунту.'}</p>
    {result.items.length===0?<p role="status">{kk?'Тапсырыстар жоқ.':'Заказов нет.'}</p>:
     <ul className="resultList">
-     {result.items.map(item=><li key={item.id} className="resultItem">
+     {result.items.map(item=>{const view=activeViews.get(item.id);return <li key={item.id} className="resultItem">
       <strong>№ {item.id.slice(0,8)}</strong>
       <p>{LABELS[item.state]?.[kk?'kk':'ru']??item.state}</p>
       <p>{item.created_at.slice(0,16).replace('T',' ')} UTC</p>
-      {canSchedule&&item.state==='accepted'&&
+      {canSchedule&&item.state==='accepted'&&(view?
+       <ScheduleResolution key={item.id+':'+item.version+':resolution'} view={view} csrf={result.csrf} locale={locale}/>:
+       <p>{kk?'Ұсыныс күйі қолжетімсіз. Бетті жаңартыңыз.':'Статус предложения недоступен. Обновите страницу.'}</p>)}
+      {canSchedule&&view?.can_propose&&item.state==='accepted'&&
        <CustomerScheduleProposal key={item.id+':'+item.version} requestId={item.id} version={item.version}
         csrf={result.csrf} locale={locale}/>}
       {canComplete&&item.state==='accepted'&&
        <CustomerCompletionAction requestId={item.id} version={item.version}
         csrf={result.csrf} locale={locale}/>}
-     </li>)}
+     </li>;})}
     </ul>}
    {result.next_cursor&&
     <nav className="pagination" aria-label={kk?'Беттер':'Страницы'}>
