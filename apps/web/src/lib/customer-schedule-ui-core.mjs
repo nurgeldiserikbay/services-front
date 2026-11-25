@@ -47,3 +47,37 @@ export async function readScheduleProposalReceipt(response,id,version,body){
  }catch{return false;}
  finally{if(!complete)await reader.cancel().catch(()=>{});reader.releaseLock();}
 }
+
+export async function readScheduleResolutionReceipt(response,view,action){
+ const p=view.proposal;
+ if(!p||!p.can_resolve||!['confirm','decline'].includes(action)||response.status!==200||
+  response.headers.has('content-range')||
+  !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+  !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(response.headers.get('cache-control')??'')||
+  /(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(response.headers.get('cache-control')??'')||!response.body)return false;
+ const length=response.headers.get('content-length');
+ if(length!==null&&(!/^(?:0|[1-9][0-9]*)$/.test(length)||Number(length)>2048))return false;
+ const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});
+ let bytes=0,raw='',complete=false;
+ try{
+  for(;;){
+   const chunk=await reader.read();
+   if(chunk.done){complete=true;break;}
+   bytes+=chunk.value.byteLength;
+   if(bytes>2048)return false;
+   raw+=decoder.decode(chunk.value,{stream:true});
+  }
+  raw+=decoder.decode();
+  const r=JSON.parse(raw);
+  const keys=['end_at','id','initiator','replayed','request_id','request_version','revision','start_at','status','timezone'];
+  if(action==='confirm')keys.push('confirmed_at','cancellation_deadline_at');
+  const utc=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString()===v;
+  return !!r&&typeof r==='object'&&!Array.isArray(r)&&Object.keys(r).sort().join(',')===keys.sort().join(',')&&
+   r.id===p.id&&r.request_id===view.request_id&&r.request_version===view.request_version+1&&
+   r.status===(action==='confirm'?'confirmed':'declined')&&r.initiator===p.initiator&&
+   r.revision===p.revision&&r.start_at===p.start_at&&r.end_at===p.end_at&&r.timezone===p.timezone&&
+   typeof r.replayed==='boolean'&&(action!=='confirm'||(utc(r.confirmed_at)&&utc(r.cancellation_deadline_at)&&
+   Date.parse(r.confirmed_at)<Date.parse(p.start_at)&&Date.parse(r.cancellation_deadline_at)<=Date.parse(p.start_at)));
+ }catch{return false;}
+ finally{if(!complete)await reader.cancel().catch(()=>{});reader.releaseLock();}
+}

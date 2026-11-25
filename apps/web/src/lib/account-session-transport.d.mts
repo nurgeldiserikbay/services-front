@@ -59,3 +59,6 @@ export type ScheduleReceipt={id:string;request_id:string;revision:number;status:
 export function mutateBackendAccountSchedule(options:AccountSessionTransportOptions&{
  requestId:string;version:number;key:string;
 }&({action:'propose';body:ScheduleProposalBody;proposalId?:never}|{action:'confirm'|'decline';proposalId:string;body?:never})):Promise<{kind:'ok';receipt:ScheduleReceipt}|{kind:'conflict'|'not_found'}>;
+export type ActiveScheduleProposal={id:string;revision:number;initiator:'customer'|'seller';start_at:string;end_at:string;timezone:string;can_resolve:boolean};
+export type ActiveScheduleView={request_id:string;request_version:number;actor:'customer'|'seller';can_propose:boolean;proposal:ActiveScheduleProposal|null};
+export function readBackendActiveSchedule(options:AccountSessionTransportOptions&{requestId:string}):Promise<ActiveScheduleView>;

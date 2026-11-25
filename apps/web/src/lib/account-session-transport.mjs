@@ -530,3 +530,41 @@ export async function mutateBackendAccountSchedule({
   return {kind:'ok',receipt:row};
  }catch{throw new AccountSessionTransportUnavailable();}
 }
+
+/** Minimal participant-only active proposal view, never trust a foreign ID. */
+export async function readBackendActiveSchedule({
+ baseUrl,production=true,accountBearer,requestId,transport=fetch,
+}){
+ if(typeof requestId!=='string'||!UUID.test(requestId))throw new AccountSessionTransportUnavailable();
+ const id=requestId.toLowerCase();
+ try{
+  const response=await transport(endpoint(baseUrl,production,'/requests/'+id+'/schedule-proposals/active'),{
+   method:'GET',headers:headers(accountBearer),cache:'no-store',credentials:'omit',
+   redirect:'manual',signal:AbortSignal.timeout(5000),
+  });
+  const cache=response.headers.get('cache-control')??'',length=response.headers.get('content-length');
+  if(response.status!==200||response.headers.has('content-range')||
+   !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+   !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cache)||/(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(cache)||
+   (length!==null&&(!/^(?:0|[1-9][0-9]*)$/.test(length)||Number(length)>MAX_BYTES))){
+   if(response.body)void response.body.cancel().catch(()=>{});
+   throw new AccountSessionTransportUnavailable();
+  }
+  const row=await readBoundedJson(response);
+  if(!row||typeof row!=='object'||Array.isArray(row)||
+   Object.keys(row).sort().join(',')!=='actor,can_propose,proposal,request_id,request_version'||
+   row.request_id!==id||!Number.isSafeInteger(row.request_version)||row.request_version<1||
+   row.request_version>2147483647||!['customer','seller'].includes(row.actor)||
+   typeof row.can_propose!=='boolean')throw new AccountSessionTransportUnavailable();
+  const p=row.proposal;
+  if(p!==null&&(!p||typeof p!=='object'||Array.isArray(p)||
+   Object.keys(p).sort().join(',')!=='can_resolve,end_at,id,initiator,revision,start_at,timezone'||
+   typeof p.id!=='string'||!UUID.test(p.id)||p.id!==p.id.toLowerCase()||
+   !Number.isSafeInteger(p.revision)||p.revision<1||!['customer','seller'].includes(p.initiator)||
+   typeof p.can_resolve!=='boolean'||p.can_resolve!==(row.can_propose&&p.initiator!==row.actor)||
+   !validUtcDate(p.start_at)||!validUtcDate(p.end_at)||Date.parse(p.end_at)<=Date.parse(p.start_at)||
+   typeof p.timezone!=='string'||! /^[A-Za-z0-9_+/-]{1,64}$/.test(p.timezone)))
+   throw new AccountSessionTransportUnavailable();
+  return row;
+ }catch{throw new AccountSessionTransportUnavailable();}
+}
