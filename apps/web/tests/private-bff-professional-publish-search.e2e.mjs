@@ -75,7 +75,7 @@ try{
  assert.equal(draft.version,1);
  assert.equal(draft.title,null);
  assert.ok(/^pro-[0-9a-f-]{36}$/.test(slug));
- const hidden=await fetch(new URL('/professionals/'+slug,apiBase),{
+ const hidden=await fetch(new URL(apiBase.replace(/\/$/,'')+'/professionals/'+slug),{
   redirect:'manual',signal:AbortSignal.timeout(10000),
  });
  assert.equal(hidden.status,404,'new draft must not leak into public catalog');
