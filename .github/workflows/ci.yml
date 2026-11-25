@@ -525,6 +525,7 @@ jobs:
           OTP_BOOTSTRAP_E2E: ${{ steps.otp_bootstrap_e2e.outcome }}
           ENABLED_PRIVATE_DENIAL_E2E: ${{ steps.enabled_private_denial_e2e.outcome }}
           SIGNED_SELLER_SESSION_E2E: ${{ steps.signed_seller_session_e2e.outcome }}
+          PROFESSIONAL_LIFECYCLE_E2E: ${{ steps.professional_lifecycle_e2e.outcome }}
           REGISTERED_CREATE_E2E: ${{ steps.registered_customer_create_e2e.outcome }}
           GUEST_STATUS_PROOF_E2E: ${{ steps.guest_status_proof_e2e.outcome }}
           GUEST_CREATE_STATUS_E2E: ${{ steps.guest_create_status_e2e.outcome }}
@@ -557,6 +558,7 @@ jobs:
             echo "| OTP CSRF bootstrap and unavailable-provider isolation | $OTP_BOOTSTRAP_E2E |"
             echo "| Enabled private BFF unauthorized proof rejection | $ENABLED_PRIVATE_DENIAL_E2E |"
             echo "| Signed seller web session and backend revocation | $SIGNED_SELLER_SESSION_E2E |"
+            echo "| Moderated owner profile create/edit/publish to public search | $PROFESSIONAL_LIFECYCLE_E2E |"
             echo "| Registered customer create to own inventory real PostgreSQL | $REGISTERED_CREATE_E2E |"
             echo "| Guest status scoped proof and expiry HTTP E2E | $GUEST_STATUS_PROOF_E2E |"
             echo "| Verified guest create to status-cookie HTTP E2E | $GUEST_CREATE_STATUS_E2E |"
