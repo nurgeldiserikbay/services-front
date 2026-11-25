@@ -255,6 +255,57 @@ try{
  assert.match(acceptedHtml,/Подтвердить завершение/,
   'registered owner can confirm only after seller acceptance');
 
+ // Acceptance creates a durable IN_APP intent, not an instant delivered message.
+ // Verify the real BFF + backend inbox hides pending delivery and foreign accounts.
+ const notifications=({session=sealed,site='same-origin'}={})=>fetch(
+  new URL('/api/account/notifications',base),{
+   headers:{Cookie:cookie(session),'Sec-Fetch-Site':site},
+   redirect:'manual',signal:AbortSignal.timeout(8000),
+  });
+ const absent=await notifications();
+ assert.equal(absent.status,200);
+ assert.match(absent.headers.get('cache-control')??'',/no-store/);
+ assert.deepEqual(await absent.json(),{items:[]},
+  'notification intent is not delivered until a delivery materializes');
+ const notice=await db.query(
+  'SELECT id::text,state,channel,recipient_person_id::text FROM notification_intents WHERE dedupe_key=$1',
+  ['request-accept:client:'+receipt.id]);
+ assert.equal(notice.rows.length,1);
+ assert.equal(notice.rows[0].channel,'IN_APP');
+ assert.equal(notice.rows[0].recipient_person_id,persons[0]);
+ assert.equal(notice.rows[0].state,'PENDING');
+ const deliveryId=randomUUID();
+ // Simulate the separately authorized in-app materializer's successful
+ // database transition in this CI-only fixture. This is NOT SMS/email delivery.
+ await db.query("INSERT INTO notification_deliveries(id,intent_id,channel,state,delivered_at) VALUES($1,$2,'IN_APP','DELIVERED',now())",
+  [deliveryId,notice.rows[0].id]);
+ await db.query("UPDATE notification_intents SET state='DELIVERED' WHERE id=$1",
+  [notice.rows[0].id]);
+ const recipient=await notifications();
+ assert.equal(recipient.status,200,'owner inbox endpoint must be accessible');
+ assert.match(recipient.headers.get('cache-control')??'',/no-store/);
+ assert.match(recipient.headers.get('x-robots-tag')??'',/noindex/);
+ assert.equal(recipient.headers.get('set-cookie'),null);
+ const inbox=await recipient.json();
+ assert.equal(inbox.items.length,1,'owner sees one delivered acceptance event');
+ assert.equal(inbox.items[0].id,notice.rows[0].id);
+ assert.equal(inbox.items[0].subject_id,receipt.id);
+ assert.equal(inbox.items[0].topic,'service_request.accepted');
+ assert.ok(!JSON.stringify(inbox).includes(token));
+ assert.ok(!JSON.stringify(inbox).includes(body.note));
+ const foreignNotices=await notifications({session:foreignSealed});
+ assert.equal(foreignNotices.status,200);
+ assert.deepEqual(await foreignNotices.json(),{items:[]},
+  'another authenticated person cannot view the recipient inbox');
+ assert.equal((await notifications({site:'cross-site'})).status,404);
+ const notificationPage=await fetch(new URL('/ru/account/notifications',base),{
+  headers:{Cookie:cookie(sealed)},redirect:'manual',signal:AbortSignal.timeout(8000),
+ });
+ assert.equal(notificationPage.status,200,'authenticated notification UI page exists');
+ const notificationHtml=await notificationPage.text();
+ assert.match(notificationHtml,/Уведомления/);
+ assert.ok(!notificationHtml.includes(token)&&!notificationHtml.includes(body.note));
+
  const finish=({session=sealed,csrf=session.csrf,version=2}={})=>fetch(
   new URL('/api/account/requests/'+receipt.id+'/complete',base),{
    method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
@@ -297,6 +348,10 @@ try{
  await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessions[0]]);
  const revoked=await submit({key:'registered_revoked_'+randomUUID().replace(/-/g,'')});
  assert.equal(revoked.status,503,'revoked bearer must never report creation success');
+ const revokedNotifications=await notifications();
+ assert.equal(revokedNotifications.status,401,
+  'revoked account session must not access delivered IN_APP notifications');
+ assert.deepEqual(await revokedNotifications.json(),{code:'AUTH_REQUIRED'});
  const revokedList=await inventory();
  assert.ok([200,404].includes(revokedList.status),
   'Next streaming notFound can return HTTP 200');
@@ -312,6 +367,10 @@ try{
 }finally{
  if(connected){
   // CI-only disposable fixtures; delete dependent events before request rows.
+  await db.query(`DELETE FROM notification_deliveries WHERE intent_id IN
+    (SELECT id FROM notification_intents WHERE domain_event_id IN
+     (SELECT id FROM domain_outbox_events WHERE subject_id=ANY($1::uuid[])))`,
+   [requestIds]).catch(()=>{});
   await db.query(`DELETE FROM notification_intents
    WHERE domain_event_id IN
     (SELECT id FROM domain_outbox_events WHERE subject_id=ANY($1::uuid[]))`,
