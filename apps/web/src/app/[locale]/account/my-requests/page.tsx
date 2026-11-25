@@ -6,6 +6,8 @@ import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
 import {getOwnCustomerRequestPage} from '@/lib/account-session-bff.server';
 import {CustomerCompletionAction} from '@/components/CustomerCompletionAction';
 
+import {CustomerScheduleProposal} from '@/components/CustomerScheduleProposal';
+
 export const dynamic='force-dynamic';
 export const revalidate=0;
 export const runtime='nodejs';
@@ -41,6 +43,7 @@ export default async function CustomerRequestsPage({
  try{result=await getOwnCustomerRequestPage(cookie,rawCursor??null);}
  catch{notFound();}
  const kk=locale==='kk';
+ const canSchedule=process.env.SERVICES_WEB_ENABLE_ACCOUNT_SCHEDULE==='enabled';
  const canComplete=process.env.SERVICES_WEB_ENABLE_CUSTOMER_COMPLETION==='enabled';
  return <main id="main-content" className="shell">
   <header className="header">
@@ -58,6 +61,9 @@ export default async function CustomerRequestsPage({
       <strong>№ {item.id.slice(0,8)}</strong>
       <p>{LABELS[item.state]?.[kk?'kk':'ru']??item.state}</p>
       <p>{item.created_at.slice(0,16).replace('T',' ')} UTC</p>
+      {canSchedule&&item.state==='accepted'&&
+       <CustomerScheduleProposal key={item.id+':'+item.version} requestId={item.id} version={item.version}
+        csrf={result.csrf} locale={locale}/>}
       {canComplete&&item.state==='accepted'&&
        <CustomerCompletionAction requestId={item.id} version={item.version}
         csrf={result.csrf} locale={locale}/>}
