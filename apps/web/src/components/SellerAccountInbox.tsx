@@ -8,6 +8,8 @@ import {loadSellerInbox,sendSellerDecision,
 import styles from './SellerRequestList.module.css';
 import {createSellerDecisionSingleFlight,isCurrentSellerDecision} from '@/lib/seller-decision-single-flight.mjs';
 
+import {SellerSchedulePanel} from './SellerSchedulePanel';
+
 type Page={items:SellerRequestSummary[];nextCursor:string|null;csrf:string};
 const labels={
  kk:{heading:'Өтінімдер',load:'Жүктеу',more:'Тағы көрсету',refresh:'Жаңарту',
@@ -29,7 +31,7 @@ const labels={
  * authorized upstream; seller-kind badges distinguish personal/company
  * contexts. Mounted only after registered-account login release gates pass.
  */
-export function SellerAccountInbox({locale}:{locale:Locale}){
+export function SellerAccountInbox({locale,canSchedule=false}:{locale:Locale;canSchedule?:boolean}){
  const t=labels[locale];
  const [page,setPage]=useState<Page|null>(null);
  const [busy,setBusy]=useState(false);
@@ -164,6 +166,7 @@ export function SellerAccountInbox({locale}:{locale:Locale}){
        <strong>{item.title}</strong>
        <small>{t[item.sellerKind]} · {item.createdAt.slice(0,10)}</small>
        <span>{item.state}</span>
+       {canSchedule&&item.state==='accepted'&&<SellerSchedulePanel key={item.id+':'+item.version} id={item.id} version={item.version} csrf={page.csrf} locale={locale} disabled={busy||pendingId!==null} onChanged={()=>{void load();}}/>}
        {item.state==='pending'&&<div className={styles.actions}>
          <button type="button" disabled={busy||pendingId!==null||blocked[item.id]===item.version}
            aria-label={t.accept+': '+t[item.sellerKind]+' · '+item.title+' № '+item.id.slice(0,8)}
