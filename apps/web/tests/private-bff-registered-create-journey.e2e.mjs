@@ -26,7 +26,10 @@ const hash=value=>createHmac('sha256',hmacKey)
  .update('services-session:v1\0').update(value).digest('hex');
 const users=[randomUUID(),randomUUID(),randomUUID()];
 const persons=[randomUUID(),randomUUID(),randomUUID()];
-const sessions=[randomUUID(),randomUUID()];
+const sessions=[randomUUID(),randomUUID(),randomUUID()];
+const sellerToken=randomBytes(32).toString('base64url');
+const sellerSealed=sealAccountWebSession(webKey,sellerToken,600);
+const sellerMemberId=randomUUID();
 const organization=randomUUID(),definition=randomUUID(),offer=randomUUID();
 const idem='registered_e2e_'+randomUUID().replace(/-/g,'');
 const body={service_offer_id:offer,note:'CI SECRET REGISTERED NOTE',consent_to_contact:true};
@@ -54,14 +57,15 @@ try{
   await db.query('INSERT INTO persons(id,user_id) VALUES($1,$2)',
    [persons[i],users[i]]);
  }
- for(let i=0;i<2;i++){
+ for(let i=0;i<3;i++){
   await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
    VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
-   [sessions[i],users[i],hash(i===0?token:foreignToken),randomUUID()]);
+   [sessions[i],users[i],hash([token,foreignToken,sellerToken][i]),randomUUID()]);
  }
  await db.query(`INSERT INTO organizations(id,owner_person_id,slug,name,status)
   VALUES($1,$2,$3,'Registered E2E seller','ACTIVE')`,
   [organization,persons[2],'registered-e2e-'+randomUUID()]);
+ await db.query("INSERT INTO organization_members(id,organization_id,user_id,role) VALUES($1,$2,$3,'ADMIN')",[sellerMemberId,organization,users[2]]);
  await db.query(`INSERT INTO service_definitions(id,code,name)
   VALUES($1,$2,'Registered customer E2E')`,
   [definition,'registered-e2e-'+randomUUID()]);
@@ -214,6 +218,82 @@ try{
  assert.equal(blockedLedger.rows[0]?.n,'0',
   'a budget denial may not create a successful replay ledger');
 
+ // Continue the SAME newly created registered request, rather than a
+ // separately inserted accepted row, through a real seller and owner session.
+ const sellerInbox=await fetch(new URL('/api/seller/requests?limit=20',base),{
+  headers:{Cookie:cookie(sellerSealed),'Sec-Fetch-Site':'same-origin'},
+  redirect:'manual',signal:AbortSignal.timeout(8000),
+ });
+ assert.equal(sellerInbox.status,200,'seller must see newly created customer request');
+ const sellerInventory=await sellerInbox.json();
+ assert.ok(sellerInventory.items.some(row=>row.id===receipt.id&&
+  row.state==='pending'&&row.version===1));
+ assert.equal(sellerInventory.csrf_token,sellerSealed.csrf);
+ const acceptKey=randomUUID();
+ const accept=({csrf=sellerSealed.csrf,key=acceptKey,version=1}={})=>fetch(
+  new URL('/api/seller/requests/'+receipt.id+'/accept',base),{
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+   headers:{Cookie:cookie(sellerSealed),'Sec-Fetch-Site':'same-origin',
+    Origin:'https://services.example.test','Content-Type':'application/json'},
+   body:JSON.stringify({version,csrf_token:csrf,idempotency_key:key}),
+  });
+ assert.equal((await accept({csrf:randomBytes(32).toString('base64url')})).status,401,
+  'forged seller CSRF cannot accept request');
+ const accepted=await accept();
+ assert.equal(accepted.status,200);
+ assert.deepEqual(await accepted.json(),{outcome:'ok'});
+ const replayed=await accept();
+ assert.equal(replayed.status,200,'same seller idempotency key replays safely');
+ assert.deepEqual(await replayed.json(),{outcome:'ok'});
+ assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',
+  [receipt.id])).rows[0],{status:'ACCEPTED',version:2});
+ const acceptedOwn=await inventory();
+ assert.equal(acceptedOwn.status,200);
+ const acceptedHtml=await acceptedOwn.text();
+ assert.match(acceptedHtml,/Принята/);
+ assert.ok(acceptedHtml.includes(receipt.id.slice(0,8)));
+ assert.match(acceptedHtml,/Подтвердить завершение/,
+  'registered owner can confirm only after seller acceptance');
+
+ const finish=({session=sealed,csrf=session.csrf,version=2}={})=>fetch(
+  new URL('/api/account/requests/'+receipt.id+'/complete',base),{
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+   headers:{Cookie:cookie(session),'Sec-Fetch-Site':'same-origin',
+    Origin:'https://services.example.test','Content-Type':'application/json',
+    'X-Services-CSRF':csrf,'If-Match':'"'+version+'"'},
+   body:'{}',
+  });
+ assert.equal((await finish({csrf:randomBytes(32).toString('base64url')})).status,404);
+ assert.equal((await finish({session:foreignSealed})).status,404,
+  'foreign account cannot complete another owner request');
+ const confirmed=await finish();
+ assert.equal(confirmed.status,200,'registered owner confirms the accepted request');
+ assert.match(confirmed.headers.get('cache-control')??'',/no-store/);
+ assert.deepEqual(await confirmed.json(),{code:'COMPLETED',id:receipt.id,version:3});
+ assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',
+  [receipt.id])).rows[0],{status:'COMPLETED',version:3});
+ assert.equal((await finish()).status,409,'stale confirmation cannot commit twice');
+ assert.equal((await db.query('SELECT count(*)::int AS n FROM service_experiences WHERE request_id=$1',
+  [receipt.id])).rows[0].n,1,'completion creates exactly one experience');
+ const finishedOwn=await inventory();
+ assert.equal(finishedOwn.status,200);
+ const finishedHtml=await finishedOwn.text();
+ assert.match(finishedHtml,/Завершена/);
+ assert.ok(finishedHtml.includes(receipt.id.slice(0,8)));
+ assert.ok(!finishedHtml.includes(token)&&!finishedHtml.includes(body.note));
+ const events=await db.query('SELECT topic,safe_payload FROM domain_outbox_events WHERE subject_id=$1',
+  [receipt.id]);
+ assert.deepEqual(new Set(events.rows.map(row=>row.topic)),
+  new Set(['service_request.created','service_request.accepted','service_request.completed']));
+ assert.ok(events.rows.every(row=>JSON.stringify(row.safe_payload)==='{}'),
+  'outbox excludes private customer request note');
+ for(const prefix of ['request-created:seller:','request-accept:client:','request-completed:seller:']){
+  const intent=await db.query('SELECT count(*)::int AS n FROM notification_intents WHERE dedupe_key=$1',
+   [prefix+receipt.id]);
+  assert.equal(intent.rows[0].n,1,'one notification intent for '+prefix);
+ }
+ console.log('Registered full E2E: public offer -> CREATE -> seller ACCEPT -> owner COMPLETE -> fresh inventory PASS');
+
  await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessions[0]]);
  const revoked=await submit({key:'registered_revoked_'+randomUUID().replace(/-/g,'')});
  assert.equal(revoked.status,503,'revoked bearer must never report creation success');
@@ -242,9 +322,11 @@ try{
    [requestIds]).catch(()=>{});
   await db.query('DELETE FROM idempotency_records WHERE actor_scope=$1 AND route=$2',
    ['account:'+persons[0],'/account/requests']).catch(()=>{});
+  await db.query('DELETE FROM service_experiences WHERE request_id=ANY($1::uuid[])',[requestIds]).catch(()=>{});
   await db.query('DELETE FROM service_requests WHERE id=ANY($1::uuid[])',
    [requestIds]).catch(()=>{});
   await db.query('DELETE FROM service_offers WHERE id=$1',[offer]).catch(()=>{});
+  await db.query('DELETE FROM organization_members WHERE id=$1',[sellerMemberId]).catch(()=>{});
   await db.query('DELETE FROM organizations WHERE id=$1',[organization]).catch(()=>{});
   await db.query('DELETE FROM service_definitions WHERE id=$1',[definition]).catch(()=>{});
   await db.query('DELETE FROM sessions WHERE id=ANY($1::uuid[])',[sessions]).catch(()=>{});
