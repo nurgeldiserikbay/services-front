@@ -1,6 +1,7 @@
 'use client';
 import {useRef,useState} from 'react';
 import {useRouter} from 'next/navigation';
+import {confirmedProfileMutation} from '@/lib/profile-mutation-ack.mjs';
 export default function AppealProfileButton({id,version,decisionId,csrf,kk}:{
  id:string;version:number;decisionId:string;csrf:string;kk:boolean;
 }){
@@ -15,10 +16,10 @@ export default function AppealProfileButton({id,version,decisionId,csrf,kk}:{
     body:JSON.stringify({decision_id:decisionId}),credentials:'same-origin',
     cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000),
    });
-   if(response.status===201){setFinished(true);setMessage(kk?'Шағым тіркелді.':'Обращение зарегистрировано.');router.refresh();}
+   if(await confirmedProfileMutation(response,'appeal')){setFinished(true);setMessage(kk?'Шағым тіркелді.':'Обращение зарегистрировано.');router.refresh();}
    else if(response.status===409){setFinished(true);setMessage(kk?'Шешім не профиль нұсқасы өзгерген. Бетті жаңартыңыз.':'Решение или версия профиля изменились. Обновите страницу.');}
-   else setMessage(kk?'Шағым тіркелгені расталмады.':'Не удалось подтвердить регистрацию обращения.');
-  }catch{setMessage(kk?'Шағым тіркелгені расталмады.':'Не удалось подтвердить регистрацию обращения.');}
+   else {setFinished(true);setMessage(kk?'Нәтиже белгісіз. Қайта шағым жібермей, бетті жаңартыңыз.':'Результат неизвестен. Обновите страницу, не отправляя обращение повторно.');}
+  }catch{setFinished(true);setMessage(kk?'Нәтиже белгісіз. Қайта шағым жібермей, бетті жаңартыңыз.':'Результат неизвестен. Обновите страницу, не отправляя обращение повторно.');}
   finally{inFlight.current=false;setBusy(false);}
  }
  return <section aria-label={kk?'Модерация шешіміне шағым':'Обжалование решения модерации'}>
@@ -27,6 +28,7 @@ export default function AppealProfileButton({id,version,decisionId,csrf,kk}:{
   <label><input type="checkbox" checked={confirmed} disabled={busy||finished} onChange={e=>setConfirmed(e.target.checked)}/>
    {kk?'Шешімді қарап, шағым бергім келеді.':'Я ознакомился с решением и хочу подать обращение.'}</label>
   <button type="button" onClick={submit} disabled={!confirmed||busy||finished}>{kk?'Шағым жіберу':'Отправить обращение'}</button>
+  {finished&&<button type="button" onClick={()=>window.location.reload()}>{kk?'Бетті жаңарту':'Обновить страницу'}</button>}
   <p role="status" aria-live="polite">{message}</p>
  </section>;
 }
