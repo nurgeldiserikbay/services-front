@@ -317,6 +317,19 @@ try{
  assert.equal((await finish({csrf:randomBytes(32).toString('base64url')})).status,404);
  assert.equal((await finish({session:foreignSealed})).status,404,
   'foreign account cannot complete another owner request');
+ // Denials must leave both the state and durable effects untouched, not
+ // merely return an error to the browser.
+ assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',
+  [receipt.id])).rows[0],{status:'ACCEPTED',version:2});
+ const deniedCompletionEffects=await db.query(`
+  SELECT
+   (SELECT count(*)::int FROM service_experiences WHERE request_id=$1) AS experiences,
+   (SELECT count(*)::int FROM domain_outbox_events
+    WHERE subject_id=$1 AND topic='service_request.completed') AS outbox,
+   (SELECT count(*)::int FROM notification_intents WHERE dedupe_key=$2) AS notices
+ `,[receipt.id,'request-completed:seller:'+receipt.id]);
+ assert.deepEqual(deniedCompletionEffects.rows[0],{experiences:0,outbox:0,notices:0},
+  'forged CSRF and foreign account completion must leave no durable effects');
  const confirmed=await finish();
  assert.equal(confirmed.status,200,'registered owner confirms the accepted request');
  assert.match(confirmed.headers.get('cache-control')??'',/no-store/);
