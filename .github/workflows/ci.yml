@@ -358,7 +358,7 @@ jobs:
           server.listen(3011,'127.0.0.1');
           NODE
           for attempt in {1..20}; do
-            if curl --fail --silent http://127.0.0.1:3011/ru >/dev/null; then exit 0; fi
+            if curl --connect-timeout 2 --max-time 5 --fail --silent http://127.0.0.1:3011/ru >/dev/null; then exit 0; fi
             sleep 1
           done
           exit 1
