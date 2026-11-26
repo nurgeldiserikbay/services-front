@@ -53,9 +53,10 @@ export function AccountNotificationsInbox({locale}:{locale:Locale}){
  // Schedule the initial load after the effect callback. This avoids a
  // synchronous state cascade and cancels Strict Mode's discarded mount.
  useEffect(()=>{
+  const invalidateGeneration=()=>{generation.current++;};
   const timer=setTimeout(()=>{void load();},0);
   return ()=>{
-   clearTimeout(timer);generation.current++;
+   clearTimeout(timer);invalidateGeneration();
    const previous=active.current;
    active.current=null;
    previous?.abort();
