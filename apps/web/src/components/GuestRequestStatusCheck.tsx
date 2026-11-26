@@ -8,6 +8,7 @@ import {
 } from '@/lib/guest-status-ui-core.mjs';
 import styles from './GuestRequestStatusCheck.module.css';
 import {RequestTimeline} from './RequestTimeline';
+import {GuestRequestSchedule} from './GuestRequestSchedule';
 import {GuestRequestCompletion} from './GuestRequestCompletion';
 import {shouldResetGuestCompletionAfterVerifiedRefresh} from '@/lib/guest-completion-ui-core.mjs';
 
@@ -40,7 +41,7 @@ const translations={
   },
 } as const;
 
-type Props={locale:Locale;requestId:string;serviceOfferId:string;completionEnabled?:boolean};
+type Props={locale:Locale;requestId:string;serviceOfferId:string;completionEnabled?:boolean;scheduleEnabled?:boolean};
 
 /** A receipt switch must replace the whole stateful subtree during React's
  * render, not after an effect: no old customer's status is ever painted.
@@ -49,7 +50,7 @@ type Props={locale:Locale;requestId:string;serviceOfferId:string;completionEnabl
 export function GuestRequestStatusCheck(props:Props){
   return <ReceiptStatusView key={props.requestId+'|'+props.serviceOfferId} {...props}/>;
 }
-function ReceiptStatusView({locale,requestId,serviceOfferId,completionEnabled=false}:Props){
+function ReceiptStatusView({locale,requestId,serviceOfferId,completionEnabled=false,scheduleEnabled=false}:Props){
   const t=translations[locale];
   const [state,setState]=useState<PrivateGuestStatusState|null>(null);
   const [version,setVersion]=useState<number|null>(null);
@@ -129,6 +130,7 @@ function ReceiptStatusView({locale,requestId,serviceOfferId,completionEnabled=fa
     {version!==null&&state!==null&&<>
       <small>{t.version}: {version}</small>
       <RequestTimeline state={state} locale={locale}/>
+      {scheduleEnabled&&state==='accepted'&&<GuestRequestSchedule key={requestId+'|'+version+'|'+completionRefreshEpoch} locale={locale} requestId={requestId}/>}
       {completionEnabled&&state==='accepted'&&<GuestRequestCompletion
         key={requestId+'|'+version+'|'+completionRefreshEpoch} locale={locale} requestId={requestId}
         version={version} onRefresh={refresh}/>}

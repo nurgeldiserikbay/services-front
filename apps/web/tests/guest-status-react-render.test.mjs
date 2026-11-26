@@ -32,6 +32,7 @@ instance.require=(id)=>{
     };
   if(id==='./GuestRequestStatusCheck.module.css')return {default:{panel:'test-panel',error:'test-error'}};
   if(id==='./RequestTimeline')return {RequestTimeline:()=>React.createElement('span',null,'timeline')};
+  if(id==='./GuestRequestSchedule')return {GuestRequestSchedule:()=>React.createElement('span',null,'schedule-otp')};
   if(id==='./GuestRequestCompletion')return {GuestRequestCompletion:()=>React.createElement('span',null,'completion')};
   if(id==='@/lib/guest-completion-ui-core.mjs')return {
     shouldResetGuestCompletionAfterVerifiedRefresh:()=>false,
@@ -60,11 +61,11 @@ test('actual React receipt subtree identity changes with either request or offer
 test('real server render starts unverified, without another receipt status or network calls',()=>{
   for(const locale of ['kk','ru']){
     for(const receipt of [props(requestA,offerA,locale),props(requestB,offerB,locale)]){
-      const output=renderToStaticMarkup(React.createElement(GuestRequestStatusCheck,receipt));
+      const output=renderToStaticMarkup(React.createElement(GuestRequestStatusCheck,{...receipt,scheduleEnabled:true,completionEnabled:true}));
       assert.match(output,/<button type="button"/);
       assert.match(output,/role="status"/);
       assert.doesNotMatch(output,/Орындаушы қабылдады|Исполнитель принял заявку/);
-      assert.doesNotMatch(output,/timeline|11111111-1111-4111|22222222-2222-4222/);
+      assert.doesNotMatch(output,/timeline|schedule-otp|completion|11111111-1111-4111|22222222-2222-4222/);
       assert.match(output,locale==='kk'?/Күйін жаңарту/:/Обновить статус/);
     }
   }

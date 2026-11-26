@@ -17,9 +17,9 @@ const copy={
 } as const;
 
 /** Private, server-authorized receipt presentation; not publicly mounted. */
-export function GuestRequestReceipt({locale,receipt,serviceOfferId,statusEnabled=false,completionEnabled=false}:{
+export function GuestRequestReceipt({locale,receipt,serviceOfferId,statusEnabled=false,completionEnabled=false,scheduleEnabled=false}:{
   locale:Locale;receipt:Pick<RequestReceipt,'id'|'state'>;
-  serviceOfferId?:string;statusEnabled?:boolean;completionEnabled?:boolean;
+  serviceOfferId?:string;statusEnabled?:boolean;completionEnabled?:boolean;scheduleEnabled?:boolean;
 }){
   const t=copy[locale];
   return <section className={styles.receipt} aria-label={t.heading}>
@@ -29,6 +29,6 @@ export function GuestRequestReceipt({locale,receipt,serviceOfferId,statusEnabled
     <p>{t.note}</p><small>{t.privacy}</small>
     {statusEnabled&&serviceOfferId&&<GuestRequestStatusCheck locale={locale}
       requestId={receipt.id} serviceOfferId={serviceOfferId}
-      completionEnabled={completionEnabled}/>}
+      completionEnabled={completionEnabled} scheduleEnabled={scheduleEnabled}/>}
   </section>;
 }

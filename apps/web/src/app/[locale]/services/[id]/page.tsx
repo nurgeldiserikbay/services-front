@@ -68,6 +68,8 @@ export default async function ServiceOfferPage({params}:Props) {
   const completionEnabled=statusEnabled&&
     process.env.SERVICES_WEB_ENABLE_GUEST_COMPLETION_UI==='enabled'&&
     process.env.SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF==='enabled';
+  const scheduleEnabled=statusEnabled&&process.env.SERVICES_WEB_ENABLE_GUEST_SCHEDULE_UI==='enabled'&&
+    process.env.SERVICES_WEB_ENABLE_GUEST_SCHEDULE_BFF==='enabled';
   return <main id="main-content" className="shell offerPage">
     <nav><Link href={'/'+locale}>{t.brand}</Link></nav>
     <article className="offerDetail">
@@ -83,7 +85,7 @@ export default async function ServiceOfferPage({params}:Props) {
       </section>
       <p className="offerNote">{t.offerTimeNotice}</p>
       {guestEnabled&&<ConnectedGuestRequestWizard serviceOfferId={offer.id} locale={locale}
-        statusEnabled={statusEnabled} completionEnabled={completionEnabled}/> }
+        statusEnabled={statusEnabled} completionEnabled={completionEnabled} scheduleEnabled={scheduleEnabled}/> }
       {customerCsrf&&<CustomerRequestCreateForm serviceOfferId={offer.id}
         locale={locale} csrf={customerCsrf}/> }
     </article>
