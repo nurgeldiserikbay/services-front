@@ -78,7 +78,8 @@ test('external account inbox reloads cannot race an in-flight seller decision',(
 
 test('unmount invalidates old inbox lock without letting its stale finally unlock a new fetch',()=>{
  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
- assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;run\.current=false;/,
+ assert.match(src,/const invalidateLifecycle=\(\)=>\{decisionLifetime\.current\+\+;epoch\.current\+\+;retry\.current\.clear\(\);seenCursors\.current\.clear\(\);\};/);
+ assert.match(src,/return \(\)=>\{mounted\.current=false;invalidateLifecycle\(\);run\.current=false;/,
    'Strict Mode cleanup must release the old mount lock before refetch');
  assert.match(src,/if\(seq===epoch\.current\)\{run\.current=false;setBusy\(false\);\}/,
    'old in-flight request may not clear the new fetch lock');
@@ -101,7 +102,7 @@ test('seller decision completion cannot refresh a remounted or logged-out accoun
  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
  assert.match(src,/const mounted=useRef\(false\);/);
  assert.match(src,/mounted\.current=true;/);
- assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/);
+ assert.match(src,/return \(\)=>\{mounted\.current=false;invalidateLifecycle\(\);/);
  assert.match(src,/const decisionEpoch=decisionLifetime\.current;/);
  assert.match(src,/if\(!isCurrentSellerDecision\(mounted\.current,decisionEpoch,decisionLifetime\.current\)\)return;\s*if\(outcome==='unauthorized'\)/,
    'late successful response must not perform an account-scoped read');
@@ -128,7 +129,7 @@ test('effect restarts clear private seller rows and stale pending action before 
  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
  assert.match(src,/mounted\.current=true;\s*const lifetime=decisionLifetime\.current;[\s\S]*?Promise\.resolve\(\)\.then\(\(\)=>\{\s*if\(!isCurrentSellerDecision\(mounted\.current,lifetime,decisionLifetime\.current\)\)return;[\s\S]*?current\.current=null;setPage\(null\);setPendingId\(null\);setBlocked\(\{\}\);[\s\S]*?setMessage\(''\);setBusy\(false\);[\s\S]*?void load\(\);/,
    'locale or effect remount must not reuse private rows, disabled action state, or prior feedback');
- assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/,
+ assert.match(src,/return \(\)=>\{mounted\.current=false;invalidateLifecycle\(\);/,
    'prior response/decision lifetimes must be invalidated on cleanup');
 });
 
@@ -136,6 +137,6 @@ test('locale restart replaces an in-flight seller write gate before new inbox lo
  const src=readFileSync(new URL('../src/components/SellerAccountInbox.tsx',import.meta.url),'utf8');
  assert.match(src,/decisionGate\.current=createSellerDecisionSingleFlight\(\);\s*void load\(\);/,
    'fresh account inbox fetch must not be blocked by a write from the old effect');
- assert.match(src,/return \(\)=>\{mounted\.current=false;decisionLifetime\.current\+\+;epoch\.current\+\+;/,
+ assert.match(src,/return \(\)=>\{mounted\.current=false;invalidateLifecycle\(\);/,
    'cleanup must invalidate outstanding seller decision responses');
 });

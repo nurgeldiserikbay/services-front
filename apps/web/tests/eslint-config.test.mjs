@@ -39,8 +39,8 @@ test('seller decision render does not read pending ref and keeps submit guard',(
 test('notification inbox initial load is scheduled outside React effect and cancelled on cleanup',()=>{
   const inbox=readFileSync(new URL('../src/components/AccountNotificationsInbox.tsx',import.meta.url),'utf8');
   assert.ok(!config.includes('src/components/AccountNotificationsInbox.tsx'));
-  assert.match(inbox,/useEffect\(\(\)=>\{\s*const timer=setTimeout\(\(\)=>\{void load\(\);\},0\)/);
-  assert.match(inbox,/return \(\)=>\{\s*clearTimeout\(timer\);generation\.current\+\+;\s*const previous=active\.current;\s*active\.current=null;\s*previous\?\.abort\(\);\s*\}/);
+  assert.match(inbox,/useEffect\(\(\)=>\{\s*const invalidateGeneration=\(\)=>\{generation\.current\+\+;\};\s*const timer=setTimeout\(\(\)=>\{void load\(\);\},0\)/);
+  assert.match(inbox,/return \(\)=>\{\s*clearTimeout\(timer\);invalidateGeneration\(\);\s*const previous=active\.current;\s*active\.current=null;\s*previous\?\.abort\(\);\s*\}/);
   assert.match(inbox,/if\(current===generation\.current\)setItems\(result\.items\)/);
   assert.match(inbox,/if\(active\.current\)return/);
 });
@@ -48,9 +48,9 @@ test('notification inbox initial load is scheduled outside React effect and canc
 test('device sessions initial fetch is deferred and cancelled on discarded mounts',()=>{
   const component=readFileSync(new URL('../src/components/AccountDeviceSessions.tsx',import.meta.url),'utf8');
   assert.ok(!config.includes('src/components/AccountDeviceSessions.tsx'));
-  assert.match(component,/useEffect\(\(\)=>\{\s*alive\.current=true;/);
+  assert.match(component,/useEffect\(\(\)=>\{\s*const invalidateRequests=\(\)=>\{requestId\.current\+\+;\};\s*alive\.current=true;/);
   assert.match(component,/const timer=setTimeout\(\(\)=>\{void refresh\(\);\},0\)/);
-  assert.match(component,/return \(\)=>\{clearTimeout\(timer\);alive\.current=false;requestId\.current\+\+;mutation\.current=null;\}/);
+  assert.match(component,/return \(\)=>\{clearTimeout\(timer\);alive\.current=false;invalidateRequests\(\);mutation\.current=null;\}/);
   assert.match(component,/if\(!alive\.current\|\|seq!==requestId\.current\)return/);
   assert.match(component,/await revokeOtherAccountDevice\(\{sessionId:item\.id,csrf\}\)/);
   assert.match(component,/await refresh\(\)/);
@@ -60,7 +60,8 @@ test('seller workspace initial load is deferred and cleanup invalidates stale re
   const workspace=readFileSync(new URL('../src/components/SellerWorkspace.tsx',import.meta.url),'utf8');
   assert.ok(!config.includes('src/components/SellerWorkspace.tsx'));
   assert.match(workspace,/const timer=setTimeout\(\(\)=>\{void load\(\)\.catch\(\(\)=>\{\}\);\},0\)/);
-  assert.match(workspace,/return \(\)=>\{clearTimeout\(timer\);generation\.current\+\+;\}/);
+  assert.match(workspace,/const invalidateGeneration=\(\)=>\{generation\.current\+\+;\};/);
+  assert.match(workspace,/return \(\)=>\{clearTimeout\(timer\);invalidateGeneration\(\);\}/);
   assert.match(workspace,/if\(current!==generation\.current\)return/);
   assert.match(workspace,/if\(current===generation\.current\)/);
   assert.match(workspace,/if\(refreshLock\.current\)return/);
