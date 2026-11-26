@@ -375,10 +375,10 @@ try{
  assert.equal(customerProposal.request_version,5);
  assert.equal((await (await active(sellerSealed)).json()).proposal.can_resolve,true);
  // Exercise the actual hydrated seller controls, with no mocked fetch.
- await exerciseRegisteredCreateChromeRetry({base,offer,sealedCookie:sellerSealed.cookie,
+ await exerciseRegisteredCreateChromeRetry({base:'http://127.0.0.1:3011',offer,sealedCookie:sellerSealed.cookie,
   scheduleScenario:async({send,evaluate,pause})=>{
    await send('Emulation.setDeviceMetricsOverride',{width:375,height:740,deviceScaleFactor:1,mobile:true});
-   await send('Page.navigate',{url:new URL('/ru/account/requests',base).href});
+   await send('Page.navigate',{url:new URL('/ru/account/requests','http://127.0.0.1:3011').href});
 
    const row="Array.from(document.querySelectorAll('li')).find(el=>el.querySelector('button')&&el.textContent.includes('Registered request E2E offer')&&Array.from(el.querySelectorAll('button')).some(b=>b.textContent==='Посмотреть предложения времени'))";
    let opened=false;
@@ -390,7 +390,15 @@ try{
     await pause(100);
    }
    assert.equal(opened,true,'hydrated seller row must expose schedule panel');
-   await send('Network.setExtraHTTPHeaders',{headers:{Origin:'https://services.example.test'}});
+   // Observe the actual browser fetch without mocking any response.
+   // The CI proxy below rewrites Origin only on the schedule mutation.
+   await evaluate(`(()=>{const original=window.fetch.bind(window);window.__scheduleResult=null;
+    window.fetch=async (url,options={})=>{
+     const response=await original(url,options);
+     if(typeof url==='string'&&url.endsWith('/decline')&&options.method==='POST')
+      window.__scheduleResult={status:response.status};
+     return response;
+    };return true;})()`);
    let resolved=false;
    for(let i=0;i<100;i++){
     try{
@@ -400,16 +408,15 @@ try{
     await pause(100);
    }
    assert.equal(resolved,true,'seller must be able to decline a customer proposal through React');
-   // Keep the extra header scoped to the mutation, not later navigations.
-   await pause(1000);
-   await send('Network.setExtraHTTPHeaders',{headers:{}});
+
    let committed=false;
    for(let i=0;i<100;i++){
     const current=await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id]);
     if(current.rows[0]?.version===6){committed=true;break;}
     await pause(100);
    }
-   assert.equal(committed,true,'actual browser click must commit through BFF and PostgreSQL');
+   const browserResult=await evaluate('window.__scheduleResult');
+   assert.equal(committed,true,'actual browser click must commit through BFF and PostgreSQL; HTTP status='+JSON.stringify(browserResult));
    console.log('Real Chrome seller schedule decline -> BFF -> PostgreSQL PASS');
   },
  });
