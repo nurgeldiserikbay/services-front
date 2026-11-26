@@ -4,8 +4,8 @@ import {useRouter} from 'next/navigation';
 import {useRequestMutationGate} from './RequestMutationGate';
 import {buildScheduleProposal,readScheduleProposalReceipt} from '@/lib/customer-schedule-ui-core.mjs';
 
-export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='customer',onChanged}:{
- requestId:string;version:number;csrf:string;locale:'kk'|'ru';actor?:'customer'|'seller';onChanged?:()=>void;
+export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='customer',onChanged,guest=false,onRecover}:{
+ requestId:string;version:number;csrf:string;locale:'kk'|'ru';actor?:'customer'|'seller';onChanged?:()=>void;guest?:boolean;onRecover?:()=>void;
 }){
  const kk=locale==='kk',router=useRouter();
  const formRef=useRef<HTMLFormElement>(null);
@@ -24,7 +24,7 @@ export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='c
   if(gate&&!gate.acquire())return;
   inFlight.current=true;setStatus('busy');
   try{
-   const response=await fetch('/api/account/requests/'+encodeURIComponent(requestId)+'/schedule-proposals',{
+   const response=await fetch((guest?'/api/guest-requests/':'/api/account/requests/')+encodeURIComponent(requestId)+'/schedule-proposals',{
     method:'POST',headers:{'Content-Type':'application/json','If-Match':'"'+version+'"',
      'Idempotency-Key':crypto.randomUUID(),'X-Services-CSRF':csrf},
     body:JSON.stringify(body),credentials:'same-origin',cache:'no-store',redirect:'manual',
@@ -53,6 +53,6 @@ export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='c
    status==='busy'?(kk?'Жіберілуде…':'Отправка…'):
    status==='done'?(kk?'Ұсыныс жіберілді. Екінші тараптың келісімі қажет.':'Предложение отправлено. Требуется согласие второй стороны.'):
    status==='conflict'||status==='unknown'?(kk?'Нәтижені қайта жүктеп тексеріңіз.':'Перезагрузите страницу и проверьте результат.'):null}</p>
-  {(status==='conflict'||status==='unknown')&&<button type="button" onClick={()=>window.location.reload()}>{kk?'Қайта жүктеу':'Перезагрузить'}</button>}
+  {(status==='conflict'||status==='unknown')&&<button type="button" onClick={()=>{if(onRecover)onRecover();else window.location.reload();}}>{kk?'Қайта жүктеу':'Перезагрузить'}</button>}
  </details>;
 }

@@ -4,6 +4,11 @@ import {useEffect,useRef,useState} from 'react';
 import type {Locale} from '@/lib/i18n';
 import {readGuestCompletionUiResponse}
  from '@/lib/guest-completion-ui-core.mjs';
+import {RequestMutationGate} from './RequestMutationGate';
+import {CustomerScheduleProposal} from './CustomerScheduleProposal';
+import {ScheduleResolution} from './ScheduleResolution';
+import {readGuestActiveSchedule} from '@/lib/customer-schedule-ui-core.mjs';
+import type {ActiveScheduleView} from '@/lib/account-session-transport.mjs';
 import styles from './GuestRequestCompletion.module.css';
 
 type Phase='idle'|'challenge'|'verified';
@@ -39,9 +44,13 @@ export function GuestRequestSchedule({locale,requestId,onVerified}:Props){
  const [code,setCode]=useState('');
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState(false);
+ const [view,setView]=useState<ActiveScheduleView|null>(null);
+ const [epoch,setEpoch]=useState(0);
+ const version=useRef(0);
  const controller=useRef<AbortController|null>(null);
  const locked=useRef(false);
  const csrf=useRef<string|null>(null);
+ const [verifiedCsrf,setVerifiedCsrf]=useState<string|null>(null);
  useEffect(()=>()=>{controller.current?.abort();csrf.current=null;},[]);
  async function send(suffix:string,body?:object){
   controller.current?.abort();
@@ -54,6 +63,22 @@ export function GuestRequestSchedule({locale,requestId,onVerified}:Props){
    redirect:'error',headers,body:body?JSON.stringify(body):undefined,signal,
   });
   return response;
+ }
+ async function load(){
+  if(locked.current||!csrf.current)return;
+  locked.current=true;setBusy(true);setError(false);setView(null);
+  try{
+   controller.current?.abort();const abort=new AbortController();controller.current=abort;
+   const signal=AbortSignal.any([abort.signal,AbortSignal.timeout(8000)]);
+   const response=await fetch('/api/guest-requests/'+encodeURIComponent(requestId)+'/schedule-proposals/active',{
+    method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',
+    headers:{'Content-Type':'application/json','X-Services-CSRF':csrf.current},body:'{}',signal,
+   });
+   const next=await readGuestActiveSchedule(response,requestId);
+   if(signal.aborted||!next||next.request_version<version.current)throw new Error('schedule_unavailable');
+   version.current=next.request_version;setView(next);setEpoch(v=>v+1);
+  }catch{setError(true);}
+  finally{locked.current=false;setBusy(false);}
  }
  async function operation(action:'start'|'verify'){
   if(locked.current||phase==='verified')return;
@@ -73,7 +98,7 @@ export function GuestRequestSchedule({locale,requestId,onVerified}:Props){
     const result=await readGuestCompletionUiResponse(response,'verify');
     if(result.verified!==true)throw new Error('verification_failed');
     setCode('');setChallenge(null);setPhase('verified');
-    if(csrf.current)onVerified?.(csrf.current);
+    if(csrf.current){setVerifiedCsrf(csrf.current);onVerified?.(csrf.current);}
    }
   }catch{
    setCode('');
@@ -93,7 +118,14 @@ export function GuestRequestSchedule({locale,requestId,onVerified}:Props){
    <button type="button" disabled={busy||code.length!==6}
     onClick={()=>void operation('verify')}>{t.verify}</button>
   </>}
-  {phase==='verified'&&<p role="status">{t.finished}</p>}
+  {phase==='verified'&&<>
+   <p role="status">{t.finished}</p>
+   {!view&&<button type="button" disabled={busy} onClick={()=>void load()}>{locale==='kk'?'Уақыт ұсынысын көру':'Посмотреть предложение времени'}</button>}
+   {view&&verifiedCsrf&&<RequestMutationGate key={requestId+'|'+view.request_version+'|'+epoch}>
+    <ScheduleResolution guest view={view} csrf={verifiedCsrf} locale={locale} onChanged={()=>void load()} onRecover={()=>void load()}/>
+    {view.can_propose&&<CustomerScheduleProposal guest requestId={requestId} version={view.request_version} csrf={verifiedCsrf} locale={locale} onChanged={()=>void load()} onRecover={()=>void load()}/>}
+   </RequestMutationGate>}
+  </>}
   {busy&&<p role="status">{t.busy}</p>}
   {error&&<p role="alert" className={styles.error}>{t.failed}</p>}
  </section>;

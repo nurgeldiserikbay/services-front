@@ -4,3 +4,5 @@ export function readScheduleProposalReceipt(response:Response,id:string,version:
 
 import type {ActiveScheduleView} from './account-session-transport.mjs';
 export function readScheduleResolutionReceipt(response:Response,view:ActiveScheduleView,action:'confirm'|'decline'):Promise<boolean>;
+
+export function readGuestActiveSchedule(response:Response,id:string):Promise<import('./account-session-transport.mjs').ActiveScheduleView|null>;
