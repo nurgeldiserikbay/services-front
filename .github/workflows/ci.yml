@@ -105,7 +105,34 @@ jobs:
         run: pnpm lint
       - name: Frontend unit tests
         id: frontend_tests
-        run: pnpm test
+        run: |
+          set -o pipefail
+          pnpm test 2>&1 | tee "$RUNNER_TEMP/frontend-unit-tests.log"
+      - name: Summarize failed frontend unit tests
+        if: ${{ always() && steps.frontend_tests.outcome == 'failure' }}
+        run: |
+          log="$RUNNER_TEMP/frontend-unit-tests.log"
+          if [ ! -f "$log" ]; then
+            echo "::error::Frontend unit test log unavailable"
+            exit 0
+          fi
+          {
+            echo '### Failed frontend unit tests'
+            echo '~~~text'
+            grep -E '^not ok [0-9]+ - |^# (tests|pass|fail|cancelled|skipped|todo) ' "$log" || true
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^not ok [0-9]+ - ' "$log" | while IFS= read -r line; do
+            printf '::error::%s\n' "$line"
+          done || true
+      - name: Upload failed frontend unit test log
+        if: ${{ always() && steps.frontend_tests.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-unit-test-failures
+          path: ${{ runner.temp }}/frontend-unit-tests.log
+          if-no-files-found: warn
+          retention-days: 7
       - name: Install and migrate backend test API
         id: backend_integration
         working-directory: services-back
