@@ -375,8 +375,7 @@ try{
    const filled=await evaluate("(()=>{const r="+row+";const d=r.querySelector('details');d.open=true;const form=d.querySelector('form');const inputs=form.querySelectorAll('input[type=datetime-local]');const values="+JSON.stringify(competingValues)+";for(let i=0;i<2;i++)inputs[i].value=values[i];return {valid:form.checkValidity(),values:Array.from(inputs).map(el=>el.value),disabled:form.querySelector('fieldset').disabled};})()");
    assert.deepEqual(filled,{valid:true,values:competingValues,disabled:false},'competing proposal must be valid and enabled before confirm');
    // Instrument only this exact mutation; forward the actual network request
-   // and response unchanged. Delay delivery of the response to exercise the
-   // in-flight guard, not the backend transaction.
+   // unchanged; inject response loss only after receiving the real receipt.
    await evaluate(`(()=>{const original=window.fetch.bind(window);window.__scheduleConfirm={attempts:0};
     window.fetch=async (url,options={})=>{
      const evidence=window.__scheduleConfirm;
@@ -390,7 +389,7 @@ try{
      try{response=await original(url,options);}catch(error){evidence.networkError=error?.name??'unknown';throw error;}
      evidence.status=response.status;evidence.receipt=await response.clone().json();
      await new Promise(resolve=>setTimeout(resolve,750));
-     return response;
+     throw new TypeError('CI injected confirmation response loss after commit');
     };return true;})()`);
    const clicked=await evaluate("(()=>{const s="+section+";const buttons=Array.from(s.querySelectorAll('button'));const yes=buttons.find(b=>b.textContent==='Подтвердить');const no=buttons.find(b=>b.textContent==='Отклонить');if(!yes||!no||yes.disabled)return false;const r="+row+";const form=r.querySelector('details form');const complete=Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Подтвердить завершение');if(!form||!complete)return false;if(!form.checkValidity())return false;yes.click();yes.click();no.click();form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));complete.click();return true;})()");
    assert.equal(clicked,true);
@@ -409,7 +408,27 @@ try{
    confirmKey=evidence.key;confirmedSchedule=evidence.receipt;
    const committed=await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id]);
    assert.equal(committed.rows[0].version,4,'browser confirmation must commit exactly once');
-   console.log('Real Chrome customer schedule confirm -> BFF -> PostgreSQL PASS');
+   let frozen=false;
+   for(let i=0;i<100;i++){
+    frozen=await evaluate("(()=>{const r="+row+";const s=r?.querySelector('section');return !!s?.textContent.includes('Перезагрузите страницу и проверьте результат.')&&r.querySelector('details fieldset')?.disabled===true&&Array.from(r.querySelectorAll('button')).some(b=>b.textContent==='Подтвердить завершение'&&b.disabled)&&Array.from(s.querySelectorAll('button')).filter(b=>['Подтвердить','Отклонить'].includes(b.textContent)).every(b=>b.disabled);})()");
+    if(frozen)break;
+    await pause(100);
+   }
+   assert.equal(frozen,true,'lost confirmation receipt must freeze all request mutations');
+   await evaluate("(()=>{const r="+row+";for(const b of r.querySelectorAll('button'))if(['Подтвердить','Отклонить','Подтвердить завершение'].includes(b.textContent))b.click();r.querySelector('details form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));})()");
+   await pause(250);
+   assert.deepEqual(await evaluate('window.__scheduleConfirm'),evidence,'unknown confirmation must not dispatch another mutation');
+   const reloaded=await evaluate("(()=>{const s="+section+";const b=Array.from(s.querySelectorAll('button')).find(b=>b.textContent==='Перезагрузить');if(!b)return false;b.click();return true;})()");
+   assert.equal(reloaded,true);
+   let recovered=false;
+   for(let i=0;i<100;i++){
+    try{recovered=await evaluate("(()=>{const r="+row+";return !!r?.textContent.includes('Нет активного предложения.')&&r.querySelector('details fieldset')?.disabled===false&&window.__scheduleConfirm===undefined;})()");}catch{}
+    if(recovered)break;
+    await pause(100);
+   }
+   assert.equal(recovered,true,'authoritative reload must show resolved proposal and unlock new actions');
+   assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id])).rows[0].version,4);
+   console.log('Real Chrome confirmation -> committed response loss -> frozen -> authoritative reload PASS');
   },
  });
  assert.equal(confirmedSchedule.status,'confirmed');
