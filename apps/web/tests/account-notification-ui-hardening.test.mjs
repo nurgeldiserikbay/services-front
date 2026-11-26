@@ -79,7 +79,8 @@ test('notification lifecycle cancels obsolete requests without unlocking a repla
  assert.match(source,/if\(active\.current\)return;/);
  assert.match(source,/AbortSignal\.any\(\[controller\.signal,AbortSignal\.timeout\(8000\)\]\)/);
  assert.match(source,/if\(active\.current===controller\)active\.current=null/);
- assert.match(source,/generation\.current\+\+;\s*const previous=active\.current;\s*active\.current=null;\s*previous\?\.abort\(\)/);
+ assert.match(source,/const invalidateGeneration=\(\)=>\{generation\.current\+\+;\};/);
+ assert.match(source,/invalidateGeneration\(\);\s*const previous=active\.current;\s*active\.current=null;\s*previous\?\.abort\(\)/);
  assert.match(source,/if\(current===generation\.current\)setBusy\(false\)/);
 });
 
