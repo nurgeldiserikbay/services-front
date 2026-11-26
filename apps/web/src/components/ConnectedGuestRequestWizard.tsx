@@ -36,8 +36,8 @@ async function post(url:string,body:object):Promise<Response>{
  * Raw contact and OTP stay in React memory; capabilities live solely in
  * Secure HttpOnly BFF cookies. No browser-controlled network assertion.
  */
-export function ConnectedGuestRequestWizard({locale,serviceOfferId,statusEnabled=false,completionEnabled=false}:{
-  locale:Locale;serviceOfferId:string;statusEnabled?:boolean;completionEnabled?:boolean;
+export function ConnectedGuestRequestWizard({locale,serviceOfferId,statusEnabled=false,completionEnabled=false,scheduleEnabled=false}:{
+  locale:Locale;serviceOfferId:string;statusEnabled?:boolean;completionEnabled?:boolean;scheduleEnabled?:boolean;
 }){
   const challengeCsrf=useRef<string|null>(null);
   const createCsrf=useRef<string|null>(null);
@@ -117,5 +117,5 @@ export function ConnectedGuestRequestWizard({locale,serviceOfferId,statusEnabled
   return <GuestRequestWizard locale={locale} serviceOfferId={serviceOfferId}
     onStartChallenge={start} onVerifyChallenge={verify}
     onCreateRequest={create} statusEnabled={statusEnabled}
-    completionEnabled={completionEnabled}/>;
+    completionEnabled={completionEnabled} scheduleEnabled={scheduleEnabled}/>;
 }
