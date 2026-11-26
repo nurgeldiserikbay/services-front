@@ -379,10 +379,7 @@ try{
   scheduleScenario:async({send,evaluate,pause})=>{
    await send('Emulation.setDeviceMetricsOverride',{width:375,height:740,deviceScaleFactor:1,mobile:true});
    await send('Page.navigate',{url:new URL('/ru/account/requests',base).href});
-   // The isolated Next listener is loopback HTTP, whereas its configured
-   // trusted public origin is HTTPS. CDP supplies that ingress origin only
-   // in this CI browser; production origin verification is unchanged.
-   await send('Network.setExtraHTTPHeaders',{headers:{Origin:'https://services.example.test'}});
+
    const row="Array.from(document.querySelectorAll('li')).find(el=>el.querySelector('button')&&el.textContent.includes('Registered request E2E offer')&&Array.from(el.querySelectorAll('button')).some(b=>b.textContent==='Посмотреть предложения времени'))";
    let opened=false;
    for(let i=0;i<100;i++){
@@ -393,6 +390,7 @@ try{
     await pause(100);
    }
    assert.equal(opened,true,'hydrated seller row must expose schedule panel');
+   await send('Network.setExtraHTTPHeaders',{headers:{Origin:'https://services.example.test'}});
    let resolved=false;
    for(let i=0;i<100;i++){
     try{
@@ -402,6 +400,9 @@ try{
     await pause(100);
    }
    assert.equal(resolved,true,'seller must be able to decline a customer proposal through React');
+   // Keep the extra header scoped to the mutation, not later navigations.
+   await pause(1000);
+   await send('Network.setExtraHTTPHeaders',{headers:{}});
    let committed=false;
    for(let i=0;i<100;i++){
     const current=await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id]);
