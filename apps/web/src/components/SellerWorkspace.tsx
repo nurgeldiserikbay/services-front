@@ -96,8 +96,9 @@ export function SellerWorkspace({locale}:{locale:Locale}){
  // not synchronously cascade React updates. Cleanup cancels an unstarted
  // request and invalidates a request already underway.
  useEffect(()=>{
+  const invalidateGeneration=()=>{generation.current++;};
    const timer=setTimeout(()=>{void load().catch(()=>{});},0);
-   return ()=>{clearTimeout(timer);generation.current++;};
+   return ()=>{clearTimeout(timer);invalidateGeneration();};
  },[load]);
  const loadMore=useCallback(async()=>{
    if(!cursor||pageLock.current||refreshLock.current)return;
