@@ -61,10 +61,11 @@ function auth(input:{
  if(!actor)throw new GuestScheduleTransportUnavailable();
  return actor;
 }
-const backend=()=>({
- baseUrl:process.env.SERVICES_API_BASE_URL,
- production:process.env.NODE_ENV==='production',
-});
+function backend(){
+ const baseUrl=process.env.SERVICES_API_BASE_URL;
+ if(!baseUrl)throw new GuestScheduleTransportUnavailable();
+ return {baseUrl,production:process.env.NODE_ENV==='production'};
+}
 
 export async function startGuestScheduleChallenge(input:{
  requestId:string;cookieValue:string|undefined;
