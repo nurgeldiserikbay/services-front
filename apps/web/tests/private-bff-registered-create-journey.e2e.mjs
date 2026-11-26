@@ -386,7 +386,8 @@ try{
      evidence.attempts++;
      evidence.key=options.headers['Idempotency-Key'];
      evidence.version=options.headers['If-Match'];
-     const response=await original(url,options);
+     let response;
+     try{response=await original(url,options);}catch(error){evidence.networkError=error?.name??'unknown';throw error;}
      evidence.status=response.status;evidence.receipt=await response.clone().json();
      await new Promise(resolve=>setTimeout(resolve,750));
      return response;
@@ -399,7 +400,7 @@ try{
     if(evidence?.receipt)break;
     await pause(100);
    }
-   assert.equal(evidence?.status,200,'real browser confirmation HTTP status');
+   assert.equal(evidence?.status,200,'real browser confirmation HTTP status; attempts='+String(evidence?.attempts)+'; networkError='+String(evidence?.networkError));
    assert.equal(evidence.attempts,1,'rapid duplicate confirmation must send one confirm POST');
    assert.equal(evidence.declineAttempts??0,0,'opposite resolution must not send a competing POST');
    assert.equal(evidence.competingAttempts??0,0,'other request components must not send competing POSTs');
@@ -429,7 +430,7 @@ try{
    const row="Array.from(document.querySelectorAll('li')).find(el=>el.querySelector('strong')?.textContent.trim()==="+JSON.stringify('№ '+receipt.id.slice(0,8))+")";
    let ready=false;
    for(let i=0;i<100;i++){
-    try{ready=await evaluate("(()=>{const r="+row+";const d=r?.querySelector('details');if(!d)return false;d.open=true;return !!d.querySelector('input[type=datetime-local]');})()");}catch{}
+    try{ready=await evaluate("(()=>{const r="+row+";const d=r?.querySelector('details');if(!d)return false;d.open=true;return !!d.querySelector('input[type=datetime-local]')&&d.querySelector('fieldset')?.disabled===false;})()");}catch{}
     if(ready)break;
     await pause(100);
    }
@@ -449,6 +450,41 @@ try{
    }
    const entered=await evaluate("(()=>{const r="+row+";return Array.from(r.querySelectorAll('input[type=datetime-local]')).map(x=>x.value);})()");
    assert.deepEqual(entered,inputValues);
+   // First simulate a failed delivery before any mutation reaches the BFF.
+   await evaluate(`(()=>{const original=window.fetch.bind(window);window.__undelivered={attempts:0,competing:0};
+    window.fetch=async(url,options={})=>{
+     if(options.method==='POST'&&url===${JSON.stringify(schedulePath)}){
+      window.__undelivered.attempts++;
+      throw new TypeError('CI injected failure before dispatch');
+     }
+     if(options.method==='POST'&&typeof url==='string'&&url.startsWith('/api/account/requests/'))window.__undelivered.competing++;
+     return original(url,options);
+    };return true;})()`);
+   await evaluate("(()=>{const r="+row+";r.querySelector('details form button[type=submit]').click();})()");
+   let notDeliveredFrozen=false;
+   for(let i=0;i<100;i++){
+    notDeliveredFrozen=await evaluate("(()=>{const r="+row+";return !!r?.textContent.includes('Перезагрузите страницу и проверьте результат.')&&r.querySelector('details fieldset')?.disabled===true;})()");
+    if(notDeliveredFrozen)break;
+    await pause(100);
+   }
+   assert.equal(notDeliveredFrozen,true,'undelivered proposal must freeze pending recovery');
+   await evaluate("(()=>{const r="+row+";r.querySelector('details form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Подтвердить завершение').click();})()");
+   await pause(250);
+   assert.deepEqual(await evaluate('window.__undelivered'),{attempts:1,competing:0});
+   assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id])).rows[0].version,4);
+   assert.equal((await (await active()).json()).proposal,null);
+   const reloadUndelivered=await evaluate("(()=>{const r="+row+";const b=Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Перезагрузить');if(!b)return false;b.click();return true;})()");
+   assert.equal(reloadUndelivered,true);
+   let retryReady=false;
+   for(let i=0;i<100;i++){
+    try{retryReady=await evaluate("(()=>{const r="+row+";const d=r?.querySelector('details');if(!d||window.__undelivered!==undefined||!r.textContent.includes('Нет активного предложения.'))return false;d.open=true;return d.querySelector('fieldset')?.disabled===false;})()");}catch{}
+    if(retryReady)break;
+    await pause(100);
+   }
+   assert.equal(retryReady,true,'authoritative unchanged state must allow explicit retry after reload');
+   const refilled=await evaluate("(()=>{const r="+row+";const form=r.querySelector('details form');const inputs=form.querySelectorAll('input[type=datetime-local]');const values="+JSON.stringify(inputValues)+";for(let i=0;i<2;i++)inputs[i].value=values[i];return {valid:form.checkValidity(),values:Array.from(inputs).map(el=>el.value)};})()");
+   assert.deepEqual(refilled,{valid:true,values:inputValues});
+   console.log('Real Chrome schedule undelivered proposal -> frozen -> unchanged authoritative reload -> retry enabled PASS');
    // Lose only the response after the real server has committed. Do not
    // replace the backend, request, or persisted receipt with a mock.
    await evaluate(`(()=>{const original=window.fetch.bind(window);window.__lostProposal={attempts:0,competing:0};
