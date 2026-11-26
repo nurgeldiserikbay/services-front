@@ -382,9 +382,20 @@ try{
    }
    assert.equal(ready,true,'customer proposal form must be available');
    const inputValues=[proposalBody.local_start_at.slice(0,16),new Date(start.getTime()+21600000).toISOString().slice(0,16)];
-   const entered=await evaluate("(()=>{const r="+row+";const inputs=r.querySelectorAll('input[type=datetime-local]');const values="+JSON.stringify(inputValues)+";const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;for(let i=0;i<2;i++){setter.call(inputs[i],values[i]);inputs[i].dispatchEvent(new Event('input',{bubbles:true}));inputs[i].dispatchEvent(new Event('change',{bubbles:true}));}return Array.from(inputs).map(x=>x.value);})()");
+   // React may replace or reset a controlled input after each change.
+   // Reacquire the current DOM node and wait for each value to survive a render.
+   for(let index=0;index<2;index++){
+    let retained=false;
+    for(let attempt=0;attempt<30;attempt++){
+     await evaluate("(()=>{const r="+row+";const el=r?.querySelectorAll('input[type=datetime-local]')["+index+"];if(!el||!el.isConnected)return false;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,"+JSON.stringify(inputValues[index])+");el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));return true;})()");
+     await pause(150);
+     retained=await evaluate("(()=>{const r="+row+";return r?.querySelectorAll('input[type=datetime-local]')["+index+"]?.value==="+JSON.stringify(inputValues[index])+";})()");
+     if(retained)break;
+    }
+    assert.equal(retained,true,'controlled datetime input '+index+' must retain value');
+   }
+   const entered=await evaluate("(()=>{const r="+row+";return Array.from(r.querySelectorAll('input[type=datetime-local]')).map(x=>x.value);})()");
    assert.deepEqual(entered,inputValues);
-   await pause(250);
    await evaluate("(()=>{const r="+row+";const form=r.querySelector('details form');form.querySelector('button[type=submit]').click();})()");
    let committed=false;
    for(let i=0;i<100;i++){
