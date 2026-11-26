@@ -374,6 +374,47 @@ try{
    const competingValues=[proposalBody.local_start_at.slice(0,16),new Date(start.getTime()+21600000).toISOString().slice(0,16)];
    const filled=await evaluate("(()=>{const r="+row+";const d=r.querySelector('details');d.open=true;const form=d.querySelector('form');const inputs=form.querySelectorAll('input[type=datetime-local]');const values="+JSON.stringify(competingValues)+";for(let i=0;i<2;i++)inputs[i].value=values[i];return {valid:form.checkValidity(),values:Array.from(inputs).map(el=>el.value),disabled:form.querySelector('fieldset').disabled};})()");
    assert.deepEqual(filled,{valid:true,values:competingValues,disabled:false},'competing proposal must be valid and enabled before confirm');
+   // Load an independent browser context at the same request version before
+   // the first browser commits. Server version checks, not local React locks,
+   // must reject this stale action.
+   let releaseStale;
+   const release=new Promise(resolve=>{releaseStale=resolve;});
+   let staleReady,staleFailed;
+   const staleLoaded=new Promise((resolve,reject)=>{staleReady=resolve;staleFailed=reject;});
+   const staleRun=exerciseRegisteredCreateChromeRetry({base:'http://127.0.0.1:3011',offer,sealedCookie:sealed.cookie,
+    scheduleScenario:async({send:staleSend,evaluate:staleEval,pause:stalePause})=>{
+     await staleSend('Page.navigate',{url:'http://127.0.0.1:3011/ru/account/my-requests'});
+     let loaded=false;
+     for(let i=0;i<100;i++){
+      try{loaded=await staleEval("(()=>{const s="+section+";return !!s?.textContent.includes('Предложение исполнителя')&&Array.from(s.querySelectorAll('button')).some(b=>b.textContent==='Отклонить'&&!b.disabled);})()");}catch{}
+      if(loaded)break;
+      await stalePause(100);
+     }
+     assert.equal(loaded,true,'independent browser must retain version 3 proposal');
+     staleReady();
+     await release;
+     await staleEval(`(()=>{const original=window.fetch.bind(window);window.__staleDecision={attempts:0};
+      window.fetch=async(url,options={})=>{
+       if(url!==${JSON.stringify(schedulePath+'/'+proposed.id+'/decline')}||options.method!=='POST')return original(url,options);
+       window.__staleDecision.attempts++;window.__staleDecision.version=options.headers['If-Match'];
+       const response=await original(url,options);window.__staleDecision.status=response.status;return response;
+      };return true;})()`);
+     const clicked=await staleEval("(()=>{const s="+section+";const b=Array.from(s.querySelectorAll('button')).find(b=>b.textContent==='Отклонить');if(!b||b.disabled)return false;b.click();return true;})()");
+     assert.equal(clicked,true);
+     let evidence;
+     for(let i=0;i<100;i++){
+      evidence=await staleEval('window.__staleDecision');
+      if(evidence?.status)break;
+      await stalePause(100);
+     }
+     assert.deepEqual(evidence,{attempts:1,version:'"3"',status:409},'stale independent browser cannot reverse committed confirmation');
+    },
+   }).catch(error=>{staleFailed(error);throw error;});
+   // Attach a rejection observer while the first browser is running.
+   void staleRun.catch(()=>{});
+   try{
+    await staleLoaded;
+
    // Instrument only this exact mutation; forward the actual network request
    // unchanged; inject response loss only after receiving the real receipt.
    await evaluate(`(()=>{const original=window.fetch.bind(window);window.__scheduleConfirm={attempts:0};
@@ -429,6 +470,12 @@ try{
    assert.equal(recovered,true,'authoritative reload must show resolved proposal and unlock new actions');
    assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id])).rows[0].version,4);
    console.log('Real Chrome confirmation -> committed response loss -> frozen -> authoritative reload PASS');
+    releaseStale();
+    await staleRun;
+    assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id])).rows[0].version,4);
+    console.log('Independent Chrome stale decline -> HTTP 409 -> unchanged PostgreSQL PASS');
+   }finally{releaseStale();await staleRun.catch(()=>{});}
+
   },
  });
  assert.equal(confirmedSchedule.status,'confirmed');
