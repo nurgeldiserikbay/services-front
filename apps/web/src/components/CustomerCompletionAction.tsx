@@ -1,6 +1,7 @@
 'use client';
 
 import {useRouter} from 'next/navigation';
+import {useRequestMutationGate} from './RequestMutationGate';
 import {useRef,useState} from 'react';
 import {canAttemptCustomerCompletion,readCommittedCustomerCompletionReceipt}
  from '@/lib/customer-completion-ui-core.mjs';
@@ -12,12 +13,14 @@ export function CustomerCompletionAction({requestId,version,csrf,locale}:Props){
  const router=useRouter();
  const [busy,setBusy]=useState(false);
  const inFlight=useRef(false);
+ const gate=useRequestMutationGate();
  const [status,setStatus]=useState<'idle'|'done'|'conflict'|'unavailable'>('idle');
  const kk=locale==='kk';
  const complete=async()=>{
   // A mutation can commit even if its HTTP response is lost. Never send
   // another completion with stale version until the server page is reloaded.
   if(!canAttemptCustomerCompletion(status,inFlight.current))return;
+  if(gate&&!gate.acquire())return;
   inFlight.current=true;
   setBusy(true);
   try{
@@ -37,7 +40,7 @@ export function CustomerCompletionAction({requestId,version,csrf,locale}:Props){
   finally{inFlight.current=false;setBusy(false);}
  };
  return <div>
-  <button type="button" disabled={busy||status!=='idle'} onClick={complete}>
+  <button type="button" disabled={busy||status!=='idle'||!!gate?.locked} onClick={complete}>
    {busy?(kk?'Расталуда…':'Подтверждение…'):
     status==='done'?(kk?'Расталды':'Подтверждено'):
     (kk?'Аяқталғанын растау':'Подтвердить завершение')}
