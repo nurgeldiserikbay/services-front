@@ -12,22 +12,20 @@ const copy={
   heading:'Қызмет уақытын өзгерту',
   note:'Уақытты өзгерту үшін байланыс арнасына жіберілген кодты растаңыз.',
   start:'Растау кодын сұрау',code:'Алты таңбалы код',
-  verify:'Кодты тексеру',confirm:'Қызмет аяқталды деп растау',
+  verify:'Кодты тексеру',
   busy:'Сұрау орындалуда…',failed:'Әрекетті қазір аяқтау мүмкін болмады. Қайта тексеріңіз.',
-  uncertain:'Нәтиже белгісіз. Күйді жаңартыңыз; сұрауды автоматты түрде қайталамаңыз.',
-  finished:'Қайта жоспарлау рұқсаты расталды.',refresh:'Күйді жаңарту',
+  finished:'Қайта жоспарлау рұқсаты расталды.',
  },
  ru:{
   heading:'Изменить время услуги',
   note:'Для изменения времени подтвердите код, отправленный на ваш контакт.',
   start:'Запросить код',code:'Шестизначный код',
-  verify:'Проверить код',confirm:'Подтвердить завершение услуги',
+  verify:'Проверить код',
   busy:'Выполняем запрос…',failed:'Не удалось завершить действие. Проверьте статус заявки.',
-  uncertain:'Результат неизвестен. Обновите статус, не отправляйте подтверждение автоматически повторно.',
-  finished:'Доступ к изменению времени подтверждён.',refresh:'Обновить статус',
+  finished:'Доступ к изменению времени подтверждён.',
  },
 } as const;
-type Props={locale:Locale;requestId:string;onVerified:(csrf:string)=>void};
+type Props={locale:Locale;requestId:string;onVerified?:(csrf:string)=>void};
 const CSRF=/^[A-Za-z0-9_-]{43}$/;
 
 /** No OTP, CSRF or challenge is stored beyond this mounted receipt's memory.
@@ -75,7 +73,7 @@ export function GuestRequestSchedule({locale,requestId,onVerified}:Props){
     const result=await readGuestCompletionUiResponse(response,'verify');
     if(result.verified!==true)throw new Error('verification_failed');
     setCode('');setChallenge(null);setPhase('verified');
-    if(csrf.current)onVerified(csrf.current);
+    if(csrf.current)onVerified?.(csrf.current);
    }
   }catch{
    setCode('');
