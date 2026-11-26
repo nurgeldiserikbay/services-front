@@ -412,6 +412,7 @@ jobs:
             SERVICES_TEST_OTP_DELIVERY=fixture \
             SERVICES_GUEST_COMPLETION_CODE_FILE="$RUNNER_TEMP/services-guest-completion-otp.json" \
             SERVICES_ENABLE_GUEST_COMPLETION_HTTP=enabled \
+            SERVICES_ENABLE_GUEST_SCHEDULE_HTTP=enabled \
             GUEST_CONTACT_ENCRYPTION_KEY="$(cat "$RUNNER_TEMP/services-guest-contact-encryption-key")" \
             GUEST_REQUEST_HMAC_KEY="$(cat "$RUNNER_TEMP/services-guest-capability-hmac-key")" \
             GUEST_NETWORK_ATTESTATION_KEY="$(cat "$RUNNER_TEMP/services-guest-network-attestation-key")" \
@@ -466,6 +467,7 @@ jobs:
             cd apps/web
             SERVICES_API_BASE_URL=https://localhost:8445/v1 \
             SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF=enabled \
+            SERVICES_WEB_ENABLE_GUEST_SCHEDULE_BFF=enabled \
             SERVICES_WEB_GUEST_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-guest-key")" \
             GUEST_NETWORK_ATTESTATION_KEY="$(cat "$RUNNER_TEMP/services-guest-network-attestation-key")" \
             SERVICES_WEB_ORIGIN=https://services.example.test \
