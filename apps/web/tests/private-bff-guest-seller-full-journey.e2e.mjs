@@ -248,7 +248,19 @@ try{
  const proposalReplay=await guestMutation('',2,proposalBody,proposalKey);
  assert.equal(proposalReplay.status,201);
  assert.deepEqual(await proposalReplay.json(),{...proposed,replayed:true});
- assert.equal((await guestMutation('/'+proposed.id+'/confirm',3)).status,409,'guest cannot confirm own proposal');
+ const ownConfirm=await guestMutation('/'+proposed.id+'/confirm',3);
+ if(ownConfirm.status!==409){
+  const {openGuestScheduleSession}=await import('../src/lib/guest-schedule-session-core.mjs');
+  const proof=openGuestScheduleSession(guestWebKey,'schedule',scheduleCookie.split('=')[1]);
+  assert.ok(proof);
+  const direct=await fetch(new URL('/v1/requests/'+createdRequest+'/schedule-proposals/'+proposed.id+'/confirm','https://localhost:8445'),{
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(5000),
+   headers:{'Content-Type':'application/json','Guest-Capability':proof.value,'If-Match':'"3"','Idempotency-Key':randomUUID()},body:'{}',
+  });
+  console.error('CI schedule boundary diagnostic (no secrets)',{bffStatus:ownConfirm.status,backendStatus:direct.status});
+  if(direct.body)await direct.body.cancel().catch(()=>{});
+ }
+ assert.equal(ownConfirm.status,409,'guest cannot confirm own proposal');
  const decline=await sellerMutation('/'+proposed.id+'/decline',3);
  assert.equal(decline.status,200);assert.equal((await decline.json()).request_version,4);
  const sellerProposal=await sellerMutation('',4,proposalBody);
