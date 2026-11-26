@@ -386,7 +386,8 @@ try{
      evidence.attempts++;
      evidence.key=options.headers['Idempotency-Key'];
      evidence.version=options.headers['If-Match'];
-     const response=await original(url,options);
+     let response;
+     try{response=await original(url,options);}catch(error){evidence.networkError=error?.name??'unknown';throw error;}
      evidence.status=response.status;evidence.receipt=await response.clone().json();
      await new Promise(resolve=>setTimeout(resolve,750));
      return response;
@@ -399,7 +400,7 @@ try{
     if(evidence?.receipt)break;
     await pause(100);
    }
-   assert.equal(evidence?.status,200,'real browser confirmation HTTP status');
+   assert.equal(evidence?.status,200,'real browser confirmation HTTP status; attempts='+String(evidence?.attempts)+'; networkError='+String(evidence?.networkError));
    assert.equal(evidence.attempts,1,'rapid duplicate confirmation must send one confirm POST');
    assert.equal(evidence.declineAttempts??0,0,'opposite resolution must not send a competing POST');
    assert.equal(evidence.competingAttempts??0,0,'other request components must not send competing POSTs');
@@ -429,7 +430,7 @@ try{
    const row="Array.from(document.querySelectorAll('li')).find(el=>el.querySelector('strong')?.textContent.trim()==="+JSON.stringify('№ '+receipt.id.slice(0,8))+")";
    let ready=false;
    for(let i=0;i<100;i++){
-    try{ready=await evaluate("(()=>{const r="+row+";const d=r?.querySelector('details');if(!d)return false;d.open=true;return !!d.querySelector('input[type=datetime-local]');})()");}catch{}
+    try{ready=await evaluate("(()=>{const r="+row+";const d=r?.querySelector('details');if(!d)return false;d.open=true;return !!d.querySelector('input[type=datetime-local]')&&d.querySelector('fieldset')?.disabled===false;})()");}catch{}
     if(ready)break;
     await pause(100);
    }
