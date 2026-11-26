@@ -81,3 +81,36 @@ export async function readScheduleResolutionReceipt(response,view,action){
  }catch{return false;}
  finally{if(!complete)await reader.cancel().catch(()=>{});reader.releaseLock();}
 }
+
+/** Browser receipt read: bounded, request-bound and customer-only. */
+export async function readGuestActiveSchedule(response,id){
+ if(response.status!==200||response.headers.has('content-range')||
+  !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')??'')||
+  !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(response.headers.get('cache-control')??'')||
+  /(?:^|,)\s*(?:public|s-maxage\s*=)/i.test(response.headers.get('cache-control')??'')||!response.body)return null;
+ const length=response.headers.get('content-length');
+ if(length!==null&&(!/^(?:0|[1-9][0-9]*)$/.test(length)||Number(length)>2048))return null;
+ const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});
+ let bytes=0,raw='',complete=false;
+ try{
+  for(;;){
+   const chunk=await reader.read();
+   if(chunk.done){complete=true;break;}
+   bytes+=chunk.value.byteLength;if(bytes>2048)return null;
+   raw+=decoder.decode(chunk.value,{stream:true});
+  }
+  raw+=decoder.decode();
+  const r=JSON.parse(raw);
+  if(!r||typeof r!=='object'||Array.isArray(r)||Object.keys(r).sort().join(',')!=='actor,can_propose,proposal,request_id,request_version'||
+   r.request_id!==id||r.actor!=='customer'||typeof r.can_propose!=='boolean'||
+   !Number.isSafeInteger(r.request_version)||r.request_version<1||r.request_version>2147483647)return null;
+  const p=r.proposal,utc=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString()===v;
+  if(p!==null&&(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).sort().join(',')!=='can_resolve,end_at,id,initiator,revision,start_at,timezone'||
+   typeof p.id!=='string'||!UUID.test(p.id)||!Number.isSafeInteger(p.revision)||p.revision<1||
+   !['customer','seller'].includes(p.initiator)||p.can_resolve!==(r.can_propose&&p.initiator==='seller')||
+   !utc(p.start_at)||!utc(p.end_at)||Date.parse(p.end_at)<=Date.parse(p.start_at)||
+   typeof p.timezone!=='string'||! /^[A-Za-z0-9_+/-]{1,64}$/.test(p.timezone)))return null;
+  return r;
+ }catch{return null;}
+ finally{if(!complete)await reader.cancel().catch(()=>{});reader.releaseLock();}
+}
