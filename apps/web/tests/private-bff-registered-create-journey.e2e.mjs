@@ -354,10 +354,54 @@ try{
  assert.equal((await schedule({version:2,suffix:confirmPath})).status,409);
  assert.equal((await schedule({session:foreignSealed,version:3,suffix:confirmPath})).status,404);
  assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id])).rows[0].version,3);
- const confirmKey=randomUUID();
- const confirmation=await schedule({version:3,key:confirmKey,suffix:confirmPath});
- assert.equal(confirmation.status,200);
- const confirmedSchedule=await confirmation.json();
+ // Use the actual customer confirmation control and retain the exact
+ // browser idempotency key for the subsequent independent HTTP replay.
+ let confirmKey,confirmedSchedule;
+ await exerciseRegisteredCreateChromeRetry({base:'http://127.0.0.1:3011',offer,sealedCookie:sealed.cookie,
+  scheduleScenario:async({send,evaluate,pause})=>{
+   await send('Emulation.setDeviceMetricsOverride',{width:375,height:740,deviceScaleFactor:1,mobile:true});
+   await send('Page.navigate',{url:'http://127.0.0.1:3011/ru/account/my-requests'});
+   const row="Array.from(document.querySelectorAll('li')).find(el=>el.querySelector('strong')?.textContent.trim()==="+JSON.stringify('№ '+receipt.id.slice(0,8))+")";
+   const section="("+row+")?.querySelector('section')";
+   let ready=false;
+   for(let i=0;i<100;i++){
+    try{ready=await evaluate("(()=>{const s="+section+";return !!s?.textContent.includes('Предложение исполнителя')&&Array.from(s.querySelectorAll('button')).some(b=>b.textContent==='Подтвердить'&&!b.disabled);})()");}catch{}
+    if(ready)break;
+    await pause(100);
+   }
+   assert.equal(ready,true,'customer must see seller proposal and confirm control');
+   // Instrument only this exact mutation; forward the actual network request
+   // and response unchanged. Delay delivery of the response to exercise the
+   // in-flight guard, not the backend transaction.
+   await evaluate(`(()=>{const original=window.fetch.bind(window);window.__scheduleConfirm={attempts:0};
+    window.fetch=async (url,options={})=>{
+     if(url!==${JSON.stringify(schedulePath+confirmPath)}||options.method!=='POST')return original(url,options);
+     const evidence=window.__scheduleConfirm;evidence.attempts++;
+     evidence.key=options.headers['Idempotency-Key'];
+     evidence.version=options.headers['If-Match'];
+     const response=await original(url,options);
+     evidence.status=response.status;evidence.receipt=await response.clone().json();
+     await new Promise(resolve=>setTimeout(resolve,750));
+     return response;
+    };return true;})()`);
+   const clicked=await evaluate("(()=>{const s="+section+";const buttons=Array.from(s.querySelectorAll('button'));const yes=buttons.find(b=>b.textContent==='Подтвердить');const no=buttons.find(b=>b.textContent==='Отклонить');if(!yes||!no||yes.disabled)return false;yes.click();yes.click();no.click();return true;})()");
+   assert.equal(clicked,true);
+   let evidence;
+   for(let i=0;i<100;i++){
+    evidence=await evaluate('window.__scheduleConfirm');
+    if(evidence?.receipt)break;
+    await pause(100);
+   }
+   assert.equal(evidence?.status,200,'real browser confirmation HTTP status');
+   assert.equal(evidence.attempts,1,'rapid duplicate confirmation must send one confirm POST');
+   assert.equal(evidence.version,'"3"');
+   assert.match(evidence.key,/^[0-9a-f-]{36}$/);
+   confirmKey=evidence.key;confirmedSchedule=evidence.receipt;
+   const committed=await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id]);
+   assert.equal(committed.rows[0].version,4,'browser confirmation must commit exactly once');
+   console.log('Real Chrome customer schedule confirm -> BFF -> PostgreSQL PASS');
+  },
+ });
  assert.equal(confirmedSchedule.status,'confirmed');
  assert.equal(confirmedSchedule.request_version,4);
  const confirmReplay=await schedule({version:3,key:confirmKey,suffix:confirmPath});
