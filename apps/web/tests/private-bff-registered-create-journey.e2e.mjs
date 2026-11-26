@@ -449,6 +449,22 @@ try{
    }
    const entered=await evaluate("(()=>{const r="+row+";return Array.from(r.querySelectorAll('input[type=datetime-local]')).map(x=>x.value);})()");
    assert.deepEqual(entered,inputValues);
+   // Lose only the response after the real server has committed. Do not
+   // replace the backend, request, or persisted receipt with a mock.
+   await evaluate(`(()=>{const original=window.fetch.bind(window);window.__lostProposal={attempts:0,competing:0};
+    window.fetch=async(url,options={})=>{
+     if(options.method!=='POST'||typeof url!=='string')return original(url,options);
+     if(url!==${JSON.stringify(schedulePath)}){
+      if(url.endsWith('/complete')||url.endsWith('/confirm')||url.endsWith('/decline'))window.__lostProposal.competing++;
+      return original(url,options);
+     }
+     window.__lostProposal.attempts++;
+     const response=await original(url,options);
+     window.__lostProposal.status=response.status;
+     await response.arrayBuffer();
+     throw new TypeError('CI injected response loss after real commit');
+    };return true;})()`);
+
    await evaluate("(()=>{const r="+row+";const form=r.querySelector('details form');form.querySelector('button[type=submit]').click();})()");
    let committed=false;
    for(let i=0;i<100;i++){
@@ -457,7 +473,29 @@ try{
     await pause(100);
    }
    assert.equal(committed,true,'customer browser proposal must persist version 5');
-   console.log('Real Chrome customer schedule proposal -> BFF -> PostgreSQL PASS');
+   let frozen=false;
+   for(let i=0;i<100;i++){
+    frozen=await evaluate("(()=>{const r="+row+";return !!r?.textContent.includes('Перезагрузите страницу и проверьте результат.')&&r.querySelector('details fieldset')?.disabled===true&&Array.from(r.querySelectorAll('button')).some(b=>b.textContent==='Подтвердить завершение'&&b.disabled);})()");
+    if(frozen)break;
+    await pause(100);
+   }
+   assert.equal(frozen,true,'unknown outcome must freeze proposal and sibling completion');
+   const lost=await evaluate('window.__lostProposal');
+   assert.deepEqual(lost,{attempts:1,competing:0,status:201});
+   await evaluate("(()=>{const r="+row+";r.querySelector('details form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Подтвердить завершение').click();})()");
+   await pause(250);
+   assert.deepEqual(await evaluate('window.__lostProposal'),lost,'frozen UI must not dispatch another mutation');
+   const reloaded=await evaluate("(()=>{const r="+row+";const b=Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Перезагрузить');if(!b)return false;b.click();return true;})()");
+   assert.equal(reloaded,true,'explicit recovery reload must be available');
+   let recovered=false;
+   for(let i=0;i<100;i++){
+    try{recovered=await evaluate("(()=>{const r="+row+";return !!r?.querySelector('section')?.textContent.includes('Предложение клиента')&&!r.textContent.includes('Перезагрузите страницу и проверьте результат.')&&window.__lostProposal===undefined;})()");}catch{}
+    if(recovered)break;
+    await pause(100);
+   }
+   assert.equal(recovered,true,'reload must show authoritative committed customer proposal');
+   assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id])).rows[0].version,5);
+   console.log('Real Chrome customer schedule proposal -> lost committed response -> frozen -> authoritative reload PASS');
   },
  });
  const customerProposal=(await (await active()).json()).proposal;
