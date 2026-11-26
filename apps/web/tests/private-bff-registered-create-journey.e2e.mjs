@@ -370,6 +370,10 @@ try{
     await pause(100);
    }
    assert.equal(ready,true,'customer must see seller proposal and confirm control');
+   // Populate a valid competing proposal before acquiring the shared lock.
+   const competingValues=[proposalBody.local_start_at.slice(0,16),new Date(start.getTime()+21600000).toISOString().slice(0,16)];
+   const filled=await evaluate("(()=>{const r="+row+";const d=r.querySelector('details');d.open=true;const form=d.querySelector('form');const inputs=form.querySelectorAll('input[type=datetime-local]');const values="+JSON.stringify(competingValues)+";for(let i=0;i<2;i++)inputs[i].value=values[i];return {valid:form.checkValidity(),values:Array.from(inputs).map(el=>el.value),disabled:form.querySelector('fieldset').disabled};})()");
+   assert.deepEqual(filled,{valid:true,values:competingValues,disabled:false},'competing proposal must be valid and enabled before confirm');
    // Instrument only this exact mutation; forward the actual network request
    // and response unchanged. Delay delivery of the response to exercise the
    // in-flight guard, not the backend transaction.
@@ -387,7 +391,7 @@ try{
      await new Promise(resolve=>setTimeout(resolve,750));
      return response;
     };return true;})()`);
-   const clicked=await evaluate("(()=>{const s="+section+";const buttons=Array.from(s.querySelectorAll('button'));const yes=buttons.find(b=>b.textContent==='Подтвердить');const no=buttons.find(b=>b.textContent==='Отклонить');if(!yes||!no||yes.disabled)return false;const r="+row+";const form=r.querySelector('details form');const complete=Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Подтвердить завершение');if(!form||!complete)return false;yes.click();yes.click();no.click();form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));complete.click();return true;})()");
+   const clicked=await evaluate("(()=>{const s="+section+";const buttons=Array.from(s.querySelectorAll('button'));const yes=buttons.find(b=>b.textContent==='Подтвердить');const no=buttons.find(b=>b.textContent==='Отклонить');if(!yes||!no||yes.disabled)return false;const r="+row+";const form=r.querySelector('details form');const complete=Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Подтвердить завершение');if(!form||!complete)return false;if(!form.checkValidity())return false;yes.click();yes.click();no.click();form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));complete.click();return true;})()");
    assert.equal(clicked,true);
    let evidence;
    for(let i=0;i<100;i++){
