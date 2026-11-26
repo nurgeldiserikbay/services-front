@@ -25,8 +25,8 @@ if(!Object.prototype.hasOwnProperty.call(otp,'provider'))
 // closed. The code is written 0600 to a runner-only path and never logged.
 otp.provider={
  async deliverOtp(message){
-  if(message.purpose!=='COMPLETE_REQUEST')
-   throw new Error('test server only permits completion OTP');
+  if(!['COMPLETE_REQUEST','MANAGE_SCHEDULE'].includes(message.purpose))
+   throw new Error('test server only permits completion or schedule OTP');
   writeFileSync(process.env.SERVICES_GUEST_COMPLETION_CODE_FILE,
    JSON.stringify({code:message.code,channel:message.channel,
     destination:message.destination,purpose:message.purpose}),
