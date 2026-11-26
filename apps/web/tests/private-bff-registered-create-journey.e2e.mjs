@@ -375,8 +375,10 @@ try{
    // in-flight guard, not the backend transaction.
    await evaluate(`(()=>{const original=window.fetch.bind(window);window.__scheduleConfirm={attempts:0};
     window.fetch=async (url,options={})=>{
+     const evidence=window.__scheduleConfirm;
+     if(url===${JSON.stringify(schedulePath+'/'+proposed.id+'/decline')}&&options.method==='POST')evidence.declineAttempts=(evidence.declineAttempts??0)+1;
      if(url!==${JSON.stringify(schedulePath+confirmPath)}||options.method!=='POST')return original(url,options);
-     const evidence=window.__scheduleConfirm;evidence.attempts++;
+     evidence.attempts++;
      evidence.key=options.headers['Idempotency-Key'];
      evidence.version=options.headers['If-Match'];
      const response=await original(url,options);
@@ -394,6 +396,7 @@ try{
    }
    assert.equal(evidence?.status,200,'real browser confirmation HTTP status');
    assert.equal(evidence.attempts,1,'rapid duplicate confirmation must send one confirm POST');
+   assert.equal(evidence.declineAttempts??0,0,'opposite resolution must not send a competing POST');
    assert.equal(evidence.version,'"3"');
    assert.match(evidence.key,/^[0-9a-f-]{36}$/);
    confirmKey=evidence.key;confirmedSchedule=evidence.receipt;
