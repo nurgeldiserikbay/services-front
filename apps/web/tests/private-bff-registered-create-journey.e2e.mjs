@@ -376,6 +376,7 @@ try{
    await evaluate(`(()=>{const original=window.fetch.bind(window);window.__scheduleConfirm={attempts:0};
     window.fetch=async (url,options={})=>{
      const evidence=window.__scheduleConfirm;
+     if(options.method==='POST'&&typeof url==='string'&&(url.endsWith('/complete')||url.endsWith('/schedule-proposals')))evidence.competingAttempts=(evidence.competingAttempts??0)+1;
      if(url===${JSON.stringify(schedulePath+'/'+proposed.id+'/decline')}&&options.method==='POST')evidence.declineAttempts=(evidence.declineAttempts??0)+1;
      if(url!==${JSON.stringify(schedulePath+confirmPath)}||options.method!=='POST')return original(url,options);
      evidence.attempts++;
@@ -386,7 +387,7 @@ try{
      await new Promise(resolve=>setTimeout(resolve,750));
      return response;
     };return true;})()`);
-   const clicked=await evaluate("(()=>{const s="+section+";const buttons=Array.from(s.querySelectorAll('button'));const yes=buttons.find(b=>b.textContent==='Подтвердить');const no=buttons.find(b=>b.textContent==='Отклонить');if(!yes||!no||yes.disabled)return false;yes.click();yes.click();no.click();return true;})()");
+   const clicked=await evaluate("(()=>{const s="+section+";const buttons=Array.from(s.querySelectorAll('button'));const yes=buttons.find(b=>b.textContent==='Подтвердить');const no=buttons.find(b=>b.textContent==='Отклонить');if(!yes||!no||yes.disabled)return false;const r="+row+";const form=r.querySelector('details form');const complete=Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Подтвердить завершение');if(!form||!complete)return false;yes.click();yes.click();no.click();form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));complete.click();return true;})()");
    assert.equal(clicked,true);
    let evidence;
    for(let i=0;i<100;i++){
@@ -397,6 +398,7 @@ try{
    assert.equal(evidence?.status,200,'real browser confirmation HTTP status');
    assert.equal(evidence.attempts,1,'rapid duplicate confirmation must send one confirm POST');
    assert.equal(evidence.declineAttempts??0,0,'opposite resolution must not send a competing POST');
+   assert.equal(evidence.competingAttempts??0,0,'other request components must not send competing POSTs');
    assert.equal(evidence.version,'"3"');
    assert.match(evidence.key,/^[0-9a-f-]{36}$/);
    confirmKey=evidence.key;confirmedSchedule=evidence.receipt;
