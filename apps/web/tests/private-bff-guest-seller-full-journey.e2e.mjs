@@ -224,6 +224,11 @@ try{
  assert.deepEqual(await scheduleRead.json(),{request_id:createdRequest,request_version:2,actor:'customer',can_propose:true,proposal:null});
  assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[createdRequest])).rows[0]?.version,2);
  console.log('Live CI guest schedule OTP and scoped active read PASS');
+ // Both OTP purposes share contact cooldown. Age only this disposable
+ // fixture's already verified challenge, never relax production quota.
+ const aged=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '10 minutes'
+  WHERE id=$1 AND request_id=$2 AND purpose='MANAGE_SCHEDULE'`,[scheduleChallenge.challenge_id,createdRequest]);
+ assert.equal(aged.rowCount,1);
  const completionUrl='/api/guest-requests/'+createdRequest+'/completion';
  const bootstrap=(id,cookie,fetchSite='same-origin')=>fetch(
   new URL('/api/guest-requests/'+id+'/completion/bootstrap',completionBase),{
