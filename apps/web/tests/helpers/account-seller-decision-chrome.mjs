@@ -15,6 +15,8 @@ export async function exerciseAccountSellerDecisionChrome({
  base,sealedCookie,requestId,locale='kk',action='accept',
 }){
  assert.equal(process.env.CI,'true');
+ assert.equal(new URL(base).origin,'http://127.0.0.1:3001');
+ base='http://127.0.0.1:3011';
  assert.ok(action==='accept'||action==='decline','supported seller decision only');
  const dir=await mkdtemp(join(tmpdir(),'account-seller-decision-chrome-'));
  let child,socket,ended=false;
@@ -48,16 +50,6 @@ export async function exerciseAccountSellerDecisionChrome({
   let seq=0;const pending=new Map(),decisionStatuses=[],requestAttempts=[],networkFailures=[];
   socket.addEventListener('message',event=>{
    const reply=JSON.parse(event.data);
-   if(reply.method==='Fetch.requestPaused'){
-     const request=reply.params?.request;
-     const headers=Object.entries(request?.headers??{})
-       .filter(([name])=>name.toLowerCase()!=='origin')
-       .map(([name,value])=>({name,value:String(value)}));
-     headers.push({name:'Origin',value:'https://services.example.test'});
-     void send('Fetch.continueRequest',{
-       requestId:reply.params.requestId,headers,
-     }).catch(error=>networkFailures.push('continueRequest: '+error.message));
-   }
    if(reply.method==='Network.requestWillBeSent'&&
       reply.params?.request?.url?.includes('/api/seller/requests/'))
      requestAttempts.push({url:reply.params.request.url,method:reply.params.request.method});
@@ -131,12 +123,7 @@ export async function exerciseAccountSellerDecisionChrome({
   const ax=await send('Accessibility.getFullAXTree');
   assert.ok(ax.nodes?.some(n=>!n.ignored&&n.role?.value==='button'&&
     n.name?.value===button.label),'seller decision must have Chrome AX name');
-  // The deployment origin is HTTPS; the test-only transport is loopback HTTP.
-  // Intercept only this seller decision POST and map Origin at the network layer;
-  // browser authentication, CSRF, body, session and backend response stay real.
-  await send('Fetch.enable',{patterns:[{
-   urlPattern:'*/api/seller/requests/*/'+action,requestStage:'Request',
-  }]});
+  // Native browser cookies and Fetch Metadata traverse the isolated CI ingress.
   await send('Input.dispatchKeyEvent',{
    type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,
    text:'\r',unmodifiedText:'\r',
