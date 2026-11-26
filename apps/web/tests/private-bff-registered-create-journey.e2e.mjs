@@ -576,12 +576,15 @@ try{
    assert.equal(opened,true,'hydrated seller row must expose schedule panel');
    // Observe the actual browser fetch without mocking any response.
    // The CI proxy below rewrites Origin only on the schedule mutation.
-   await evaluate(`(()=>{const original=window.fetch.bind(window);window.__scheduleResult=null;
+   await evaluate(`(()=>{const original=window.fetch.bind(window);window.__scheduleResult={attempts:0,competing:0};
     window.fetch=async (url,options={})=>{
+     if(typeof url!=='string'||options.method!=='POST')return original(url,options);
+     if(url!==${JSON.stringify(schedulePath+'/'+customerProposal.id+'/decline')}){window.__scheduleResult.competing++;return original(url,options);}
+     window.__scheduleResult.attempts++;
      const response=await original(url,options);
-     if(typeof url==='string'&&url.endsWith('/decline')&&options.method==='POST')
-      window.__scheduleResult={status:response.status};
-     return response;
+     window.__scheduleResult.status=response.status;
+     await response.arrayBuffer();
+     throw new TypeError('CI injected decline response loss after commit');
     };return true;})()`);
    let resolved=false;
    for(let i=0;i<100;i++){
@@ -601,7 +604,36 @@ try{
    }
    const browserResult=await evaluate('window.__scheduleResult');
    assert.equal(committed,true,'actual browser click must commit through BFF and PostgreSQL; HTTP status='+JSON.stringify(browserResult));
-   console.log('Real Chrome seller schedule decline -> BFF -> PostgreSQL PASS');
+   let frozen=false;
+   for(let i=0;i<100;i++){
+    frozen=await evaluate("(()=>{const r="+row+";const s=r?.querySelector('section');return !!s?.textContent.includes('Перезагрузите страницу и проверьте результат.')&&Array.from(s.querySelectorAll('button')).filter(b=>['Подтвердить','Отклонить'].includes(b.textContent)).every(b=>b.disabled)&&Array.from(r.querySelectorAll('button')).some(b=>b.textContent==='Посмотреть предложения времени'&&b.disabled);})()");
+    if(frozen)break;
+    await pause(100);
+   }
+   assert.equal(frozen,true,'lost decline receipt must freeze seller schedule controls');
+   const lost=await evaluate('window.__scheduleResult');
+   assert.deepEqual(lost,{attempts:1,competing:0,status:200});
+   await evaluate("(()=>{const r="+row+";for(const b of r.querySelectorAll('button'))if(['Подтвердить','Отклонить','Посмотреть предложения времени'].includes(b.textContent))b.click();const form=r.querySelector('details form');if(form)form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));})()");
+   await pause(250);
+   assert.deepEqual(await evaluate('window.__scheduleResult'),lost,'unknown decline must not dispatch another mutation');
+   const reloaded=await evaluate("(()=>{const r="+row+";const b=Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Перезагрузить');if(!b)return false;b.click();return true;})()");
+   assert.equal(reloaded,true);
+   let reopened=false;
+   for(let i=0;i<100;i++){
+    try{reopened=await evaluate("(()=>{const r="+row+";const b=r&&Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Посмотреть предложения времени');if(window.__scheduleResult!==undefined||!b||b.disabled)return false;b.click();return true;})()");}catch{}
+    if(reopened)break;
+    await pause(100);
+   }
+   assert.equal(reopened,true,'seller can reopen schedule after reload');
+   let recovered=false;
+   for(let i=0;i<100;i++){
+    try{recovered=await evaluate("(()=>{const r="+row+";return !!r?.textContent.includes('Нет активного предложения.')&&window.__scheduleResult===undefined;})()");}catch{}
+    if(recovered)break;
+    await pause(100);
+   }
+   assert.equal(recovered,true,'seller reload must show no active proposal');
+   assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id])).rows[0].version,6);
+   console.log('Real Chrome seller decline -> committed response loss -> frozen -> authoritative reload PASS');
   },
  });
  assert.deepEqual((await db.query('SELECT status::text,version FROM service_requests WHERE id=$1',[receipt.id])).rows[0],{status:'ACCEPTED',version:6});
