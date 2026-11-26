@@ -368,11 +368,38 @@ try{
  assert.equal(persisted.rows[0].version,4);
  assert.equal(persisted.rows[0].scheduled_start_at.toISOString(),proposalBody.start_at);
  assert.equal(persisted.rows[0].scheduled_end_at.toISOString(),proposalBody.end_at);
- const counter=await schedule({version:4,payload:proposalBody});
- assert.equal(counter.status,201);
- const customerProposal=await counter.json();
+ // Real hydrated customer proposal form; no mocked API response.
+ await exerciseRegisteredCreateChromeRetry({base:'http://127.0.0.1:3011',offer,sealedCookie:sealed.cookie,
+  scheduleScenario:async({send,evaluate,pause})=>{
+   await send('Emulation.setDeviceMetricsOverride',{width:375,height:740,deviceScaleFactor:1,mobile:true});
+   await send('Page.navigate',{url:'http://127.0.0.1:3011/ru/account/my-requests'});
+   const row="Array.from(document.querySelectorAll('li')).find(el=>el.querySelector('strong')?.textContent.trim()==="+JSON.stringify('№ '+receipt.id.slice(0,8))+")";
+   let ready=false;
+   for(let i=0;i<100;i++){
+    try{ready=await evaluate("(()=>{const r="+row+";const d=r?.querySelector('details');if(!d)return false;d.open=true;return !!d.querySelector('input[type=datetime-local]');})()");}catch{}
+    if(ready)break;
+    await pause(100);
+   }
+   assert.equal(ready,true,'customer proposal form must be available');
+   const inputValues=[proposalBody.local_start_at.slice(0,16),new Date(start.getTime()+21600000).toISOString().slice(0,16)];
+   const entered=await evaluate("(()=>{const r="+row+";const inputs=r.querySelectorAll('input[type=datetime-local]');const values="+JSON.stringify(inputValues)+";const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;for(let i=0;i<2;i++){setter.call(inputs[i],values[i]);inputs[i].dispatchEvent(new Event('input',{bubbles:true}));inputs[i].dispatchEvent(new Event('change',{bubbles:true}));}return Array.from(inputs).map(x=>x.value);})()");
+   assert.deepEqual(entered,inputValues);
+   await pause(250);
+   await evaluate("(()=>{const r="+row+";const form=r.querySelector('details form');form.querySelector('button[type=submit]').click();})()");
+   let committed=false;
+   for(let i=0;i<100;i++){
+    const current=await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id]);
+    if(current.rows[0]?.version===5){committed=true;break;}
+    await pause(100);
+   }
+   assert.equal(committed,true,'customer browser proposal must persist version 5');
+   console.log('Real Chrome customer schedule proposal -> BFF -> PostgreSQL PASS');
+  },
+ });
+ const customerProposal=(await (await active()).json()).proposal;
+ assert.ok(customerProposal);
  assert.equal(customerProposal.initiator,'customer');
- assert.equal(customerProposal.request_version,5);
+ assert.equal((await (await active()).json()).request_version,5);
  assert.equal((await (await active(sellerSealed)).json()).proposal.can_resolve,true);
  // Exercise the actual hydrated seller controls, with no mocked fetch.
  await exerciseRegisteredCreateChromeRetry({base:'http://127.0.0.1:3011',offer,sealedCookie:sellerSealed.cookie,
