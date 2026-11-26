@@ -84,8 +84,9 @@ test('geography picker defers effects but still aborts stale country and city re
 test('guest status receipt switches reset state at render, with abort-only cleanup',()=>{
   const component=readFileSync(new URL('../src/components/GuestRequestStatusCheck.tsx',import.meta.url),'utf8');
   assert.match(component,/return <ReceiptStatusView key=\{props\.requestId\+'\|'\+props\.serviceOfferId\} \{\.\.\.props\}\/>/);
-  assert.match(component,/function ReceiptStatusView\(\{locale,requestId,serviceOfferId,completionEnabled=false\}:Props\)/);
+  assert.match(component,/function ReceiptStatusView\(\{locale,requestId,serviceOfferId,completionEnabled=false,scheduleEnabled=false\}:Props\)/);
   assert.match(component,/useLayoutEffect\(\(\)=>\(\)=>\{\s*active\.current\?\.abort\(\)/);
+  assert.match(component,/scheduleEnabled&&state==='accepted'&&<GuestRequestSchedule/);
   const cleanup=component.slice(component.indexOf('useLayoutEffect('),component.indexOf('async function refresh()'));
   assert.doesNotMatch(cleanup,/setState\(null\)|setVersion\(null\)|setPending\(false\)|setError\(false\)/);
   assert.match(component,/if\(active\.current!==controller\|\|controller\.signal\.aborted\)return/);
