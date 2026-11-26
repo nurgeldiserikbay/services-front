@@ -1,6 +1,7 @@
 'use client';
 import {useRef,useState} from 'react';
 import {useRouter} from 'next/navigation';
+import {useRequestMutationGate} from './RequestMutationGate';
 import {buildScheduleProposal,readScheduleProposalReceipt} from '@/lib/customer-schedule-ui-core.mjs';
 
 export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='customer',onChanged}:{
@@ -11,6 +12,7 @@ export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='c
  const [zone,setZone]=useState('Asia/Almaty'),[offset,setOffset]=useState('300');
  const [status,setStatus]=useState<'idle'|'invalid'|'busy'|'done'|'conflict'|'unknown'>('idle');
  const inFlight=useRef(false);
+ const gate=useRequestMutationGate();
  const editable=status==='idle'||status==='invalid';
  const submit=async()=>{
   if(!editable||inFlight.current)return;
@@ -19,6 +21,7 @@ export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='c
   const start=values.get('start'),end=values.get('end');
   const body=typeof start==='string'&&typeof end==='string'&&offset.trim()!==''?buildScheduleProposal(start,end,zone,Number(offset)):null;
   if(!body){setStatus('invalid');return;}
+  if(gate&&!gate.acquire())return;
   inFlight.current=true;setStatus('busy');
   try{
    const response=await fetch('/api/account/requests/'+encodeURIComponent(requestId)+'/schedule-proposals',{
@@ -38,7 +41,7 @@ export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='c
   <summary>{kk?'Жаңа уақыт ұсыну':'Предложить новое время'}</summary>
   <p>{kk?'Жаңа ұсыныс бұрынғы белсенді ұсынысты алмастыруы мүмкін.':'Новое предложение может заменить предыдущее активное предложение.'}</p>
   <form ref={formRef} onSubmit={e=>{e.preventDefault();void submit();}}>
-   <fieldset disabled={!editable}>
+   <fieldset disabled={!editable||!!gate?.locked}>
     <label>{kk?'Басталуы':'Начало'}<input type="datetime-local" required name="start" defaultValue=""/></label>
     <label>{kk?'Аяқталуы':'Окончание'}<input type="datetime-local" required name="end" defaultValue=""/></label>
     <label>{kk?'Уақыт белдеуі (IANA)':'Часовой пояс (IANA)'}<input required maxLength={64} value={zone} onChange={e=>setZone(e.target.value)}/></label>
