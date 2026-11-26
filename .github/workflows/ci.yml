@@ -334,6 +334,34 @@ jobs:
       - name: Verify owner profile create edit approve publish and public search in real stack
         id: professional_lifecycle_e2e
         run: node apps/web/tests/private-bff-professional-publish-search.e2e.mjs
+      - name: Start isolated schedule browser ingress
+        run: |
+          node --input-type=module <<'NODE' > "$RUNNER_TEMP/services-schedule-ingress.log" 2>&1 &
+          import http from 'node:http';
+          const server=http.createServer((req,res)=>{
+            const headers={...req.headers,host:'127.0.0.1:3001'};
+            // Translate only the native same-origin browser POST from the
+            // isolated loopback listener to the configured CI public origin.
+            if(req.method==='POST' &&
+               /^\/api\/account\/requests\/[0-9a-f-]+\/schedule-proposals\/[0-9a-f-]+\/decline$/.test(req.url) &&
+               headers.origin==='http://127.0.0.1:3011' &&
+               headers['sec-fetch-site']==='same-origin'){
+              headers.origin='https://services.example.test';
+            }
+            const upstream=http.request({hostname:'127.0.0.1',port:3001,path:req.url,method:req.method,headers,timeout:10000},reply=>{
+              res.writeHead(reply.statusCode,reply.headers);reply.pipe(res);
+            });
+            upstream.on('timeout',()=>upstream.destroy());
+            upstream.on('error',()=>{if(!res.headersSent)res.writeHead(502);res.end();});
+            req.pipe(upstream);
+          });
+          server.listen(3011,'127.0.0.1');
+          NODE
+          for attempt in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:3011/ru >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
       - name: Verify registered customer create via real BFF, backend and PostgreSQL inventory
         id: registered_customer_create_e2e
         run: node apps/web/tests/private-bff-registered-create-journey.e2e.mjs
