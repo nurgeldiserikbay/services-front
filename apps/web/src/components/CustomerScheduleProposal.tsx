@@ -7,14 +7,17 @@ export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='c
  requestId:string;version:number;csrf:string;locale:'kk'|'ru';actor?:'customer'|'seller';onChanged?:()=>void;
 }){
  const kk=locale==='kk',router=useRouter();
- const [start,setStart]=useState(''),[end,setEnd]=useState('');
+ const formRef=useRef<HTMLFormElement>(null);
  const [zone,setZone]=useState('Asia/Almaty'),[offset,setOffset]=useState('300');
  const [status,setStatus]=useState<'idle'|'invalid'|'busy'|'done'|'conflict'|'unknown'>('idle');
  const inFlight=useRef(false);
  const editable=status==='idle'||status==='invalid';
  const submit=async()=>{
   if(!editable||inFlight.current)return;
-  const body=offset.trim()!==''?buildScheduleProposal(start,end,zone,Number(offset)):null;
+  if(!formRef.current)return;
+  const values=new FormData(formRef.current);
+  const start=values.get('start'),end=values.get('end');
+  const body=typeof start==='string'&&typeof end==='string'&&offset.trim()!==''?buildScheduleProposal(start,end,zone,Number(offset)):null;
   if(!body){setStatus('invalid');return;}
   inFlight.current=true;setStatus('busy');
   try{
@@ -34,10 +37,10 @@ export function CustomerScheduleProposal({requestId,version,csrf,locale,actor='c
  return <details>
   <summary>{kk?'Жаңа уақыт ұсыну':'Предложить новое время'}</summary>
   <p>{kk?'Жаңа ұсыныс бұрынғы белсенді ұсынысты алмастыруы мүмкін.':'Новое предложение может заменить предыдущее активное предложение.'}</p>
-  <form onSubmit={e=>{e.preventDefault();void submit();}}>
+  <form ref={formRef} onSubmit={e=>{e.preventDefault();void submit();}}>
    <fieldset disabled={!editable}>
-    <label>{kk?'Басталуы':'Начало'}<input type="datetime-local" required value={start} onChange={e=>setStart(e.target.value)}/></label>
-    <label>{kk?'Аяқталуы':'Окончание'}<input type="datetime-local" required value={end} onChange={e=>setEnd(e.target.value)}/></label>
+    <label>{kk?'Басталуы':'Начало'}<input type="datetime-local" required name="start" defaultValue=""/></label>
+    <label>{kk?'Аяқталуы':'Окончание'}<input type="datetime-local" required name="end" defaultValue=""/></label>
     <label>{kk?'Уақыт белдеуі (IANA)':'Часовой пояс (IANA)'}<input required maxLength={64} value={zone} onChange={e=>setZone(e.target.value)}/></label>
     <label>{kk?'UTC ығысуы, минут':'Смещение UTC, минуты'}<input type="number" min={-840} max={840} step={1} required value={offset} onChange={e=>setOffset(e.target.value)}/></label>
     <button type="submit">{kk?'Ұсынысты жіберу':'Отправить предложение'}</button>
