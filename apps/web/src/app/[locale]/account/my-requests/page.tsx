@@ -4,6 +4,7 @@ import Link from 'next/link';
 import {isLocale} from '@/lib/i18n';
 import {ACCOUNT_WEB_COOKIE} from '@/lib/account-web-session.server';
 import {getOwnCustomerRequestPage,getActiveAccountSchedule} from '@/lib/account-session-bff.server';
+import {RequestMutationGate} from '@/components/RequestMutationGate';
 import {CustomerCompletionAction} from '@/components/CustomerCompletionAction';
 
 import {CustomerScheduleProposal} from '@/components/CustomerScheduleProposal';
@@ -76,6 +77,7 @@ export default async function CustomerRequestsPage({
       <strong>№ {item.id.slice(0,8)}</strong>
       <p>{LABELS[item.state]?.[kk?'kk':'ru']??item.state}</p>
       <p>{item.created_at.slice(0,16).replace('T',' ')} UTC</p>
+      <RequestMutationGate key={item.id+':'+item.version}>
       {canSchedule&&item.state==='accepted'&&(view?
        <ScheduleResolution key={item.id+':'+item.version+':resolution'} view={view} csrf={result.csrf} locale={locale}/>:
        <p>{kk?'Ұсыныс күйі қолжетімсіз. Бетті жаңартыңыз.':'Статус предложения недоступен. Обновите страницу.'}</p>)}
@@ -85,6 +87,7 @@ export default async function CustomerRequestsPage({
       {canComplete&&item.state==='accepted'&&
        <CustomerCompletionAction requestId={item.id} version={item.version}
         csrf={result.csrf} locale={locale}/>}
+     </RequestMutationGate>
      </li>;})}
     </ul>}
    {result.next_cursor&&
