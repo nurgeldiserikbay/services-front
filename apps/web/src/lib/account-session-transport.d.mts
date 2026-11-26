@@ -56,9 +56,10 @@ export function listBackendCustomerRequests(options:AccountSessionTransportOptio
 
 export type ScheduleProposalBody={start_at:string;end_at:string;timezone:string;local_start_at:string;utc_offset_seconds:number};
 export type ScheduleReceipt={id:string;request_id:string;revision:number;status:'proposed'|'confirmed'|'declined';initiator:'customer'|'seller';start_at:string;end_at:string;timezone:string;request_version:number;replayed:boolean;confirmed_at?:string;cancellation_deadline_at?:string};
-export function mutateBackendAccountSchedule(options:AccountSessionTransportOptions&{
+type ScheduleTransportOptions=Omit<AccountSessionTransportOptions,'accountBearer'>&({accountBearer:string;guestCapability?:never}|{guestCapability:string;accountBearer?:never});
+export function mutateBackendAccountSchedule(options:ScheduleTransportOptions&{
  requestId:string;version:number;key:string;
 }&({action:'propose';body:ScheduleProposalBody;proposalId?:never}|{action:'confirm'|'decline';proposalId:string;body?:never})):Promise<{kind:'ok';receipt:ScheduleReceipt}|{kind:'conflict'|'not_found'}>;
 export type ActiveScheduleProposal={id:string;revision:number;initiator:'customer'|'seller';start_at:string;end_at:string;timezone:string;can_resolve:boolean};
 export type ActiveScheduleView={request_id:string;request_version:number;actor:'customer'|'seller';can_propose:boolean;proposal:ActiveScheduleProposal|null};
-export function readBackendActiveSchedule(options:AccountSessionTransportOptions&{requestId:string}):Promise<ActiveScheduleView>;
+export function readBackendActiveSchedule(options:ScheduleTransportOptions&{requestId:string}):Promise<ActiveScheduleView>;
