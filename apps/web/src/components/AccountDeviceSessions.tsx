@@ -59,11 +59,12 @@ export function AccountDeviceSessions({locale}:{locale:Locale}){
   }
  },[t.error,t.expired]);
  useEffect(()=>{
+  const invalidateRequests=()=>{requestId.current++;};
   alive.current=true;
   // Defer the initial state-changing request until after the effect callback.
   // A discarded Strict Mode mount cancels this timer before it starts.
   const timer=setTimeout(()=>{void refresh();},0);
-  return ()=>{clearTimeout(timer);alive.current=false;requestId.current++;mutation.current=null;};
+  return ()=>{clearTimeout(timer);alive.current=false;invalidateRequests();mutation.current=null;};
  },[refresh]);
  async function revoke(item:AccountDeviceItem){
   if(mutation.current||busy!==null||loading||!csrf||item.current)return;

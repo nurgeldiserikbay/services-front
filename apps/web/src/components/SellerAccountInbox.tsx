@@ -101,6 +101,7 @@ export function SellerAccountInbox({locale,canSchedule=false}:{locale:Locale;can
  },[t.failed,t.unauthorized]);
  useEffect(()=>{
    // An account/session boundary must unmount this component on logout.
+   const invalidateLifecycle=()=>{decisionLifetime.current++;epoch.current++;retry.current.clear();seenCursors.current.clear();};
    mounted.current=true;
    const lifetime=decisionLifetime.current;
    // Defer the reset to a microtask: React forbids synchronous state updates
@@ -114,7 +115,7 @@ export function SellerAccountInbox({locale,canSchedule=false}:{locale:Locale;can
      decisionGate.current=createSellerDecisionSingleFlight();
      void load();
    });
-   return ()=>{mounted.current=false;decisionLifetime.current++;epoch.current++;run.current=false;current.current=null;retry.current.clear();seenCursors.current.clear();};
+   return ()=>{mounted.current=false;invalidateLifecycle();run.current=false;current.current=null;};
  },[load]);
 
  async function decide(item:SellerRequestSummary,decision:'accept'|'decline'){
