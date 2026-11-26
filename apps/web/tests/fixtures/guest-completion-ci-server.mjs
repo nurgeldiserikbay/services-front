@@ -1,6 +1,6 @@
 /**
  * CI-ONLY FILE: copied by frontend workflow into services-back/test, loaded by
- * tsx and never shipped in an application build. Production's disabled OTP
+ * plain Node and never shipped in an application build. Production's disabled OTP
  * adapter is never changed by this test fixture.
  */
 import 'reflect-metadata';
@@ -58,6 +58,7 @@ dispatcher.dispatchCompleteRequest=async(...args)=>{
 };
 // CI-only sanitized diagnostics for unexpected schedule exceptions.
 const {ScheduleProposalHttpService}=await import('../dist/modules/requests/schedule-proposal-http.service.js');
+const {ScheduleProposalRejected}=await import('../dist/modules/requests/schedule-proposal.transaction.js');
 const schedule=app.get(ScheduleProposalHttpService);
 const originalMutate=schedule.mutate.bind(schedule);
 schedule.mutate=async(...args)=>{
@@ -67,6 +68,7 @@ schedule.mutate=async(...args)=>{
    name:error instanceof Error?error.name:'Unknown',
    code:typeof error?.code==='string'&&/^[A-Z0-9]{5}$/.test(error.code)?error.code:null,
    reason:['conflict','forbidden','not_found'].includes(error?.reason)?error.reason:null,
+   recognizedDomainError:error instanceof ScheduleProposalRejected,
    constraint:typeof error?.constraint==='string'&&/^[a-z0-9_]{1,90}$/.test(error.constraint)?error.constraint:null,
    locations:typeof error?.stack==='string'?error.stack.split('\n').slice(1,5).map(frame=>frame.trim().split('(').at(-1).split('/').slice(-3).join('/').slice(0,120)):[],
   }));
