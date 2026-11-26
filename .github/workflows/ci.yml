@@ -370,7 +370,7 @@ jobs:
             // Translate only the native same-origin browser POST from the
             // isolated loopback listener to the configured CI public origin.
             if(req.method==='POST' &&
-               /^\/api\/account\/requests\/[0-9a-f-]+\/schedule-proposals\/[0-9a-f-]+\/decline$/.test(req.url) &&
+               /^\/api\/account\/requests\/[0-9a-f-]+\/schedule-proposals(?:\/[0-9a-f-]+\/(?:confirm|decline))?$/.test(req.url) &&
                headers.origin==='http://127.0.0.1:3011' &&
                headers['sec-fetch-site']==='same-origin'){
               headers.origin='https://services.example.test';
