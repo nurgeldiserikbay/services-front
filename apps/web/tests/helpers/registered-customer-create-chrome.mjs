@@ -11,7 +11,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  * Only the browser's POST is mocked to deliberately simulate an uncertain
  * outcome. Separate CI E2E covers actual HTTP -> backend -> PostgreSQL writes.
  */
-export async function exerciseRegisteredCreateChromeRetry({base,offer,sealedCookie}){
+export async function exerciseRegisteredCreateChromeRetry({base,offer,sealedCookie,scheduleScenario}){
  assert.equal(process.env.CI,'true');
  const chrome=process.env.CHROME_BIN??'google-chrome';
  const dir=await mkdtemp(join(tmpdir(),'registered-form-chrome-'));
@@ -83,6 +83,10 @@ export async function exerciseRegisteredCreateChromeRetry({base,offer,sealedCook
   const cookies=(await send('Network.getCookies',{urls:[base]})).cookies??[];
   assert.ok(cookies.some(c=>c.name==='__Host-services_account_web'&&
    c.httpOnly&&c.secure),'cookie must remain HttpOnly and Secure');
+  if(scheduleScenario){
+   await scheduleScenario({send,evaluate,pause});
+   return;
+  }
   // Browser-backed layout contract for the actual authenticated customer
   // form, not just the public catalog. All checks use an isolated CI-only
   // sealed session and the production-built Next.js server.
