@@ -355,12 +355,6 @@ jobs:
       - name: Verify isolated account OTP bootstrap stays CSRF-bound and verify disabled
         id: account_otp_bootstrap_e2e
         run: node apps/web/tests/account-otp-bootstrap-live-http.e2e.mjs
-      - name: Verify signed web session reaches backend and revocation invalidates access
-        id: signed_seller_session_e2e
-        run: node apps/web/tests/private-bff-signed-session.e2e.mjs
-      - name: Verify owner profile create edit approve publish and public search in real stack
-        id: professional_lifecycle_e2e
-        run: node apps/web/tests/private-bff-professional-publish-search.e2e.mjs
       - name: Start isolated schedule browser ingress
         run: |
           node --input-type=module <<'NODE' > "$RUNNER_TEMP/services-schedule-ingress.log" 2>&1 &
@@ -370,7 +364,8 @@ jobs:
             // Translate only the native same-origin browser POST from the
             // isolated loopback listener to the configured CI public origin.
             if(req.method==='POST' &&
-               /^\/api\/account\/requests\/[0-9a-f-]+\/schedule-proposals(?:\/[0-9a-f-]+\/(?:confirm|decline))?$/.test(req.url) &&
+               (/^\/api\/account\/requests\/[0-9a-f-]+\/schedule-proposals(?:\/[0-9a-f-]+\/(?:confirm|decline))?$/.test(req.url) ||
+                /^\/api\/seller\/requests\/[0-9a-f-]+\/(?:accept|decline)$/.test(req.url)) &&
                headers.origin==='http://127.0.0.1:3011' &&
                headers['sec-fetch-site']==='same-origin'){
               headers.origin='https://services.example.test';
@@ -389,6 +384,12 @@ jobs:
             sleep 1
           done
           exit 1
+      - name: Verify signed web session reaches backend and revocation invalidates access
+        id: signed_seller_session_e2e
+        run: node apps/web/tests/private-bff-signed-session.e2e.mjs
+      - name: Verify owner profile create edit approve publish and public search in real stack
+        id: professional_lifecycle_e2e
+        run: node apps/web/tests/private-bff-professional-publish-search.e2e.mjs
       - name: Verify registered customer create via real BFF, backend and PostgreSQL inventory
         id: registered_customer_create_e2e
         run: node apps/web/tests/private-bff-registered-create-journey.e2e.mjs
