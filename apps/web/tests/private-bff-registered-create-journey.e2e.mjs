@@ -374,9 +374,52 @@ try{
  assert.equal(customerProposal.initiator,'customer');
  assert.equal(customerProposal.request_version,5);
  assert.equal((await (await active(sellerSealed)).json()).proposal.can_resolve,true);
- const decline=await schedule({session:sellerSealed,version:5,suffix:'/'+customerProposal.id+'/decline'});
- assert.equal(decline.status,200);
- assert.equal((await decline.json()).status,'declined');
+ // Exercise the actual hydrated seller controls, with no mocked fetch.
+ await exerciseRegisteredCreateChromeRetry({base:'http://127.0.0.1:3011',offer,sealedCookie:sellerSealed.cookie,
+  scheduleScenario:async({send,evaluate,pause})=>{
+   await send('Emulation.setDeviceMetricsOverride',{width:375,height:740,deviceScaleFactor:1,mobile:true});
+   await send('Page.navigate',{url:new URL('/ru/account/requests','http://127.0.0.1:3011').href});
+
+   const row="Array.from(document.querySelectorAll('li')).find(el=>el.querySelector('button')&&el.textContent.includes('Registered request E2E offer')&&Array.from(el.querySelectorAll('button')).some(b=>b.textContent==='Посмотреть предложения времени'))";
+   let opened=false;
+   for(let i=0;i<100;i++){
+    try{
+     opened=await evaluate("(()=>{const r="+row+";const b=r&&Array.from(r.querySelectorAll('button')).find(b=>b.textContent==='Посмотреть предложения времени');if(!b||b.disabled)return false;b.click();return true;})()");
+    }catch{}
+    if(opened)break;
+    await pause(100);
+   }
+   assert.equal(opened,true,'hydrated seller row must expose schedule panel');
+   // Observe the actual browser fetch without mocking any response.
+   // The CI proxy below rewrites Origin only on the schedule mutation.
+   await evaluate(`(()=>{const original=window.fetch.bind(window);window.__scheduleResult=null;
+    window.fetch=async (url,options={})=>{
+     const response=await original(url,options);
+     if(typeof url==='string'&&url.endsWith('/decline')&&options.method==='POST')
+      window.__scheduleResult={status:response.status};
+     return response;
+    };return true;})()`);
+   let resolved=false;
+   for(let i=0;i<100;i++){
+    try{
+     resolved=await evaluate("(()=>{const r="+row+";const section=r&&Array.from(r.querySelectorAll('section')).find(s=>s.textContent.includes('Активное предложение времени')&&s.textContent.includes('Предложение клиента'));const b=section&&Array.from(section.querySelectorAll('button')).find(b=>b.textContent==='Отклонить');if(!b||b.disabled)return false;b.click();return true;})()");
+    }catch{}
+    if(resolved)break;
+    await pause(100);
+   }
+   assert.equal(resolved,true,'seller must be able to decline a customer proposal through React');
+
+   let committed=false;
+   for(let i=0;i<100;i++){
+    const current=await db.query('SELECT version FROM service_requests WHERE id=$1',[receipt.id]);
+    if(current.rows[0]?.version===6){committed=true;break;}
+    await pause(100);
+   }
+   const browserResult=await evaluate('window.__scheduleResult');
+   assert.equal(committed,true,'actual browser click must commit through BFF and PostgreSQL; HTTP status='+JSON.stringify(browserResult));
+   console.log('Real Chrome seller schedule decline -> BFF -> PostgreSQL PASS');
+  },
+ });
  assert.deepEqual((await db.query('SELECT status::text,version FROM service_requests WHERE id=$1',[receipt.id])).rows[0],{status:'ACCEPTED',version:6});
  assert.equal((await (await active()).json()).proposal,null);
  const proposalStates=await db.query('SELECT status::text FROM schedule_proposals WHERE request_id=$1 ORDER BY revision',[receipt.id]);
