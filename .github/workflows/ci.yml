@@ -488,7 +488,7 @@ jobs:
         if: failure()
         run: |
           if test -f "$RUNNER_TEMP/services-completion-ci-back.log"; then
-            grep 'CI_GUEST_COMPLETION_DISPATCH_ERROR' "$RUNNER_TEMP/services-completion-ci-back.log" || true
+            grep -E 'CI_GUEST_COMPLETION_DISPATCH_ERROR|CI_GUEST_SCHEDULE_ERROR' "$RUNNER_TEMP/services-completion-ci-back.log" || true
           fi
       - name: Verify private frontend BFF routes remain default-off over live HTTP
         id: private_bff_e2e
