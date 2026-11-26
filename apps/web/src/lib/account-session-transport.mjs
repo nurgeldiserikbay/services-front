@@ -472,9 +472,16 @@ export async function listBackendCustomerRequests({
  }catch{throw new AccountSessionTransportUnavailable();}
 }
 
+function scheduleHeaders(accountBearer,guestCapability){
+ if(guestCapability===undefined)return headers(accountBearer);
+ if(accountBearer!==undefined||typeof guestCapability!=='string'||!BEARER.test(guestCapability))
+  throw new AccountSessionTransportUnavailable();
+ return {'Guest-Capability':guestCapability,Accept:'application/json'};
+}
+
 /** Server-side account schedule transport. Not a browser route or release switch. */
 export async function mutateBackendAccountSchedule({
- baseUrl,production=true,accountBearer,requestId,version,key,action,proposalId,body,transport=fetch,
+ baseUrl,production=true,accountBearer,guestCapability,requestId,version,key,action,proposalId,body,transport=fetch,
 }){
  const propose=action==='propose';
  if(!['propose','confirm','decline'].includes(action)||
@@ -495,7 +502,7 @@ export async function mutateBackendAccountSchedule({
  try{
   const response=await transport(endpoint(baseUrl,production,
    '/requests/'+id+'/schedule-proposals'+(propose?'':'/'+pid+'/'+action)),{
-   method:'POST',headers:{...headers(accountBearer),'Content-Type':'application/json',
+   method:'POST',headers:{...scheduleHeaders(accountBearer,guestCapability),'Content-Type':'application/json',
     'If-Match':'"'+version+'"','Idempotency-Key':key},
    body:JSON.stringify(propose?body:{}),cache:'no-store',credentials:'omit',
    redirect:'manual',signal:AbortSignal.timeout(5000),
@@ -527,19 +534,20 @@ export async function mutateBackendAccountSchedule({
    (action==='confirm'&&(!validUtcDate(row.confirmed_at)||!validUtcDate(row.cancellation_deadline_at)||
     Date.parse(row.confirmed_at)>=Date.parse(row.start_at)||Date.parse(row.cancellation_deadline_at)>Date.parse(row.start_at))))
    throw new AccountSessionTransportUnavailable();
+  if(guestCapability!==undefined&&row.initiator!==(propose?'customer':'seller'))throw new AccountSessionTransportUnavailable();
   return {kind:'ok',receipt:row};
  }catch{throw new AccountSessionTransportUnavailable();}
 }
 
 /** Minimal participant-only active proposal view, never trust a foreign ID. */
 export async function readBackendActiveSchedule({
- baseUrl,production=true,accountBearer,requestId,transport=fetch,
+ baseUrl,production=true,accountBearer,guestCapability,requestId,transport=fetch,
 }){
  if(typeof requestId!=='string'||!UUID.test(requestId))throw new AccountSessionTransportUnavailable();
  const id=requestId.toLowerCase();
  try{
   const response=await transport(endpoint(baseUrl,production,'/requests/'+id+'/schedule-proposals/active'),{
-   method:'GET',headers:headers(accountBearer),cache:'no-store',credentials:'omit',
+   method:'GET',headers:scheduleHeaders(accountBearer,guestCapability),cache:'no-store',credentials:'omit',
    redirect:'manual',signal:AbortSignal.timeout(5000),
   });
   const cache=response.headers.get('cache-control')??'',length=response.headers.get('content-length');
@@ -565,6 +573,7 @@ export async function readBackendActiveSchedule({
    !validUtcDate(p.start_at)||!validUtcDate(p.end_at)||Date.parse(p.end_at)<=Date.parse(p.start_at)||
    typeof p.timezone!=='string'||! /^[A-Za-z0-9_+/-]{1,64}$/.test(p.timezone)))
    throw new AccountSessionTransportUnavailable();
+  if(guestCapability!==undefined&&row.actor!=='customer')throw new AccountSessionTransportUnavailable();
   return row;
  }catch{throw new AccountSessionTransportUnavailable();}
 }
