@@ -182,6 +182,48 @@ try{
  const accessSession=openGuestRequestAccess(guestWebKey,accessCookie.split('=')[1]);
  assert.ok(accessSession&&accessSession.requestId===createdRequest);
  const guestCsrf=accessSession.csrf;
+ // Independently prove scoped MANAGE_SCHEDULE OTP before completion.
+ const scheduleAccess='/api/guest-requests/'+createdRequest+'/schedule-access';
+ const scheduleUrl='/api/guest-requests/'+createdRequest+'/schedule-proposals';
+ const signNetwork=()=>{
+  const ts=String(Date.now());
+  return 'v1.'+networkDigest+'.'+ts+'.'+createHmac('sha256',networkKey)
+   .update('services-otp-network:v1\n').update(networkDigest).update('\n').update(ts).digest('hex');
+ };
+ const schedulePost=(path,payload,cookie=accessCookie,extra={})=>fetch(new URL(path,completionBase),{
+  method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+  headers:{'Content-Type':'application/json',Origin:'https://services.example.test',
+   'Sec-Fetch-Site':'same-origin',Cookie:cookie,'X-Services-CSRF':guestCsrf,...extra},
+  body:JSON.stringify(payload),
+ });
+ const scheduleBootstrap=await fetch(new URL(scheduleAccess+'/bootstrap',completionBase),{
+  headers:{'Sec-Fetch-Site':'same-origin',Cookie:accessCookie},redirect:'manual',signal:AbortSignal.timeout(8000),
+ });
+ assert.equal(scheduleBootstrap.status,200);
+ assert.deepEqual(await scheduleBootstrap.json(),{csrf_token:guestCsrf});
+ assert.notEqual((await schedulePost(scheduleUrl+'/active',{})).status,200,'READ_CANCEL cannot read schedule');
+ const scheduleStart=await schedulePost(scheduleAccess+'/challenges',{locale:'kk'},accessCookie,
+  {'X-Services-Network-Proof':signNetwork()});
+ assert.equal(scheduleStart.status,202,'schedule OTP start');
+ const scheduleChallenge=await scheduleStart.json();
+ assert.deepEqual(Object.keys(scheduleChallenge),['challenge_id']);
+ const scheduleChallengeCookie=scheduleStart.headers.getSetCookie().find(x=>x.startsWith('__Host-services_guest_schedule_challenge='))?.split(';')[0];
+ assert.ok(scheduleChallengeCookie);
+ const scheduleOtp=JSON.parse(await readFile(codeFile,'utf8'));
+ assert.equal(scheduleOtp.purpose,'MANAGE_SCHEDULE');
+ assert.equal(scheduleOtp.destination,originalContact);
+ const scheduleVerified=await schedulePost(scheduleAccess+'/challenges/'+scheduleChallenge.challenge_id+'/verify',
+  {code:scheduleOtp.code},accessCookie+'; '+scheduleChallengeCookie);
+ assert.equal(scheduleVerified.status,200,'schedule OTP verification');
+ assert.deepEqual(await scheduleVerified.json(),{verified:true});
+ const scheduleCookie=scheduleVerified.headers.getSetCookie().find(x=>x.startsWith('__Host-services_guest_schedule='))?.split(';')[0];
+ assert.ok(scheduleCookie);
+ assert.match(scheduleVerified.headers.getSetCookie().join(' '),/httponly/i);
+ const scheduleRead=await schedulePost(scheduleUrl+'/active',{},accessCookie+'; '+scheduleCookie);
+ assert.equal(scheduleRead.status,200,'verified guest active schedule read');
+ assert.deepEqual(await scheduleRead.json(),{request_id:createdRequest,request_version:2,actor:'customer',can_propose:true,proposal:null});
+ assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[createdRequest])).rows[0]?.version,2);
+ console.log('Live CI guest schedule OTP and scoped active read PASS');
  const completionUrl='/api/guest-requests/'+createdRequest+'/completion';
  const bootstrap=(id,cookie,fetchSite='same-origin')=>fetch(
   new URL('/api/guest-requests/'+id+'/completion/bootstrap',completionBase),{
@@ -202,7 +244,7 @@ try{
   'CSRF bootstrap must not rotate or expose an authentication cookie');
  assert.deepEqual(await bootstrapped.json(),{csrf_token:guestCsrf});
  const completionPost=(suffix,payload,{cookie=accessCookie,csrf=guestCsrf,
-  proof=networkProof,match}={})=>fetch(
+  proof=signNetwork(),match}={})=>fetch(
   new URL(completionUrl+suffix,completionBase),{
    method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
    headers:{'Content-Type':'application/json',
