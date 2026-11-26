@@ -5,7 +5,7 @@ import {useRequestMutationGate} from './RequestMutationGate';
 import type {ActiveScheduleView} from '@/lib/account-session-transport.mjs';
 import {readScheduleResolutionReceipt} from '@/lib/customer-schedule-ui-core.mjs';
 
-export function ScheduleResolution({view,csrf,locale,onChanged}:{view:ActiveScheduleView;csrf:string;locale:'kk'|'ru';onChanged?:()=>void}){
+export function ScheduleResolution({view,csrf,locale,onChanged,guest=false,onRecover}:{view:ActiveScheduleView;csrf:string;locale:'kk'|'ru';onChanged?:()=>void;guest?:boolean;onRecover?:()=>void}){
  const kk=locale==='kk',router=useRouter(),p=view.proposal;
  const [status,setStatus]=useState<'idle'|'busy'|'done'|'unknown'>('idle');
  const busy=useRef(false);
@@ -16,7 +16,7 @@ export function ScheduleResolution({view,csrf,locale,onChanged}:{view:ActiveSche
   if(gate&&!gate.acquire())return;
   busy.current=true;setStatus('busy');
   try{
-   const response=await fetch('/api/account/requests/'+encodeURIComponent(view.request_id)+'/schedule-proposals/'+encodeURIComponent(p.id)+'/'+action,{
+   const response=await fetch((guest?'/api/guest-requests/':'/api/account/requests/')+encodeURIComponent(view.request_id)+'/schedule-proposals/'+encodeURIComponent(p.id)+'/'+action,{
     method:'POST',headers:{'Content-Type':'application/json','If-Match':'"'+view.request_version+'"',
      'Idempotency-Key':crypto.randomUUID(),'X-Services-CSRF':csrf},
     body:'{}',credentials:'same-origin',cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(8000),
@@ -40,6 +40,6 @@ export function ScheduleResolution({view,csrf,locale,onChanged}:{view:ActiveSche
   </div>}
   {!p.can_resolve&&<p>{kk?'Сіз бұл ұсынысты қазір растай алмайсыз.':'Вы не можете сейчас подтвердить это предложение.'}</p>}
   <p role="status">{status==='busy'?(kk?'Жіберілуде…':'Отправка…'):status==='done'?(kk?'Сақталды.':'Сохранено.'):status==='unknown'?(kk?'Нәтижені қайта жүктеп тексеріңіз.':'Перезагрузите страницу и проверьте результат.'):null}</p>
-  {status==='unknown'&&<button type="button" onClick={()=>window.location.reload()}>{kk?'Қайта жүктеу':'Перезагрузить'}</button>}
+  {status==='unknown'&&<button type="button" onClick={()=>{if(onRecover)onRecover();else window.location.reload();}}>{kk?'Қайта жүктеу':'Перезагрузить'}</button>}
  </section>;
 }
