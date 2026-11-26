@@ -56,5 +56,22 @@ dispatcher.dispatchCompleteRequest=async(...args)=>{
   throw error;
  }
 };
+// CI-only sanitized diagnostics for unexpected schedule exceptions.
+const {ScheduleProposalHttpService}=await import('../dist/modules/requests/schedule-proposal-http.service.js');
+const schedule=app.get(ScheduleProposalHttpService);
+const originalMutate=schedule.mutate.bind(schedule);
+schedule.mutate=async(...args)=>{
+ try{return await originalMutate(...args);}
+ catch(error){
+  console.error('CI_GUEST_SCHEDULE_ERROR',JSON.stringify({
+   name:error instanceof Error?error.name:'Unknown',
+   code:typeof error?.code==='string'&&/^[A-Z0-9]{5}$/.test(error.code)?error.code:null,
+   reason:['conflict','forbidden','not_found'].includes(error?.reason)?error.reason:null,
+   constraint:typeof error?.constraint==='string'&&/^[a-z0-9_]{1,90}$/.test(error.constraint)?error.constraint:null,
+   locations:typeof error?.stack==='string'?error.stack.split('\n').slice(1,5).map(frame=>frame.trim().split('(').at(-1).split('/').slice(-3).join('/').slice(0,120)):[],
+  }));
+  throw error;
+ }
+};
 app.setGlobalPrefix('v1');
 await app.listen(3103,'127.0.0.1');
