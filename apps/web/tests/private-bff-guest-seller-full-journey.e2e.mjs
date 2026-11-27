@@ -413,15 +413,48 @@ try{
   const uiCounterSlot=new Date(uiSlot.getTime()+86400000);
   const uiCounterBody={start_at:uiCounterSlot.toISOString(),end_at:new Date(uiCounterSlot.getTime()+3600000).toISOString(),
    timezone:'Asia/Almaty',local_start_at:wall(uiCounterSlot)+':00',utc_offset_seconds:18000};
-  const uiCounter=await fetch(new URL('/api/account/requests/'+browserRequestId+'/schedule-proposals',base),{
-   method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
-   headers:{Cookie:sellerCookie,Origin:'https://services.example.test','Sec-Fetch-Site':'same-origin',
-    'X-Services-CSRF':sellerSealed.csrf,'If-Match':'"3"','Idempotency-Key':randomUUID(),'Content-Type':'application/json'},
-   body:JSON.stringify(uiCounterBody),
+  // Open a fresh authenticated seller tab after the guest proposal commits.
+  const counterTarget=await send('Target.createTarget',{url:sellerIngress+'/kk/account/requests'});
+  const counterPages=await fetch('http://127.0.0.1:'+port+'/json/list',{signal:AbortSignal.timeout(8000)}).then(x=>x.json());
+  const counterUrl=counterPages.find(x=>x.id===counterTarget.targetId)?.webSocketDebuggerUrl;
+  assert.ok(counterUrl);
+  const counterSocket=new WebSocket(counterUrl);
+  await new Promise((resolve,reject)=>{counterSocket.addEventListener('open',resolve,{once:true});counterSocket.addEventListener('error',reject,{once:true});});
+  let counterSequence=0;
+  const counterEvaluate=expression=>new Promise((resolve,reject)=>{
+   const id=++counterSequence;
+   const timeout=setTimeout(()=>{counterSocket.removeEventListener('message',receive);reject(new Error('seller counterproposal CDP deadline'));},8000);
+   function receive(event){const m=JSON.parse(event.data);if(m.id!==id)return;clearTimeout(timeout);counterSocket.removeEventListener('message',receive);
+    if(m.error||m.result?.exceptionDetails)reject(new Error('seller counterproposal CDP evaluation failed'));else resolve(m.result.result.value);}
+   counterSocket.addEventListener('message',receive);
+   counterSocket.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,awaitPromise:true,returnByValue:true}}));
   });
-  assert.equal(uiCounter.status,201,'seller counterproposal committed');
-  const uiCounterReceipt=await uiCounter.json();
-  assert.equal(uiCounterReceipt.request_version,4);
+  const waitCounter=async(expression,label)=>{
+   for(let i=0;i<100;i++){try{if(await counterEvaluate(expression))return;}catch{}
+    await new Promise(resolve=>setTimeout(resolve,100));}
+   assert.fail(label);
+  };
+  try{
+   // Two accepted requests share the same offer title. Identify the exact
+   // target by observing the real read URL, never by list ordering.
+   await waitCounter('Array.from(document.querySelectorAll("li button")).filter(b=>b.textContent.trim()==="Уақыт ұсыныстарын көру"&&!b.disabled).length>=2','seller accepted inbox loaded');
+   await counterEvaluate(`(()=>{const original=window.fetch.bind(window);window.__ciSellerScheduleReads=[];window.fetch=async(url,options)=>{if(typeof url==='string'&&url.endsWith('/schedule-proposals/active'))window.__ciSellerScheduleReads.push(url);return original(url,options);};return true;})()`);
+   const targetRead='/api/account/requests/'+browserRequestId+'/schedule-proposals/active';
+   const targetRow=await counterEvaluate(`(async()=>{const rows=Array.from(document.querySelectorAll('li')).filter(r=>Array.from(r.querySelectorAll('button')).some(b=>b.textContent.trim()==='Уақыт ұсыныстарын көру'&&!b.disabled));for(let i=0;i<rows.length;i++){const b=Array.from(rows[i].querySelectorAll('button')).find(b=>b.textContent.trim()==='Уақыт ұсыныстарын көру');b.click();await new Promise(r=>setTimeout(r,150));if(window.__ciSellerScheduleReads.at(-1)===${JSON.stringify(targetRead)}){rows[i].setAttribute('data-ci-counter-target','true');return true;}}return false;})()`);
+   assert.equal(targetRow,true,'exact seller schedule read matched guest request');
+   const row='li[data-ci-counter-target="true"]';
+   await waitCounter('document.querySelector('+JSON.stringify(row)+')?.textContent.includes("Клиент ұсынды")','seller sees guest proposal');
+   assert.equal(await counterEvaluate(`(()=>{const r=document.querySelector(${JSON.stringify(row)});const el=Array.from(r?.querySelectorAll('summary')??[]).find(x=>x.textContent.trim()==='Жаңа уақыт ұсыну');if(!el)return false;el.click();return true;})()`),true);
+   assert.equal(await counterEvaluate(`(()=>{const r=document.querySelector(${JSON.stringify(row)});const a=r?.querySelector('input[name=start]'),b=r?.querySelector('input[name=end]');if(!a||!b)return false;a.value=${JSON.stringify(wall(uiCounterSlot))};b.value=${JSON.stringify(wall(new Date(uiCounterSlot.getTime()+3600000)))};for(const el of [a,b]){el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}return a.validity.valid&&b.validity.valid;})()`),true);
+   assert.equal(await counterEvaluate(`(()=>{const r=document.querySelector(${JSON.stringify(row)});const b=Array.from(r?.querySelectorAll('button')??[]).find(x=>x.textContent.trim()==='Ұсынысты жіберу'&&!x.disabled);if(!b)return false;b.click();return true;})()`),true);
+   let counterCommitted=false;
+   for(let i=0;i<100;i++){const current=(await db.query('SELECT version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0];if(current?.version===4){counterCommitted=true;break;}await new Promise(resolve=>setTimeout(resolve,100));}
+   assert.equal(counterCommitted,true,'actual seller counterproposal committed');
+   const proposals=await db.query('SELECT status::text FROM schedule_proposals WHERE request_id=$1 ORDER BY revision',[browserRequestId]);
+   assert.equal(proposals.rowCount,2);
+   assert.equal(proposals.rows[1].status,'PROPOSED');
+   console.log('Live CI Chrome seller submits counterproposal through actual UI PASS');
+  }finally{counterSocket.close();await send('Target.closeTarget',{targetId:counterTarget.targetId});}
   await clickButton('Күйін жаңарту');
   await waitForUi('document.body.textContent.includes("Жаңарту нұсқасы: 4")','seller counterproposal version refreshed');
   await waitForUi('Array.from(document.querySelector('+JSON.stringify(schedulePanel)+')?.querySelectorAll("button")??[]).some(x=>x.textContent.trim()==="Растау кодын сұрау"&&!x.disabled)','fresh schedule UI after version refresh');
