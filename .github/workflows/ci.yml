@@ -416,7 +416,7 @@ jobs:
             GUEST_CONTACT_ENCRYPTION_KEY="$(cat "$RUNNER_TEMP/services-guest-contact-encryption-key")" \
             GUEST_REQUEST_HMAC_KEY="$(cat "$RUNNER_TEMP/services-guest-capability-hmac-key")" \
             GUEST_NETWORK_ATTESTATION_KEY="$(cat "$RUNNER_TEMP/services-guest-network-attestation-key")" \
-            node --import tsx test/guest-completion-ci-server.mjs \
+            node test/guest-completion-ci-server.mjs \
               > "$RUNNER_TEMP/services-completion-ci-back.log" 2>&1 &
           )
           for attempt in {1..30}; do

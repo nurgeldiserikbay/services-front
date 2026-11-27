@@ -421,7 +421,19 @@ try{
  assert.deepEqual(new Set(completedEvents.rows.map(x=>x.topic)),
   new Set(['service_request.created','service_request.accepted',
    'service_request.completed','service_request.schedule_proposed','service_request.schedule_confirmed','service_request.schedule_declined']));
- assert.ok(completedEvents.rows.every(x=>JSON.stringify(x.safe_payload)==='{}'));
+ // Preserve exact privacy assertions for every event type, including schedule metadata.
+ const expectedScheduleEvents=[
+  {topic:'service_request.schedule_proposed',safe_payload:{proposal_id:proposed.id,revision:proposed.revision}},
+  {topic:'service_request.schedule_declined',safe_payload:{proposal_id:proposed.id,revision:proposed.revision}},
+  {topic:'service_request.schedule_proposed',safe_payload:{proposal_id:offered.id,revision:offered.revision}},
+  {topic:'service_request.schedule_confirmed',safe_payload:{proposal_id:offered.id,revision:offered.revision}},
+ ];
+ const eventKey=x=>x.topic+':'+(x.safe_payload.proposal_id??'');
+ assert.deepEqual(completedEvents.rows.filter(x=>x.topic.startsWith('service_request.schedule_')).sort((a,b)=>eventKey(a).localeCompare(eventKey(b))),
+  expectedScheduleEvents.sort((a,b)=>eventKey(a).localeCompare(eventKey(b))));
+ const lifecycleEvents=completedEvents.rows.filter(x=>!x.topic.startsWith('service_request.schedule_'));
+ assert.equal(lifecycleEvents.length,3);
+ assert.ok(lifecycleEvents.every(x=>JSON.stringify(x.safe_payload)==='{}'));
  assert.equal((await db.query('SELECT id FROM notification_intents WHERE dedupe_key=$1',
   ['request-completed:seller:'+createdRequest])).rowCount,1);
  console.log('Live CI guest CREATE -> seller ACCEPT -> delivered OTP -> guest COMPLETE -> refreshed status PASS');
