@@ -107,7 +107,12 @@ test('CI requires OTP bootstrap with provider disabled and no public verificatio
   workflow.indexOf('Start isolated feature-enabled private BFF without real login'));
  assert.ok(workflow.includes('steps.otp_bootstrap_e2e.outcome'));
  assert.ok(!workflow.includes('SERVICES_ENABLE_GUEST_OTP_HTTP=enabled'));
- assert.ok(!workflow.includes('SERVICES_WEB_ENABLE_GUEST_OTP_VERIFY_HTTP=enabled'));
+ // Verification is allowed only in the isolated loopback guest UI fixture.
+ const isolated=workflow.split('      - name: Start isolated feature-enabled guest completion Next.js BFF\n')[1]?.split('\n      - name:')[0];
+ assert.ok(isolated,'missing isolated guest UI fixture');
+ assert.match(isolated,/SERVICES_WEB_ENABLE_GUEST_OTP_VERIFY_HTTP=enabled/);
+ assert.match(isolated,/--hostname 127\.0\.0\.1 --port 3003/);
+ assert.ok(!workflow.replace(isolated,'').includes('SERVICES_WEB_ENABLE_GUEST_OTP_VERIFY_HTTP=enabled'));
 });
 
 test('guest creation and request-bound status are tested only with ephemeral CI secrets',()=>{
