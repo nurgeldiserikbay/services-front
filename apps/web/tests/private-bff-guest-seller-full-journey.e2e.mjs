@@ -329,9 +329,48 @@ try{
   assert.equal(browserStatus.body.id,browserRequestId);
   assert.equal(browserStatus.body.state,'pending');
   assert.ok(!JSON.stringify(browserStatus.body).includes('PRIVATE CHROME CREATE NOTE'));
-  // Seller commits a decision for the request created by the real wizard.
-  const browserAccepted=await sellerAccept(browserRequestId,sellerSealed.csrf,1,randomUUID());
-  assert.equal(browserAccepted.status,200,'seller accepts browser-created request');
+  // Keep the guest receipt mounted and open the seller workspace in a second tab.
+  const sellerIngress='http://127.0.0.1:3011';
+  const sellerStored=await send('Network.setCookie',{name:'__Host-services_account_web',
+   value:sellerSealed.cookie,url:sellerIngress,path:'/',secure:true,httpOnly:true,sameSite:'Strict'});
+  assert.equal(sellerStored.success,true);
+  const sellerTarget=await send('Target.createTarget',{url:sellerIngress+'/kk/account/requests'});
+  const sellerPages=await fetch('http://127.0.0.1:'+port+'/json/list',{signal:AbortSignal.timeout(8000)}).then(x=>x.json());
+  const sellerSocketUrl=sellerPages.find(x=>x.id===sellerTarget.targetId)?.webSocketDebuggerUrl;
+  assert.ok(sellerSocketUrl);
+  const sellerSocket=new WebSocket(sellerSocketUrl);
+  await new Promise((resolve,reject)=>{sellerSocket.addEventListener('open',resolve,{once:true});sellerSocket.addEventListener('error',reject,{once:true});});
+  let sellerSequence=0;
+  const sellerEvaluate=expression=>new Promise((resolve,reject)=>{
+   const id=++sellerSequence;
+   const timeout=setTimeout(()=>{sellerSocket.removeEventListener('message',receive);reject(new Error('seller CDP deadline'));},8000);
+   function receive(event){const m=JSON.parse(event.data);if(m.id!==id)return;clearTimeout(timeout);sellerSocket.removeEventListener('message',receive);
+    if(m.error||m.result?.exceptionDetails)reject(new Error('seller CDP evaluation failed'));else resolve(m.result.result.value);}
+   sellerSocket.addEventListener('message',receive);
+   sellerSocket.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,awaitPromise:true,returnByValue:true}}));
+  });
+  try{
+   const targetButton=`Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='Қабылдау'&&b.getAttribute('aria-label')?.endsWith('№ '+${JSON.stringify(browserRequestId.slice(0,8))}))`;
+   let sellerReady=false;
+   for(let i=0;i<100;i++){
+    try{sellerReady=await sellerEvaluate('!!('+targetButton+')&&!('+targetButton+').disabled');}catch{}
+    if(sellerReady)break;
+    await new Promise(resolve=>setTimeout(resolve,100));
+   }
+   assert.equal(sellerReady,true,'authenticated seller inbox renders exact guest request');
+   assert.equal(await sellerEvaluate('(()=>{const b='+targetButton+';if(!b||b.disabled)return false;b.click();return true;})()'),true);
+   let sellerCommitted=false;
+   for(let i=0;i<100;i++){
+    const row=(await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0];
+    if(row?.status==='ACCEPTED'&&row.version===2){sellerCommitted=true;break;}
+    await new Promise(resolve=>setTimeout(resolve,100));
+   }
+   assert.equal(sellerCommitted,true,'actual seller UI commits guest acceptance');
+   console.log('Live CI Chrome seller accepts guest-created request through actual inbox UI PASS');
+  }finally{
+   sellerSocket.close();
+   await send('Target.closeTarget',{targetId:sellerTarget.targetId});
+  }
   await clickButton('Күйін жаңарту');
   await waitForUi('Array.from(document.querySelectorAll("section[aria-label]")).some(x=>x.getAttribute("aria-label")==="Өтінімнің қазіргі күйі"&&x.querySelector("[role=status]")?.textContent.trim()==="Орындаушы қабылдады")','accepted decision rendered in actual receipt UI');
   assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'ACCEPTED',version:2});
