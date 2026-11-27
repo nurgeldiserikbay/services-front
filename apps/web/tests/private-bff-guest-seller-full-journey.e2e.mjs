@@ -101,7 +101,7 @@ try{
   [ids.definition,'ci-guest-seller-'+randomUUID(),'CI seller service']);
  await db.query(`INSERT INTO service_offers
   (id,definition_id,organization_id,title,status,delivery_mode,contacts)
-  VALUES($1,$2,$3,'CI seller offer','PUBLISHED','online','{}'::jsonb)`,
+  VALUES($1,$2,$3,'CI seller offer','PUBLISHED','online','{"methods":["guest_request"]}'::jsonb)`,
   [ids.offer,ids.definition,ids.org]);
  await db.query(`INSERT INTO guest_contacts
   (id,channel,encrypted_value,digest,verified_at,expires_at)
@@ -261,6 +261,17 @@ try{
   })()`);
   // Exercise initial OTP in a separate disposable contact, without seeding
   // its challenge or CREATE_REQUEST cookie. Preserve the existing lifecycle.
+  // Verify the actual published offer page exposes the real guest wizard.
+  await send('Page.navigate',{url:ingress+'/kk/services/'+ids.offer});
+  let wizardReady=false;
+  for(let i=0;i<100&&!wizardReady;i++){
+   try{wizardReady=await evaluate('location.pathname==='+JSON.stringify('/kk/services/'+ids.offer)+'&&document.readyState==="complete"&&!!document.querySelector("#guest-contact")');}catch{}
+   if(!wizardReady)await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  assert.equal(wizardReady,true,'published offer exposes guest request form');
+  assert.equal(await evaluate('document.querySelector("#guest-contact").type'),'tel');
+  assert.ok(await evaluate('Array.from(document.querySelectorAll("button")).some(b=>b.textContent.trim()==="Жалғастыру")'));
+  console.log('Live CI Chrome published offer guest wizard render PASS');
   const initialContact='ci-create-'+randomBytes(8).toString('hex')+'@example.org';
   const initialBootstrap=await evaluate(`(async()=>{
    const response=await fetch('/api/guest-requests/challenges/start',{cache:'no-store'});
