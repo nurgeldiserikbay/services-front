@@ -483,6 +483,7 @@ jobs:
             cd apps/web
             SERVICES_API_BASE_URL=https://localhost:8445/v1 \
             SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF=enabled \
+            SERVICES_WEB_ENABLE_GUEST_COMPLETION_UI=enabled \
             SERVICES_WEB_ENABLE_GUEST_SCHEDULE_BFF=enabled \
             SERVICES_WEB_ENABLE_GUEST_SCHEDULE_UI=enabled \
             SERVICES_WEB_ENABLE_GUEST_STATUS_HTTP=enabled \
@@ -519,12 +520,12 @@ jobs:
             // CI-only origin translation, limited to same-origin guest schedule mutations.
             if(req.method==='POST' &&
                (/^\/api\/guest-requests(?:\/challenges\/(?:start|verify))?$/.test(req.url) ||
-               /^\/api\/guest-requests\/[0-9a-f-]+\/(?:schedule-access\/challenges(?:\/[0-9a-f-]+\/verify)?|schedule-proposals(?:\/active|\/[0-9a-f-]+\/(?:confirm|decline))?)$/.test(req.url)) &&
+               /^\/api\/guest-requests\/[0-9a-f-]+\/(?:completion\/(?:challenges(?:\/[0-9a-f-]+\/verify)?|confirm)|schedule-access\/challenges(?:\/[0-9a-f-]+\/verify)?|schedule-proposals(?:\/active|\/[0-9a-f-]+\/(?:confirm|decline))?)$/.test(req.url)) &&
                headers.origin==='http://127.0.0.1:3013' &&
                headers['sec-fetch-site']==='same-origin'){
               headers.origin='https://services.example.test';
-              // Sign only exact schedule issuance; never trust a browser-supplied proof.
-              if(/^\/api\/guest-requests\/[0-9a-f-]+\/schedule-access\/challenges$/.test(req.url)){
+              // Sign only exact schedule or completion issuance; never trust a browser-supplied proof.
+              if(/^\/api\/guest-requests\/[0-9a-f-]+\/(?:schedule-access|completion)\/challenges$/.test(req.url)){
                 delete headers['x-services-network-proof'];
                 const ts=String(Date.now());
                 const signature=createHmac('sha256',networkKey).update('services-otp-network:v1\n'+networkDigest+'\n'+ts).digest('hex');
