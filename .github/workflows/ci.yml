@@ -468,6 +468,13 @@ jobs:
             SERVICES_API_BASE_URL=https://localhost:8445/v1 \
             SERVICES_WEB_ENABLE_GUEST_COMPLETION_BFF=enabled \
             SERVICES_WEB_ENABLE_GUEST_SCHEDULE_BFF=enabled \
+            SERVICES_WEB_ENABLE_GUEST_SCHEDULE_UI=enabled \
+            SERVICES_WEB_ENABLE_GUEST_STATUS_HTTP=enabled \
+            SERVICES_WEB_ENABLE_GUEST_WIZARD=enabled \
+            SERVICES_WEB_ENABLE_GUEST_OTP_START_HTTP=enabled \
+            SERVICES_WEB_ENABLE_GUEST_OTP_VERIFY_HTTP=enabled \
+            SERVICES_WEB_ENABLE_GUEST_OTP_BFF=enabled \
+            SERVICES_WEB_ENABLE_GUEST_CREATE_HTTP=enabled \
             SERVICES_WEB_GUEST_SESSION_KEY="$(cat "$RUNNER_TEMP/services-private-bff-guest-key")" \
             GUEST_NETWORK_ATTESTATION_KEY="$(cat "$RUNNER_TEMP/services-guest-network-attestation-key")" \
             SERVICES_WEB_ORIGIN=https://services.example.test \
