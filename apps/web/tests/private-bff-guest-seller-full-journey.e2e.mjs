@@ -281,17 +281,19 @@ try{
    }
    assert.fail(label);
   };
-  const clickButton=async(label)=>{
-   const clicked=await evaluate(`(()=>{const b=Array.from(document.querySelectorAll('button')).find(x=>x.textContent.trim()===${JSON.stringify(label)}&&!x.disabled);if(!b)return false;b.click();return true;})()`);
-   assert.equal(clicked,true,'enabled UI button: '+label);
+  const clickButton=async(label,scope=null)=>{
+   const clicked=await evaluate(`(()=>{const root=${JSON.stringify(scope)}?document.querySelector(${JSON.stringify(scope)}):document;const matches=Array.from(root?.querySelectorAll('button')??[]).filter(x=>x.textContent.trim()===${JSON.stringify(label)}&&!x.disabled);if(matches.length!==1)return false;matches[0].click();return true;})()`);
+   assert.equal(clicked,true,'unique enabled UI button: '+label);
   };
+  const schedulePanel='section[aria-label="Қызмет уақытын өзгерту"]';
   const fill=async(selector,value)=>{
    assert.equal(await evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;el.focus();return true;})()`),true);
    await send('Input.insertText',{text:value});
    assert.equal(await evaluate('document.querySelector('+JSON.stringify(selector)+').value')===value,true,'UI input populated');
   };
-  assert.equal(await evaluate(`(()=>{const label=Array.from(document.querySelectorAll('label')).find(x=>x.textContent.trim()==='Email');const radio=label?.querySelector('input[type=radio]');if(!radio)return false;radio.click();return true;})()`),true);
-  await waitForUi('document.querySelector("#guest-contact")?.type==="email"','email channel selected');
+  // SSR markup can precede React hydration. Retry this harmless selection
+  // until the controlled input reflects the change; never retry mutations.
+  await waitForUi(`(()=>{if(document.querySelector('#guest-contact')?.type==='email')return true;const label=Array.from(document.querySelectorAll('label')).find(x=>x.textContent.trim()==='Email');const radio=label?.querySelector('input[type=radio]');if(radio)radio.click();return false;})()`,'email channel selected after hydration');
   await fill('#guest-contact',initialContact);
   await fill('#guest-note','PRIVATE CHROME CREATE NOTE');
   assert.equal(await evaluate(`(()=>{const el=document.querySelector('#guest-contact').closest('form').querySelector('input[type=checkbox]');if(!el)return false;el.click();return el.checked;})()`),true);
@@ -340,18 +342,18 @@ try{
   const agedUi=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '10 minutes'
    WHERE purpose='CREATE_REQUEST' AND guest_contact_id IN (SELECT id FROM guest_contacts WHERE digest=$1)`,[uiDigest]);
   assert.equal(agedUi.rowCount,1);
-  await clickButton('Растау кодын сұрау');
+  await clickButton('Растау кодын сұрау',schedulePanel);
   const scheduleInput='#guest-schedule-code-'+browserRequestId;
   await waitForUi('!!document.querySelector('+JSON.stringify(scheduleInput)+')','schedule OTP UI rendered');
   const uiScheduleOtp=JSON.parse(await readFile(codeFile,'utf8'));
   assert.equal(uiScheduleOtp.purpose,'MANAGE_SCHEDULE');
   assert.equal(uiScheduleOtp.destination===initialContact,true);
   await fill(scheduleInput,uiScheduleOtp.code);
-  await clickButton('Кодты тексеру');
+  await clickButton('Кодты тексеру',schedulePanel);
   await waitForUi('document.body.textContent.includes("Қайта жоспарлау рұқсаты расталды.")','schedule OTP verified in UI');
   const uiScheduleCookies=await send('Network.getCookies',{urls:[ingress]});
   assert.ok(uiScheduleCookies.cookies.some(x=>x.name==='__Host-services_guest_schedule'&&x.httpOnly&&x.secure));
-  await clickButton('Уақыт ұсынысын көру');
+  await clickButton('Уақыт ұсынысын көру',schedulePanel);
   await waitForUi('!Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="Уақыт ұсынысын көру")','active schedule loaded in actual UI');
   // Assert successful load, not merely disappearance of a loading control.
   await waitForUi('document.body.textContent.includes("Белсенді ұсыныс жоқ.")','empty active schedule rendered');
@@ -362,7 +364,7 @@ try{
   // Native datetime-local controls have locale-specific segments; set their
   // DOM values, dispatch input/change, and submit through the real React form.
   assert.equal(await evaluate(`(()=>{const a=document.querySelector('input[name=start]'),b=document.querySelector('input[name=end]');if(!a||!b)return false;a.value=${JSON.stringify(uiStart)};b.value=${JSON.stringify(uiEnd)};for(const el of [a,b]){el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}return a.validity.valid&&b.validity.valid;})()`),true);
-  await clickButton('Ұсынысты жіберу');
+  await clickButton('Ұсынысты жіберу',schedulePanel);
   await waitForUi('document.body.textContent.includes("Клиент ұсынды")','guest proposal rendered');
   assert.ok(await evaluate('document.body.textContent.includes("Сіз бұл ұсынысты қазір растай алмайсыз.")'),'own proposal cannot be confirmed');
   assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'ACCEPTED',version:3});
@@ -382,26 +384,60 @@ try{
   const uiCounterReceipt=await uiCounter.json();
   assert.equal(uiCounterReceipt.request_version,4);
   await clickButton('Күйін жаңарту');
-  await waitForUi('Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="Растау кодын сұрау"&&!x.disabled)','fresh schedule UI after version refresh');
+  await waitForUi('document.body.textContent.includes("Жаңарту нұсқасы: 4")','seller counterproposal version refreshed');
+  await waitForUi('Array.from(document.querySelector('+JSON.stringify(schedulePanel)+')?.querySelectorAll("button")??[]).some(x=>x.textContent.trim()==="Растау кодын сұрау"&&!x.disabled)','fresh schedule UI after version refresh');
   const agedScheduleUi=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '10 minutes'
    WHERE request_id=$1 AND purpose='MANAGE_SCHEDULE' AND consumed_at IS NOT NULL`,[browserRequestId]);
   assert.equal(agedScheduleUi.rowCount,1);
-  await clickButton('Растау кодын сұрау');
+  await clickButton('Растау кодын сұрау',schedulePanel);
   await waitForUi('!!document.querySelector('+JSON.stringify(scheduleInput)+')','counterproposal OTP UI');
   const counterOtp=JSON.parse(await readFile(codeFile,'utf8'));
   assert.equal(counterOtp.purpose,'MANAGE_SCHEDULE');
   assert.equal(counterOtp.destination===initialContact,true);
   await fill(scheduleInput,counterOtp.code);
-  await clickButton('Кодты тексеру');
+  await clickButton('Кодты тексеру',schedulePanel);
   await waitForUi('document.body.textContent.includes("Қайта жоспарлау рұқсаты расталды.")','counterproposal access verified');
-  await clickButton('Уақыт ұсынысын көру');
+  await clickButton('Уақыт ұсынысын көру',schedulePanel);
   await waitForUi('document.body.textContent.includes("Орындаушы ұсынды")','seller counterproposal visible');
-  await clickButton('Растау');
+  await clickButton('Растау',schedulePanel);
   await waitForUi('document.body.textContent.includes("Белсенді ұсыныс жоқ.")','confirmed proposal removed from active UI');
   assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'ACCEPTED',version:5});
   const uiConfirmedEvents=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.schedule_confirmed' GROUP BY topic",[browserRequestId]);
   assert.deepEqual(uiConfirmedEvents.rows,[{topic:'service_request.schedule_confirmed',n:1}]);
   console.log('Live CI Chrome guest confirms seller counterproposal through actual UI PASS');
+  // Refresh the receipt to bind completion to the confirmed request version.
+  await clickButton('Күйін жаңарту');
+  await waitForUi('document.body.textContent.includes("Жаңарту нұсқасы: 5")','completion bound to current version');
+  // Fourth OTP for this contact: simulate passage beyond the shared hourly
+  // quota window for the two consumed schedule challenges, not just cooldown.
+  // Keep the daily budget and all production quota enforcement unchanged.
+  const agedCompletionUi=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '65 minutes'
+   WHERE request_id=$1 AND purpose='MANAGE_SCHEDULE' AND consumed_at IS NOT NULL`,[browserRequestId]);
+  assert.equal(agedCompletionUi.rowCount,2);
+  const completionPanel='section[aria-label="Қызметтің аяқталғанын растау"]';
+  const clickCompletion=async(label)=>{
+   const clicked=await evaluate(`(()=>{const panel=document.querySelector(${JSON.stringify(completionPanel)});const b=Array.from(panel?.querySelectorAll('button')??[]).find(x=>x.textContent.trim()===${JSON.stringify(label)}&&!x.disabled);if(!b)return false;b.click();return true;})()`);
+   assert.equal(clicked,true,'enabled completion UI button: '+label);
+  };
+  await clickCompletion('Растау кодын сұрау');
+  const completionInput='#guest-completion-code-'+browserRequestId;
+  await waitForUi('!!document.querySelector('+JSON.stringify(completionInput)+')','completion OTP UI');
+  const uiCompletionOtp=JSON.parse(await readFile(codeFile,'utf8'));
+  assert.equal(uiCompletionOtp.purpose,'COMPLETE_REQUEST');
+  assert.equal(uiCompletionOtp.destination===initialContact,true);
+  await fill(completionInput,uiCompletionOtp.code);
+  await clickCompletion('Кодты тексеру');
+  await waitForUi('Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="Қызмет аяқталды деп растау"&&!x.disabled)','completion verified UI');
+  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'ACCEPTED',version:5});
+  await clickCompletion('Қызмет аяқталды деп растау');
+  await waitForUi('document.body.textContent.includes("Қызмет аяқталғаны расталды.")','completion committed UI');
+  await clickCompletion('Күйді жаңарту');
+  await waitForUi('Array.from(document.querySelectorAll("[role=status]")).some(x=>x.textContent.trim()==="Қызмет аяқталды")','completed receipt status');
+  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'COMPLETED',version:6});
+  const uiCompletionEvents=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.completed' GROUP BY topic",[browserRequestId]);
+  assert.deepEqual(uiCompletionEvents.rows,[{topic:'service_request.completed',n:1}]);
+  console.log('Live CI Chrome guest completes service through actual UI PASS');
+
 
   await send('Network.deleteCookies',{name:'__Host-services_guest_schedule',url:ingress});
   console.log('Live CI Chrome guest schedule OTP and active schedule UI PASS');
