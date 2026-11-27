@@ -402,6 +402,36 @@ try{
   const uiConfirmedEvents=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.schedule_confirmed' GROUP BY topic",[browserRequestId]);
   assert.deepEqual(uiConfirmedEvents.rows,[{topic:'service_request.schedule_confirmed',n:1}]);
   console.log('Live CI Chrome guest confirms seller counterproposal through actual UI PASS');
+  // Refresh the receipt to bind completion to the confirmed request version.
+  await clickButton('Күйін жаңарту');
+  await waitForUi('document.body.textContent.includes("Жаңарту нұсқасы: 5")','completion bound to current version');
+  const agedCompletionUi=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '10 minutes'
+   WHERE request_id=$1 AND purpose='MANAGE_SCHEDULE' AND consumed_at IS NOT NULL`,[browserRequestId]);
+  assert.equal(agedCompletionUi.rowCount,2);
+  const completionPanel='section[aria-label="Қызметтің аяқталғанын растау"]';
+  const clickCompletion=async(label)=>{
+   const clicked=await evaluate(`(()=>{const panel=document.querySelector(${JSON.stringify(completionPanel)});const b=Array.from(panel?.querySelectorAll('button')??[]).find(x=>x.textContent.trim()===${JSON.stringify(label)}&&!x.disabled);if(!b)return false;b.click();return true;})()`);
+   assert.equal(clicked,true,'enabled completion UI button: '+label);
+  };
+  await clickCompletion('Растау кодын сұрау');
+  const completionInput='#guest-completion-code-'+browserRequestId;
+  await waitForUi('!!document.querySelector('+JSON.stringify(completionInput)+')','completion OTP UI');
+  const uiCompletionOtp=JSON.parse(await readFile(codeFile,'utf8'));
+  assert.equal(uiCompletionOtp.purpose,'COMPLETE_REQUEST');
+  assert.equal(uiCompletionOtp.destination===initialContact,true);
+  await fill(completionInput,uiCompletionOtp.code);
+  await clickCompletion('Кодты тексеру');
+  await waitForUi('Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="Қызмет аяқталды деп растау"&&!x.disabled)','completion verified UI');
+  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'ACCEPTED',version:5});
+  await clickCompletion('Қызмет аяқталды деп растау');
+  await waitForUi('document.body.textContent.includes("Қызмет аяқталғаны расталды.")','completion committed UI');
+  await clickCompletion('Күйді жаңарту');
+  await waitForUi('Array.from(document.querySelectorAll("[role=status]")).some(x=>x.textContent.trim()==="Қызмет аяқталды")','completed receipt status');
+  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'COMPLETED',version:6});
+  const uiCompletionEvents=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.completed' GROUP BY topic",[browserRequestId]);
+  assert.deepEqual(uiCompletionEvents.rows,[{topic:'service_request.completed',n:1}]);
+  console.log('Live CI Chrome guest completes service through actual UI PASS');
+
 
   await send('Network.deleteCookies',{name:'__Host-services_guest_schedule',url:ingress});
   console.log('Live CI Chrome guest schedule OTP and active schedule UI PASS');
