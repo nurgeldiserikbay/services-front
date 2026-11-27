@@ -130,9 +130,9 @@ function ReceiptStatusView({locale,requestId,serviceOfferId,completionEnabled=fa
     {version!==null&&state!==null&&<>
       <small>{t.version}: {version}</small>
       <RequestTimeline state={state} locale={locale}/>
-      {scheduleEnabled&&state==='accepted'&&<GuestRequestSchedule key={requestId+'|'+version+'|'+completionRefreshEpoch} locale={locale} requestId={requestId}/>}
+      {scheduleEnabled&&state==='accepted'&&<GuestRequestSchedule key={'schedule|'+requestId+'|'+version+'|'+completionRefreshEpoch} locale={locale} requestId={requestId}/>}
       {completionEnabled&&state==='accepted'&&<GuestRequestCompletion
-        key={requestId+'|'+version+'|'+completionRefreshEpoch} locale={locale} requestId={requestId}
+        key={'completion|'+requestId+'|'+version+'|'+completionRefreshEpoch} locale={locale} requestId={requestId}
         version={version} onRefresh={refresh}/>}
     </>}
     {error&&<p role="alert" className={styles.error}>{t.error}</p>}
