@@ -106,7 +106,12 @@ test('CI requires OTP bootstrap with provider disabled and no public verificatio
  assert.ok(workflow.indexOf('Verify guest OTP bootstrap CSRF and unavailable-provider isolation')>
   workflow.indexOf('Start isolated feature-enabled private BFF without real login'));
  assert.ok(workflow.includes('steps.otp_bootstrap_e2e.outcome'));
- assert.ok(!workflow.includes('SERVICES_ENABLE_GUEST_OTP_HTTP=enabled'));
+ const backendFixture=workflow.split('      - name: Start isolated CI-only backend with captured completion OTP delivery\n')[1]?.split('\n      - name:')[0];
+ assert.ok(backendFixture,'missing isolated OTP backend fixture');
+ assert.match(backendFixture,/SERVICES_TEST_OTP_DELIVERY=fixture/);
+ assert.match(backendFixture,/SERVICES_ENABLE_GUEST_OTP_HTTP=enabled/);
+ assert.match(backendFixture,/node test\/guest-completion-ci-server\.mjs/);
+ assert.ok(!workflow.replace(backendFixture,'').includes('SERVICES_ENABLE_GUEST_OTP_HTTP=enabled'));
  // Verification is allowed only in the isolated loopback guest UI fixture.
  const isolated=workflow.split('      - name: Start isolated feature-enabled guest completion Next.js BFF\n')[1]?.split('\n      - name:')[0];
  assert.ok(isolated,'missing isolated guest UI fixture');

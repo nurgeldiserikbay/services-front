@@ -410,6 +410,9 @@ jobs:
           (
             cd services-back
             SERVICES_TEST_OTP_DELIVERY=fixture \
+            SERVICES_ENABLE_GUEST_OTP_HTTP=enabled \
+            SERVICES_ENABLE_GUEST_CREATE_HTTP=enabled \
+            SERVICES_ENABLE_GUEST_STATUS_HTTP=enabled \
             SERVICES_GUEST_COMPLETION_CODE_FILE="$RUNNER_TEMP/services-guest-completion-otp.json" \
             SERVICES_ENABLE_GUEST_COMPLETION_HTTP=enabled \
             SERVICES_ENABLE_GUEST_SCHEDULE_HTTP=enabled \
