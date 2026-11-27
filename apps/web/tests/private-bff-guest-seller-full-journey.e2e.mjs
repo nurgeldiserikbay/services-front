@@ -259,6 +259,35 @@ try{
     body:${JSON.stringify(JSON.stringify(payload))}});
    return {status:response.status,body:await response.json()};
   })()`);
+  // Exercise initial OTP in a separate disposable contact, without seeding
+  // its challenge or CREATE_REQUEST cookie. Preserve the existing lifecycle.
+  const initialContact='ci-create-'+randomBytes(8).toString('hex')+'@example.org';
+  const initialBootstrap=await evaluate(`(async()=>{
+   const response=await fetch('/api/guest-requests/challenges/start',{cache:'no-store'});
+   return {status:response.status,body:await response.json(),cache:response.headers.get('cache-control')};
+  })()`);
+  assert.equal(initialBootstrap.status,200,'Chrome initial OTP bootstrap');
+  assert.match(initialBootstrap.cache??'',/no-store/);
+  const initialStart=await browserPost('/api/guest-requests/challenges/start',{
+   channel:'email',contact:initialContact,locale:'kk',csrf_token:initialBootstrap.body.csrf_token,
+  });
+  assert.equal(initialStart.status,202,'Chrome initial OTP issuance through isolated signer');
+  assert.deepEqual(Object.keys(initialStart.body).sort(),['challenge_id','csrf_token','expires_in']);
+  const initialOtp=JSON.parse(await readFile(codeFile,'utf8'));
+  assert.equal(initialOtp.purpose,'CREATE_REQUEST');
+  assert.equal(initialOtp.destination,initialContact);
+  assert.match(initialOtp.code,/^[0-9]{6}$/);
+  const initialVerified=await browserPost('/api/guest-requests/challenges/verify',{
+   challenge_id:initialStart.body.challenge_id,code:initialOtp.code,csrf_token:initialStart.body.csrf_token,
+  });
+  assert.equal(initialVerified.status,200,'Chrome initial OTP verification');
+  assert.deepEqual(Object.keys(initialVerified.body).sort(),['csrf_token','verified']);
+  assert.equal(initialVerified.body.verified,true);
+  const initialCookies=await send('Network.getCookies',{urls:[ingress]});
+  assert.ok(initialCookies.cookies.some(x=>x.name==='__Host-services_guest_create'&&x.httpOnly&&x.secure));
+  assert.equal(await evaluate("document.cookie.includes('__Host-services_guest_create')"),false);
+  await send('Network.deleteCookies',{name:'__Host-services_guest_create',url:ingress});
+  console.log('Live CI Chrome initial CREATE_REQUEST OTP issuance and verification PASS');
   const started=await browserPost(scheduleAccess+'/challenges',{locale:'kk'},
    {'X-Services-Network-Proof':signNetwork()});
   assert.equal(started.status,202,'Chrome schedule OTP start');
