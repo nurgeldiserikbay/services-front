@@ -327,6 +327,14 @@ try{
   assert.equal(browserStatus.body.id,browserRequestId);
   assert.equal(browserStatus.body.state,'pending');
   assert.ok(!JSON.stringify(browserStatus.body).includes('PRIVATE CHROME CREATE NOTE'));
+  // Seller commits a decision for the request created by the real wizard.
+  const browserAccepted=await sellerAccept(browserRequestId,sellerSealed.csrf,1,randomUUID());
+  assert.equal(browserAccepted.status,200,'seller accepts browser-created request');
+  await clickButton('Күйін жаңарту');
+  await waitForUi('Array.from(document.querySelectorAll("section[aria-label]")).some(x=>x.getAttribute("aria-label")==="Өтінімнің қазіргі күйі"&&x.querySelector("[role=status]")?.textContent.trim()==="Орындаушы қабылдады")','accepted decision rendered in actual receipt UI');
+  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'ACCEPTED',version:2});
+  assert.ok(await evaluate('Array.from(document.querySelectorAll("section[aria-label]")).some(x=>x.getAttribute("aria-label")==="Қызмет уақытын өзгерту")'),'accepted receipt exposes schedule UI');
+  console.log('Live CI Chrome guest receipt refresh after seller acceptance PASS');
   // Restore the original request cookie for the independent schedule lifecycle.
   const restored=await send('Network.setCookie',{name:'__Host-services_guest_request',
    value:accessCookie.slice(accessCookie.indexOf('=')+1),url:ingress,path:'/',secure:true,httpOnly:true,sameSite:'Strict'});
