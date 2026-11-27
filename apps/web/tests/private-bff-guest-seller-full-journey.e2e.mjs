@@ -369,6 +369,40 @@ try{
   const uiEvents=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.schedule_proposed' GROUP BY topic",[browserRequestId]);
   assert.deepEqual(uiEvents.rows,[{topic:'service_request.schedule_proposed',n:1}]);
   console.log('Live CI Chrome guest schedule proposal actual UI PASS');
+  const uiCounterSlot=new Date(uiSlot.getTime()+86400000);
+  const uiCounterBody={start_at:uiCounterSlot.toISOString(),end_at:new Date(uiCounterSlot.getTime()+3600000).toISOString(),
+   timezone:'Asia/Almaty',local_start_at:wall(uiCounterSlot)+':00',utc_offset_seconds:18000};
+  const uiCounter=await fetch(new URL('/api/account/requests/'+browserRequestId+'/schedule-proposals',base),{
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+   headers:{Cookie:sellerCookie,Origin:'https://services.example.test','Sec-Fetch-Site':'same-origin',
+    'X-Services-CSRF':sellerSealed.csrf,'If-Match':'"3"','Idempotency-Key':randomUUID(),'Content-Type':'application/json'},
+   body:JSON.stringify(uiCounterBody),
+  });
+  assert.equal(uiCounter.status,201,'seller counterproposal committed');
+  const uiCounterReceipt=await uiCounter.json();
+  assert.equal(uiCounterReceipt.request_version,4);
+  await clickButton('Күйін жаңарту');
+  await waitForUi('Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="Растау кодын сұрау"&&!x.disabled)','fresh schedule UI after version refresh');
+  const agedScheduleUi=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '10 minutes'
+   WHERE request_id=$1 AND purpose='MANAGE_SCHEDULE' AND consumed_at IS NOT NULL`,[browserRequestId]);
+  assert.equal(agedScheduleUi.rowCount,1);
+  await clickButton('Растау кодын сұрау');
+  await waitForUi('!!document.querySelector('+JSON.stringify(scheduleInput)+')','counterproposal OTP UI');
+  const counterOtp=JSON.parse(await readFile(codeFile,'utf8'));
+  assert.equal(counterOtp.purpose,'MANAGE_SCHEDULE');
+  assert.equal(counterOtp.destination===initialContact,true);
+  await fill(scheduleInput,counterOtp.code);
+  await clickButton('Кодты тексеру');
+  await waitForUi('document.body.textContent.includes("Қайта жоспарлау рұқсаты расталды.")','counterproposal access verified');
+  await clickButton('Уақыт ұсынысын көру');
+  await waitForUi('document.body.textContent.includes("Орындаушы ұсынды")','seller counterproposal visible');
+  await clickButton('Растау');
+  await waitForUi('document.body.textContent.includes("Белсенді ұсыныс жоқ.")','confirmed proposal removed from active UI');
+  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'ACCEPTED',version:5});
+  const uiConfirmedEvents=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.schedule_confirmed' GROUP BY topic",[browserRequestId]);
+  assert.deepEqual(uiConfirmedEvents.rows,[{topic:'service_request.schedule_confirmed',n:1}]);
+  console.log('Live CI Chrome guest confirms seller counterproposal through actual UI PASS');
+
   await send('Network.deleteCookies',{name:'__Host-services_guest_schedule',url:ingress});
   console.log('Live CI Chrome guest schedule OTP and active schedule UI PASS');
   // Restore the original request cookie for the independent schedule lifecycle.
