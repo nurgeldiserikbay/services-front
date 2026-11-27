@@ -335,6 +335,26 @@ try{
   assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'ACCEPTED',version:2});
   assert.ok(await evaluate('Array.from(document.querySelectorAll("section[aria-label]")).some(x=>x.getAttribute("aria-label")==="Қызмет уақытын өзгерту")'),'accepted receipt exposes schedule UI');
   console.log('Live CI Chrome guest receipt refresh after seller acceptance PASS');
+  // Age only the verified initial challenge for this disposable UI contact.
+  const uiDigest=createHmac('sha256',guestBackendKey).update('guest-contact:v1\0').update('email\0'+initialContact).digest('hex');
+  const agedUi=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '10 minutes'
+   WHERE purpose='CREATE_REQUEST' AND guest_contact_id IN (SELECT id FROM guest_contacts WHERE digest=$1)`,[uiDigest]);
+  assert.equal(agedUi.rowCount,1);
+  await clickButton('Растау кодын сұрау');
+  const scheduleInput='#guest-schedule-code-'+browserRequestId;
+  await waitForUi('!!document.querySelector('+JSON.stringify(scheduleInput)+')','schedule OTP UI rendered');
+  const uiScheduleOtp=JSON.parse(await readFile(codeFile,'utf8'));
+  assert.equal(uiScheduleOtp.purpose,'MANAGE_SCHEDULE');
+  assert.equal(uiScheduleOtp.destination===initialContact,true);
+  await fill(scheduleInput,uiScheduleOtp.code);
+  await clickButton('Кодты тексеру');
+  await waitForUi('document.body.textContent.includes("Қайта жоспарлау рұқсаты расталды.")','schedule OTP verified in UI');
+  const uiScheduleCookies=await send('Network.getCookies',{urls:[ingress]});
+  assert.ok(uiScheduleCookies.cookies.some(x=>x.name==='__Host-services_guest_schedule'&&x.httpOnly&&x.secure));
+  await clickButton('Уақыт ұсынысын көру');
+  await waitForUi('!Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="Уақыт ұсынысын көру")','active schedule loaded in actual UI');
+  await send('Network.deleteCookies',{name:'__Host-services_guest_schedule',url:ingress});
+  console.log('Live CI Chrome guest schedule OTP and active schedule UI PASS');
   // Restore the original request cookie for the independent schedule lifecycle.
   const restored=await send('Network.setCookie',{name:'__Host-services_guest_request',
    value:accessCookie.slice(accessCookie.indexOf('=')+1),url:ingress,path:'/',secure:true,httpOnly:true,sameSite:'Strict'});
