@@ -276,6 +276,25 @@ try{
   assert.deepEqual(result.body,{request_id:createdRequest,request_version:2,actor:'customer',can_propose:true,proposal:null});
   assert.equal(result.cookieVisible,false,'guest auth cookies must not be visible to JavaScript');
   console.log('Live CI Chrome guest scoped schedule transport PASS');
+  // Remove only the schedule capability from the browser; READ_CANCEL
+  // must remain insufficient even when Chrome supplies valid fetch metadata.
+  await send('Network.deleteCookies',{name:'__Host-services_guest_schedule',url:ingress});
+  const denied=await evaluate(`(async()=>{
+   const response=await fetch(${JSON.stringify(scheduleUrl+'/active')},{method:'POST',
+    headers:{'Content-Type':'application/json','X-Services-CSRF':${JSON.stringify(guestCsrf)}},body:'{}'});
+   return response.status;
+  })()`);
+  assert.ok(denied>=400&&denied<500||denied===503,'Chrome READ_CANCEL must not authorize schedule access');
+  // Bootstrap must still work with the original request-scoped cookie.
+  const bootstrap=await evaluate(`(async()=>{
+   const response=await fetch(${JSON.stringify(scheduleAccess+'/bootstrap')},{cache:'no-store'});
+   return {status:response.status,body:await response.json(),cache:response.headers.get('cache-control')};
+  })()`);
+  assert.equal(bootstrap.status,200);
+  assert.deepEqual(bootstrap.body,{csrf_token:guestCsrf});
+  assert.match(bootstrap.cache??'',/no-store/);
+  console.log('Live CI Chrome guest schedule scope separation and bootstrap PASS');
+
  }finally{
   ws?.close();browser.kill('SIGTERM');
   await rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:100});
