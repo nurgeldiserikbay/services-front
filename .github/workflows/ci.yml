@@ -506,8 +506,14 @@ jobs:
           exit 1
       - name: Start isolated guest schedule browser ingress
         run: |
+          GUEST_NETWORK_ATTESTATION_KEY_FILE="$RUNNER_TEMP/services-guest-network-attestation-key" \
           node --input-type=module <<'NODE' > "$RUNNER_TEMP/services-guest-schedule-ingress.log" 2>&1 &
           import http from 'node:http';
+          import fs from 'node:fs';
+          import {createHmac,randomBytes} from 'node:crypto';
+          const networkKey=Buffer.from(fs.readFileSync(process.env.GUEST_NETWORK_ATTESTATION_KEY_FILE,'utf8').trim(),'base64');
+          if(process.env.CI!=='true'||networkKey.length!==32)throw Error('invalid CI browser signer');
+          const networkDigest=randomBytes(32).toString('hex');
           const server=http.createServer((req,res)=>{
             const headers={...req.headers,host:'127.0.0.1:3003'};
             // CI-only origin translation, limited to same-origin guest schedule mutations.
@@ -517,6 +523,13 @@ jobs:
                headers.origin==='http://127.0.0.1:3013' &&
                headers['sec-fetch-site']==='same-origin'){
               headers.origin='https://services.example.test';
+              // Sign only exact schedule issuance; never trust a browser-supplied proof.
+              if(/^\/api\/guest-requests\/[0-9a-f-]+\/schedule-access\/challenges$/.test(req.url)){
+                delete headers['x-services-network-proof'];
+                const ts=String(Date.now());
+                const signature=createHmac('sha256',networkKey).update('services-otp-network:v1\n'+networkDigest+'\n'+ts).digest('hex');
+                headers['x-services-network-proof']='v1.'+networkDigest+'.'+ts+'.'+signature;
+              }
             }
             const upstream=http.request({hostname:'127.0.0.1',port:3003,path:req.url,method:req.method,headers,timeout:10000},reply=>{
               res.writeHead(reply.statusCode,reply.headers);reply.pipe(res);
