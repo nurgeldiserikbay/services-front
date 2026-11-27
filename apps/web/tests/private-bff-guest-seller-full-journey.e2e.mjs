@@ -219,6 +219,67 @@ try{
  const scheduleCookie=scheduleVerified.headers.getSetCookie().find(x=>x.startsWith('__Host-services_guest_schedule='))?.split(';')[0];
  assert.ok(scheduleCookie);
  assert.match(scheduleVerified.headers.getSetCookie().join(' '),/httponly/i);
+ // Verify real Chrome can carry the scoped HttpOnly cookies through the
+ // isolated browser ingress. This is a browser transport gate, not UI acceptance.
+ const {spawn}=await import('node:child_process');
+ const {mkdtemp,rm}=await import('node:fs/promises');
+ const {tmpdir}=await import('node:os');
+ const profile=await mkdtemp(join(tmpdir(),'services-guest-chrome-'));
+ const browser=spawn(process.env.CHROME_BIN??'google-chrome',[
+  '--headless=new','--no-sandbox','--disable-dev-shm-usage',
+  '--remote-debugging-port=0','--user-data-dir='+profile,'about:blank',
+ ],{stdio:'ignore'});
+ let ws;
+ try{
+  let port;
+  for(let i=0;i<200&&!port;i++){
+   try{port=Number((await readFile(join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0]);}catch{}
+   if(!port)await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  assert.ok(port,'guest Chrome DevTools startup');
+  const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
+  ws=new WebSocket(targets.find(x=>x.type==='page').webSocketDebuggerUrl);
+  await new Promise((resolve,reject)=>{ws.addEventListener('open',resolve,{once:true});ws.addEventListener('error',reject,{once:true});});
+  let sequence=0;
+  const send=(method,params={})=>new Promise((resolve,reject)=>{
+   const id=++sequence;
+   const timer=setTimeout(()=>{ws.removeEventListener('message',receive);reject(Error('Chrome timeout: '+method));},10000);
+   function receive(event){const response=JSON.parse(event.data);if(response.id!==id)return;
+    clearTimeout(timer);ws.removeEventListener('message',receive);
+    if(response.error)reject(Error(response.error.message));else resolve(response.result);}
+   ws.addEventListener('message',receive);ws.send(JSON.stringify({id,method,params}));
+  });
+  const ingress='http://127.0.0.1:3013';
+  for(const cookie of [accessCookie,scheduleCookie]){
+   const separator=cookie.indexOf('=');
+   const result=await send('Network.setCookie',{name:cookie.slice(0,separator),value:cookie.slice(separator+1),
+    url:ingress,path:'/',secure:true,httpOnly:true,sameSite:'Strict'});
+   assert.equal(result.success,true);
+  }
+  await send('Page.navigate',{url:ingress+'/kk'});
+  const evaluate=async expression=>{
+   const result=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});
+   assert.ok(!result.exceptionDetails,'guest Chrome evaluation failed');return result.result.value;
+  };
+  let ready=false;
+  for(let i=0;i<100&&!ready;i++){
+   try{ready=await evaluate('location.origin==='+JSON.stringify(ingress)+'&&document.readyState==="complete"');}catch{}
+   if(!ready)await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  assert.equal(ready,true);
+  const result=await evaluate(`(async()=>{
+   const response=await fetch(${JSON.stringify(scheduleUrl+'/active')},{method:'POST',
+    headers:{'Content-Type':'application/json','X-Services-CSRF':${JSON.stringify(guestCsrf)}},body:'{}'});
+   return {status:response.status,body:await response.json(),cookieVisible:document.cookie.includes('__Host-services_guest_')};
+  })()`);
+  assert.equal(result.status,200,'Chrome scoped schedule read');
+  assert.deepEqual(result.body,{request_id:createdRequest,request_version:2,actor:'customer',can_propose:true,proposal:null});
+  assert.equal(result.cookieVisible,false,'guest auth cookies must not be visible to JavaScript');
+  console.log('Live CI Chrome guest scoped schedule transport PASS');
+ }finally{
+  ws?.close();browser.kill('SIGTERM');
+  await rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:100});
+ }
  const scheduleRead=await schedulePost(scheduleUrl+'/active',{},accessCookie+'; '+scheduleCookie);
  assert.equal(scheduleRead.status,200,'verified guest active schedule read');
  assert.deepEqual(await scheduleRead.json(),{request_id:createdRequest,request_version:2,actor:'customer',can_propose:true,proposal:null});
