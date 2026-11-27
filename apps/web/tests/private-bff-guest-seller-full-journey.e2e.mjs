@@ -408,7 +408,10 @@ try{
   // Refresh the receipt to bind completion to the confirmed request version.
   await clickButton('Күйін жаңарту');
   await waitForUi('document.body.textContent.includes("Жаңарту нұсқасы: 5")','completion bound to current version');
-  const agedCompletionUi=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '10 minutes'
+  // Fourth OTP for this contact: simulate passage beyond the shared hourly
+  // quota window for the two consumed schedule challenges, not just cooldown.
+  // Keep the daily budget and all production quota enforcement unchanged.
+  const agedCompletionUi=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '65 minutes'
    WHERE request_id=$1 AND purpose='MANAGE_SCHEDULE' AND consumed_at IS NOT NULL`,[browserRequestId]);
   assert.equal(agedCompletionUi.rowCount,2);
   const completionPanel='section[aria-label="Қызметтің аяқталғанын растау"]';
