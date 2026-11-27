@@ -431,19 +431,32 @@ jobs:
           exit 1
       - name: Start isolated HTTPS completion backend bridge
         run: |
+          GUEST_NETWORK_ATTESTATION_KEY_FILE="$RUNNER_TEMP/services-guest-network-attestation-key" \
           TLS_KEY="$RUNNER_TEMP/api.key" TLS_CERT="$RUNNER_TEMP/api.crt" \
             node --input-type=module <<'NODE' &
           import fs from 'node:fs';
           import http from 'node:http';
           import https from 'node:https';
+          import {createHmac,randomBytes} from 'node:crypto';
+          const networkKey=Buffer.from(fs.readFileSync(process.env.GUEST_NETWORK_ATTESTATION_KEY_FILE,'utf8').trim(),'base64');
+          if(networkKey.length!==32||process.env.CI!=='true')throw Error('invalid isolated CI signer');
+          const networkDigest=randomBytes(32).toString('hex');
           const server=https.createServer({
             key:fs.readFileSync(process.env.TLS_KEY),
             cert:fs.readFileSync(process.env.TLS_CERT),
           },(request,response)=>{
+            const headers={...request.headers,host:'127.0.0.1:3103'};
+            // Only this isolated backend bridge signs initial OTP requests.
+            if(request.method==='POST'&&request.url==='/v1/guest-requests/challenges'){
+              delete headers['x-services-network-proof'];
+              const timestamp=String(Date.now());
+              const signature=createHmac('sha256',networkKey).update('services-otp-network:v1\n'+networkDigest+'\n'+timestamp).digest('hex');
+              headers['x-services-network-proof']='v1.'+networkDigest+'.'+timestamp+'.'+signature;
+            }
             const upstream=http.request({
               hostname:'127.0.0.1',port:3103,path:request.url,
               method:request.method,
-              headers:{...request.headers,host:'127.0.0.1:3103'},
+              headers,
               timeout:10000,
             },upstreamResponse=>{
               response.writeHead(upstreamResponse.statusCode??502,upstreamResponse.headers);
@@ -499,7 +512,8 @@ jobs:
             const headers={...req.headers,host:'127.0.0.1:3003'};
             // CI-only origin translation, limited to same-origin guest schedule mutations.
             if(req.method==='POST' &&
-               /^\/api\/guest-requests\/[0-9a-f-]+\/(?:schedule-access\/challenges(?:\/[0-9a-f-]+\/verify)?|schedule-proposals(?:\/active|\/[0-9a-f-]+\/(?:confirm|decline))?)$/.test(req.url) &&
+               (/^\/api\/guest-requests(?:\/challenges\/(?:start|verify))?$/.test(req.url) ||
+               /^\/api\/guest-requests\/[0-9a-f-]+\/(?:schedule-access\/challenges(?:\/[0-9a-f-]+\/verify)?|schedule-proposals(?:\/active|\/[0-9a-f-]+\/(?:confirm|decline))?)$/.test(req.url)) &&
                headers.origin==='http://127.0.0.1:3013' &&
                headers['sec-fetch-site']==='same-origin'){
               headers.origin='https://services.example.test';
