@@ -286,6 +286,35 @@ try{
   const initialCookies=await send('Network.getCookies',{urls:[ingress]});
   assert.ok(initialCookies.cookies.some(x=>x.name==='__Host-services_guest_create'&&x.httpOnly&&x.secure));
   assert.equal(await evaluate("document.cookie.includes('__Host-services_guest_create')"),false);
+  // Use the browser-issued CREATE_REQUEST capability, not a seeded proof.
+  const browserCreation=await browserPost('/api/guest-requests',{
+   service_offer_id:ids.offer,consent_to_contact:true,note:'PRIVATE CHROME CREATE NOTE',
+   csrf_token:initialVerified.body.csrf_token,idempotency_key:'guest_'+randomBytes(16).toString('hex'),
+  });
+  assert.equal(browserCreation.status,201,'Chrome creates request using delivered OTP');
+  assert.equal(browserCreation.body.state,'pending');
+  const browserRequestId=browserCreation.body.id;
+  assert.match(browserRequestId,/^[a-f0-9-]{36}$/);
+  assert.notEqual(browserRequestId,createdRequest);
+  const browserPersisted=await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId]);
+  assert.deepEqual(browserPersisted.rows[0],{status:'PENDING',version:1});
+  const browserEvents=await db.query('SELECT topic,safe_payload FROM domain_outbox_events WHERE subject_id=$1',[browserRequestId]);
+  assert.deepEqual(browserEvents.rows,[{topic:'service_request.created',safe_payload:{}}]);
+  const browserReceiptCookies=await send('Network.getCookies',{urls:[ingress]});
+  assert.ok(browserReceiptCookies.cookies.some(x=>x.name==='__Host-services_guest_request'&&x.httpOnly&&x.secure));
+  const browserStatus=await evaluate(`(async()=>{
+   const response=await fetch(${JSON.stringify('/api/guest-requests/'+browserRequestId+'/status')},{cache:'no-store'});
+   return {status:response.status,body:await response.json()};
+  })()`);
+  assert.equal(browserStatus.status,200);
+  assert.equal(browserStatus.body.id,browserRequestId);
+  assert.equal(browserStatus.body.state,'pending');
+  assert.ok(!JSON.stringify(browserStatus.body).includes('PRIVATE CHROME CREATE NOTE'));
+  // Restore the original request cookie for the independent schedule lifecycle.
+  const restored=await send('Network.setCookie',{name:'__Host-services_guest_request',
+   value:accessCookie.slice(accessCookie.indexOf('=')+1),url:ingress,path:'/',secure:true,httpOnly:true,sameSite:'Strict'});
+  assert.equal(restored.success,true);
+  console.log('Live CI Chrome OTP-authorized request creation and committed status PASS');
   await send('Network.deleteCookies',{name:'__Host-services_guest_create',url:ingress});
   console.log('Live CI Chrome initial CREATE_REQUEST OTP issuance and verification PASS');
   const started=await browserPost(scheduleAccess+'/challenges',{locale:'kk'},
