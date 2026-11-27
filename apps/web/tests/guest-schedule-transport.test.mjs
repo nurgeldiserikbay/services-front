@@ -54,3 +54,27 @@ test('guest schedule cookie is purpose bound and expires independently of comple
  assert.equal(openGuestScheduleSession(key,'challenge',cookie,now),null);
  assert.equal(openGuestScheduleSession(key,'schedule',cookie,expiry),null);
 });
+
+test('guest browser active schedule parser rejects foreign, malformed and unsafe responses',async()=>{
+ const {readGuestActiveSchedule}=await import('../src/lib/customer-schedule-ui-core.mjs');
+ const proposal={id:randomUUID(),revision:2,initiator:'seller',can_resolve:true,
+  start_at:'2030-01-01T10:00:00.000Z',end_at:'2030-01-01T11:00:00.000Z',timezone:'Asia/Almaty'};
+ const view={request_id:requestId,request_version:5,actor:'customer',can_propose:true,proposal};
+ assert.deepEqual(await readGuestActiveSchedule(json(view),requestId),view);
+ assert.deepEqual(await readGuestActiveSchedule(json({...view,proposal:null}),requestId),{...view,proposal:null});
+ for(const bad of [
+  {...view,request_id:randomUUID()},{...view,actor:'seller'},{...view,request_version:0},
+  {...view,request_version:2147483648},{...view,extra:'unexpected'},
+  {...view,proposal:{...proposal,initiator:'customer'}},
+  {...view,proposal:{...proposal,can_resolve:false}},
+  {...view,can_propose:false},{...view,proposal:{...proposal,end_at:proposal.start_at}},
+  {...view,proposal:{...proposal,timezone:'x'.repeat(2049)}},
+ ])assert.equal(await readGuestActiveSchedule(json(bad),requestId),null);
+ for(const headers of [
+  {'Content-Type':'application/json','Cache-Control':'public, no-store'},
+  {'Content-Type':'application/json','Cache-Control':'private'},
+  {'Content-Type':'text/plain','Cache-Control':'no-store'},
+  {'Content-Type':'application/json','Cache-Control':'no-store','Content-Length':'2049'},
+ ])assert.equal(await readGuestActiveSchedule(new Response(JSON.stringify(view),{headers}),requestId),null);
+ assert.equal(await readGuestActiveSchedule(json(view,503),requestId),null);
+});
