@@ -353,6 +353,22 @@ try{
   assert.ok(uiScheduleCookies.cookies.some(x=>x.name==='__Host-services_guest_schedule'&&x.httpOnly&&x.secure));
   await clickButton('Уақыт ұсынысын көру');
   await waitForUi('!Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="Уақыт ұсынысын көру")','active schedule loaded in actual UI');
+  // Assert successful load, not merely disappearance of a loading control.
+  await waitForUi('document.body.textContent.includes("Белсенді ұсыныс жоқ.")','empty active schedule rendered');
+  assert.equal(await evaluate(`(()=>{const el=Array.from(document.querySelectorAll('summary')).find(x=>x.textContent.trim()==='Жаңа уақыт ұсыну');if(!el)return false;el.click();return true;})()`),true);
+  const uiSlot=new Date(Date.now()+7*86400000);uiSlot.setUTCMinutes(0,0,0);
+  const wall=(date)=>new Date(date.getTime()+18000000).toISOString().slice(0,16);
+  const uiStart=wall(uiSlot),uiEnd=wall(new Date(uiSlot.getTime()+3600000));
+  // Native datetime-local controls have locale-specific segments; set their
+  // DOM values, dispatch input/change, and submit through the real React form.
+  assert.equal(await evaluate(`(()=>{const a=document.querySelector('input[name=start]'),b=document.querySelector('input[name=end]');if(!a||!b)return false;a.value=${JSON.stringify(uiStart)};b.value=${JSON.stringify(uiEnd)};for(const el of [a,b]){el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}return a.validity.valid&&b.validity.valid;})()`),true);
+  await clickButton('Ұсынысты жіберу');
+  await waitForUi('document.body.textContent.includes("Клиент ұсынды")','guest proposal rendered');
+  assert.ok(await evaluate('document.body.textContent.includes("Сіз бұл ұсынысты қазір растай алмайсыз.")'),'own proposal cannot be confirmed');
+  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId])).rows[0],{status:'ACCEPTED',version:3});
+  const uiEvents=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.schedule_proposed' GROUP BY topic",[browserRequestId]);
+  assert.deepEqual(uiEvents.rows,[{topic:'service_request.schedule_proposed',n:1}]);
+  console.log('Live CI Chrome guest schedule proposal actual UI PASS');
   await send('Network.deleteCookies',{name:'__Host-services_guest_schedule',url:ingress});
   console.log('Live CI Chrome guest schedule OTP and active schedule UI PASS');
   // Restore the original request cookie for the independent schedule lifecycle.
