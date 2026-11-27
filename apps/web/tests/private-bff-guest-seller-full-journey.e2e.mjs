@@ -202,23 +202,7 @@ try{
  assert.equal(scheduleBootstrap.status,200);
  assert.deepEqual(await scheduleBootstrap.json(),{csrf_token:guestCsrf});
  assert.notEqual((await schedulePost(scheduleUrl+'/active',{})).status,200,'READ_CANCEL cannot read schedule');
- const scheduleStart=await schedulePost(scheduleAccess+'/challenges',{locale:'kk'},accessCookie,
-  {'X-Services-Network-Proof':signNetwork()});
- assert.equal(scheduleStart.status,202,'schedule OTP start');
- const scheduleChallenge=await scheduleStart.json();
- assert.deepEqual(Object.keys(scheduleChallenge),['challenge_id']);
- const scheduleChallengeCookie=scheduleStart.headers.getSetCookie().find(x=>x.startsWith('__Host-services_guest_schedule_challenge='))?.split(';')[0];
- assert.ok(scheduleChallengeCookie);
- const scheduleOtp=JSON.parse(await readFile(codeFile,'utf8'));
- assert.equal(scheduleOtp.purpose,'MANAGE_SCHEDULE');
- assert.equal(scheduleOtp.destination,originalContact);
- const scheduleVerified=await schedulePost(scheduleAccess+'/challenges/'+scheduleChallenge.challenge_id+'/verify',
-  {code:scheduleOtp.code},accessCookie+'; '+scheduleChallengeCookie);
- assert.equal(scheduleVerified.status,200,'schedule OTP verification');
- assert.deepEqual(await scheduleVerified.json(),{verified:true});
- const scheduleCookie=scheduleVerified.headers.getSetCookie().find(x=>x.startsWith('__Host-services_guest_schedule='))?.split(';')[0];
- assert.ok(scheduleCookie);
- assert.match(scheduleVerified.headers.getSetCookie().join(' '),/httponly/i);
+ let scheduleChallenge,scheduleCookie;
  // Verify real Chrome can carry the scoped HttpOnly cookies through the
  // isolated browser ingress. This is a browser transport gate, not UI acceptance.
  const {spawn}=await import('node:child_process');
@@ -250,7 +234,7 @@ try{
    ws.addEventListener('message',receive);ws.send(JSON.stringify({id,method,params}));
   });
   const ingress='http://127.0.0.1:3013';
-  for(const cookie of [accessCookie,scheduleCookie]){
+  for(const cookie of [accessCookie]){
    const separator=cookie.indexOf('=');
    const result=await send('Network.setCookie',{name:cookie.slice(0,separator),value:cookie.slice(separator+1),
     url:ingress,path:'/',secure:true,httpOnly:true,sameSite:'Strict'});
@@ -267,6 +251,31 @@ try{
    if(!ready)await new Promise(resolve=>setTimeout(resolve,100));
   }
   assert.equal(ready,true);
+  // The browser receives and stores both OTP cookies from actual HTTP responses.
+  // Only the initial request cookie is seeded by the fixture.
+  const browserPost=async(path,payload,extra={})=>evaluate(`(async()=>{
+   const response=await fetch(${JSON.stringify(path)},{method:'POST',
+    headers:${JSON.stringify({'Content-Type':'application/json','X-Services-CSRF':guestCsrf,...extra})},
+    body:${JSON.stringify(JSON.stringify(payload))}});
+   return {status:response.status,body:await response.json()};
+  })()`);
+  const started=await browserPost(scheduleAccess+'/challenges',{locale:'kk'},
+   {'X-Services-Network-Proof':signNetwork()});
+  assert.equal(started.status,202,'Chrome schedule OTP start');
+  scheduleChallenge=started.body;
+  assert.deepEqual(Object.keys(scheduleChallenge),['challenge_id']);
+  const otp=JSON.parse(await readFile(codeFile,'utf8'));
+  assert.equal(otp.purpose,'MANAGE_SCHEDULE');
+  assert.equal(otp.destination,originalContact);
+  assert.match(otp.code,/^[0-9]{6}$/);
+  const verified=await browserPost(scheduleAccess+'/challenges/'+scheduleChallenge.challenge_id+'/verify',{code:otp.code});
+  assert.equal(verified.status,200,'Chrome schedule OTP verification');
+  assert.deepEqual(verified.body,{verified:true});
+  const stored=await send('Network.getCookies',{urls:[ingress]});
+  const scoped=stored.cookies.find(x=>x.name==='__Host-services_guest_schedule');
+  assert.ok(scoped?.httpOnly&&scoped.secure,'Chrome must store server-issued secure HttpOnly schedule cookie');
+  scheduleCookie=scoped.name+'='+scoped.value;
+  console.log('Live CI Chrome schedule OTP issuance and verification PASS');
   const result=await evaluate(`(async()=>{
    const response=await fetch(${JSON.stringify(scheduleUrl+'/active')},{method:'POST',
     headers:{'Content-Type':'application/json','X-Services-CSRF':${JSON.stringify(guestCsrf)}},body:'{}'});
