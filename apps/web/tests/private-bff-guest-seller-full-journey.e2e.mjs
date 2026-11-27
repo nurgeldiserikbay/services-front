@@ -291,8 +291,9 @@ try{
    await send('Input.insertText',{text:value});
    assert.equal(await evaluate('document.querySelector('+JSON.stringify(selector)+').value')===value,true,'UI input populated');
   };
-  assert.equal(await evaluate(`(()=>{const label=Array.from(document.querySelectorAll('label')).find(x=>x.textContent.trim()==='Email');const radio=label?.querySelector('input[type=radio]');if(!radio)return false;radio.click();return true;})()`),true);
-  await waitForUi('document.querySelector("#guest-contact")?.type==="email"','email channel selected');
+  // SSR markup can precede React hydration. Retry this harmless selection
+  // until the controlled input reflects the change; never retry mutations.
+  await waitForUi(`(()=>{if(document.querySelector('#guest-contact')?.type==='email')return true;const label=Array.from(document.querySelectorAll('label')).find(x=>x.textContent.trim()==='Email');const radio=label?.querySelector('input[type=radio]');if(radio)radio.click();return false;})()`,'email channel selected after hydration');
   await fill('#guest-contact',initialContact);
   await fill('#guest-note','PRIVATE CHROME CREATE NOTE');
   assert.equal(await evaluate(`(()=>{const el=document.querySelector('#guest-contact').closest('form').querySelector('input[type=checkbox]');if(!el)return false;el.click();return el.checked;})()`),true);
