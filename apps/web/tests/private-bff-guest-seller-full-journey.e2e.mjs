@@ -273,38 +273,44 @@ try{
   assert.ok(await evaluate('Array.from(document.querySelectorAll("button")).some(b=>b.textContent.trim()==="Жалғастыру")'));
   console.log('Live CI Chrome published offer guest wizard render PASS');
   const initialContact='ci-create-'+randomBytes(8).toString('hex')+'@example.org';
-  const initialBootstrap=await evaluate(`(async()=>{
-   const response=await fetch('/api/guest-requests/challenges/start',{cache:'no-store'});
-   return {status:response.status,body:await response.json(),cache:response.headers.get('cache-control')};
-  })()`);
-  assert.equal(initialBootstrap.status,200,'Chrome initial OTP bootstrap');
-  assert.match(initialBootstrap.cache??'',/no-store/);
-  const initialStart=await browserPost('/api/guest-requests/challenges/start',{
-   channel:'email',contact:initialContact,locale:'kk',csrf_token:initialBootstrap.body.csrf_token,
-  });
-  assert.equal(initialStart.status,202,'Chrome initial OTP issuance through isolated signer');
-  assert.deepEqual(Object.keys(initialStart.body).sort(),['challenge_id','csrf_token','expires_in']);
+  // Drive real React controls instead of calling the BFF from test JavaScript.
+  const waitForUi=async(expression,label)=>{
+   for(let i=0;i<100;i++){
+    if(await evaluate(expression))return;
+    await new Promise(resolve=>setTimeout(resolve,100));
+   }
+   assert.fail(label);
+  };
+  const clickButton=async(label)=>{
+   const clicked=await evaluate(`(()=>{const b=Array.from(document.querySelectorAll('button')).find(x=>x.textContent.trim()===${JSON.stringify(label)}&&!x.disabled);if(!b)return false;b.click();return true;})()`);
+   assert.equal(clicked,true,'enabled UI button: '+label);
+  };
+  const fill=async(selector,value)=>{
+   assert.equal(await evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;el.focus();return true;})()`),true);
+   await send('Input.insertText',{text:value});
+   assert.equal(await evaluate('document.querySelector('+JSON.stringify(selector)+').value')===value,true,'UI input populated');
+  };
+  assert.equal(await evaluate(`(()=>{const label=Array.from(document.querySelectorAll('label')).find(x=>x.textContent.trim()==='Email');const radio=label?.querySelector('input[type=radio]');if(!radio)return false;radio.click();return true;})()`),true);
+  await waitForUi('document.querySelector("#guest-contact")?.type==="email"','email channel selected');
+  await fill('#guest-contact',initialContact);
+  await fill('#guest-note','PRIVATE CHROME CREATE NOTE');
+  assert.equal(await evaluate(`(()=>{const el=document.querySelector('#guest-contact').closest('form').querySelector('input[type=checkbox]');if(!el)return false;el.click();return el.checked;})()`),true);
+  await clickButton('Жалғастыру');
+  await waitForUi('!!document.querySelector("#guest-otp-code")','OTP step rendered after real delivery');
   const initialOtp=JSON.parse(await readFile(codeFile,'utf8'));
   assert.equal(initialOtp.purpose,'CREATE_REQUEST');
-  assert.equal(initialOtp.destination,initialContact);
-  assert.match(initialOtp.code,/^[0-9]{6}$/);
-  const initialVerified=await browserPost('/api/guest-requests/challenges/verify',{
-   challenge_id:initialStart.body.challenge_id,code:initialOtp.code,csrf_token:initialStart.body.csrf_token,
-  });
-  assert.equal(initialVerified.status,200,'Chrome initial OTP verification');
-  assert.deepEqual(Object.keys(initialVerified.body).sort(),['csrf_token','verified']);
-  assert.equal(initialVerified.body.verified,true);
+  assert.equal(initialOtp.destination===initialContact,true,'OTP delivered to UI contact');
+  assert.equal(/^[0-9]{6}$/.test(initialOtp.code),true);
+  await fill('#guest-otp-code',initialOtp.code);
+  await clickButton('Кодты тексеру');
+  await waitForUi('Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="Өтінімді жіберу"&&!x.disabled)','verified UI ready step');
   const initialCookies=await send('Network.getCookies',{urls:[ingress]});
   assert.ok(initialCookies.cookies.some(x=>x.name==='__Host-services_guest_create'&&x.httpOnly&&x.secure));
   assert.equal(await evaluate("document.cookie.includes('__Host-services_guest_create')"),false);
-  // Use the browser-issued CREATE_REQUEST capability, not a seeded proof.
-  const browserCreation=await browserPost('/api/guest-requests',{
-   service_offer_id:ids.offer,consent_to_contact:true,note:'PRIVATE CHROME CREATE NOTE',
-   csrf_token:initialVerified.body.csrf_token,idempotency_key:'guest_'+randomBytes(16).toString('hex'),
-  });
-  assert.equal(browserCreation.status,201,'Chrome creates request using delivered OTP');
-  assert.equal(browserCreation.body.state,'pending');
-  const browserRequestId=browserCreation.body.id;
+  assert.equal(await evaluate('!!document.querySelector(\'section[aria-label="Өтінім қабылданды"]\')'),false,'OTP alone cannot create receipt');
+  await clickButton('Өтінімді жіберу');
+  await waitForUi('!!document.querySelector(\'section[aria-label="Өтінім қабылданды"] strong\')','committed receipt rendered');
+  const browserRequestId=await evaluate('document.querySelector(\'section[aria-label="Өтінім қабылданды"] strong\').textContent.trim()');
   assert.match(browserRequestId,/^[a-f0-9-]{36}$/);
   assert.notEqual(browserRequestId,createdRequest);
   const browserPersisted=await db.query('SELECT status,version FROM service_requests WHERE id=$1',[browserRequestId]);
