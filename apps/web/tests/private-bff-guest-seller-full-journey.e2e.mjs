@@ -202,7 +202,7 @@ try{
  assert.equal(scheduleBootstrap.status,200);
  assert.deepEqual(await scheduleBootstrap.json(),{csrf_token:guestCsrf});
  assert.notEqual((await schedulePost(scheduleUrl+'/active',{})).status,200,'READ_CANCEL cannot read schedule');
- let scheduleChallenge,scheduleCookie;
+ let scheduleChallenge,scheduleCookie,proposed,offered;
  // Verify real Chrome can carry the scoped HttpOnly cookies through the
  // isolated browser ingress. This is a browser transport gate, not UI acceptance.
  const {spawn}=await import('node:child_process');
@@ -285,6 +285,76 @@ try{
   assert.deepEqual(result.body,{request_id:createdRequest,request_version:2,actor:'customer',can_propose:true,proposal:null});
   assert.equal(result.cookieVisible,false,'guest auth cookies must not be visible to JavaScript');
   console.log('Live CI Chrome guest scoped schedule transport PASS');
+ const scheduleRead=await schedulePost(scheduleUrl+'/active',{},accessCookie+'; '+scheduleCookie);
+ assert.equal(scheduleRead.status,200,'verified guest active schedule read');
+ assert.deepEqual(await scheduleRead.json(),{request_id:createdRequest,request_version:2,actor:'customer',can_propose:true,proposal:null});
+ assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[createdRequest])).rows[0]?.version,2);
+ console.log('Live CI guest schedule OTP and scoped active read PASS');
+ // Exercise both actors against the same committed guest request.
+ const scheduleCookies=accessCookie+'; '+scheduleCookie;
+ const guestMutation=async(suffix,version,payload={},key=randomUUID(),cookie=scheduleCookies)=>{
+  if(cookie!==scheduleCookies)return schedulePost(scheduleUrl+suffix,payload,cookie,{'If-Match':'"'+version+'"','Idempotency-Key':key});
+  const result=await browserPost(scheduleUrl+suffix,payload,{'If-Match':'"'+version+'"','Idempotency-Key':key});
+  return {status:result.status,json:async()=>result.body};
+ };
+ const sellerMutation=(suffix,version,payload={},key=randomUUID())=>fetch(
+  new URL('/api/account/requests/'+createdRequest+'/schedule-proposals'+suffix,base),{
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+   headers:{Cookie:sellerCookie,Origin:'https://services.example.test','Sec-Fetch-Site':'same-origin',
+    'X-Services-CSRF':sellerSealed.csrf,'If-Match':'"'+version+'"','Idempotency-Key':key,'Content-Type':'application/json'},
+   body:JSON.stringify(payload),
+  });
+ const slot=new Date(Date.now()+7*86400000);slot.setUTCMinutes(0,0,0);
+ const proposalBody={start_at:slot.toISOString(),end_at:new Date(slot.getTime()+3600000).toISOString(),
+  timezone:'Asia/Almaty',local_start_at:new Date(slot.getTime()+18000000).toISOString().slice(0,19),
+  utc_offset_seconds:18000};
+ assert.notEqual((await guestMutation('',2,proposalBody,randomUUID(),accessCookie)).status,201);
+ const proposalKey=randomUUID();
+ const proposedResponse=await guestMutation('',2,proposalBody,proposalKey);
+ assert.equal(proposedResponse.status,201,'guest proposes through scoped BFF');
+ proposed=await proposedResponse.json();
+ assert.equal(proposed.initiator,'customer');assert.equal(proposed.request_version,3);
+ const proposalReplay=await guestMutation('',2,proposalBody,proposalKey);
+ assert.equal(proposalReplay.status,201);
+ assert.deepEqual(await proposalReplay.json(),{...proposed,replayed:true});
+ const ownConfirm=await guestMutation('/'+proposed.id+'/confirm',3);
+ if(ownConfirm.status!==409){
+  const {openGuestScheduleSession}=await import('../src/lib/guest-schedule-session-core.mjs');
+  const proof=openGuestScheduleSession(guestWebKey,'schedule',scheduleCookie.split('=')[1]);
+  assert.ok(proof);
+  const direct=await fetch(new URL('/v1/requests/'+createdRequest+'/schedule-proposals/'+proposed.id+'/confirm','https://localhost:8445'),{
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(5000),
+   headers:{'Content-Type':'application/json','Guest-Capability':proof.value,'If-Match':'"3"','Idempotency-Key':randomUUID()},body:'{}',
+  });
+  console.error('CI schedule boundary diagnostic (no secrets)',{bffStatus:ownConfirm.status,backendStatus:direct.status});
+  if(direct.body)await direct.body.cancel().catch(()=>{});
+ }
+ assert.equal(ownConfirm.status,409,'guest cannot confirm own proposal');
+ const decline=await sellerMutation('/'+proposed.id+'/decline',3);
+ assert.equal(decline.status,200);assert.equal((await decline.json()).request_version,4);
+ const sellerProposal=await sellerMutation('',4,proposalBody);
+ assert.equal(sellerProposal.status,201);
+ offered=await sellerProposal.json();assert.equal(offered.initiator,'seller');assert.equal(offered.request_version,5);
+ const guestViewResult=await browserPost(scheduleUrl+'/active',{});
+ const guestView={status:guestViewResult.status,json:async()=>guestViewResult.body};
+ assert.equal(guestView.status,200);
+ const offeredView=await guestView.json();
+ assert.equal(offeredView.proposal.id,offered.id);assert.equal(offeredView.proposal.can_resolve,true);
+ assert.equal((await guestMutation('/'+offered.id+'/confirm',4)).status,409,'stale guest version denied');
+ const confirmKey=randomUUID();
+ const confirmedResponse=await guestMutation('/'+offered.id+'/confirm',5,{},confirmKey);
+ assert.equal(confirmedResponse.status,200);
+ const confirmed=await confirmedResponse.json();assert.equal(confirmed.status,'confirmed');assert.equal(confirmed.request_version,6);
+ const confirmReplay=await guestMutation('/'+offered.id+'/confirm',5,{},confirmKey);
+ assert.equal(confirmReplay.status,200);assert.deepEqual(await confirmReplay.json(),{...confirmed,replayed:true});
+ const afterScheduleResult=await browserPost(scheduleUrl+'/active',{});
+ const afterSchedule={status:afterScheduleResult.status,json:async()=>afterScheduleResult.body};
+ assert.equal(afterSchedule.status,200);assert.equal((await afterSchedule.json()).proposal,null);
+ assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[createdRequest])).rows[0]?.version,6);
+ const effects=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic LIKE 'service_request.schedule_%' GROUP BY topic ORDER BY topic",[createdRequest]);
+ assert.deepEqual(effects.rows,[{topic:'service_request.schedule_confirmed',n:1},{topic:'service_request.schedule_declined',n:1},{topic:'service_request.schedule_proposed',n:2}]);
+ console.log('Live CI guest proposal, seller decline, seller proposal, guest confirm and exact replay PASS');
+
   // Remove only the schedule capability from the browser; READ_CANCEL
   // must remain insufficient even when Chrome supplies valid fetch metadata.
   await send('Network.deleteCookies',{name:'__Host-services_guest_schedule',url:ingress});
@@ -308,71 +378,6 @@ try{
   ws?.close();browser.kill('SIGTERM');
   await rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:100});
  }
- const scheduleRead=await schedulePost(scheduleUrl+'/active',{},accessCookie+'; '+scheduleCookie);
- assert.equal(scheduleRead.status,200,'verified guest active schedule read');
- assert.deepEqual(await scheduleRead.json(),{request_id:createdRequest,request_version:2,actor:'customer',can_propose:true,proposal:null});
- assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[createdRequest])).rows[0]?.version,2);
- console.log('Live CI guest schedule OTP and scoped active read PASS');
- // Exercise both actors against the same committed guest request.
- const scheduleCookies=accessCookie+'; '+scheduleCookie;
- const guestMutation=(suffix,version,payload={},key=randomUUID(),cookie=scheduleCookies)=>schedulePost(
-  scheduleUrl+suffix,payload,cookie,{'If-Match':'"'+version+'"','Idempotency-Key':key});
- const sellerMutation=(suffix,version,payload={},key=randomUUID())=>fetch(
-  new URL('/api/account/requests/'+createdRequest+'/schedule-proposals'+suffix,base),{
-   method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
-   headers:{Cookie:sellerCookie,Origin:'https://services.example.test','Sec-Fetch-Site':'same-origin',
-    'X-Services-CSRF':sellerSealed.csrf,'If-Match':'"'+version+'"','Idempotency-Key':key,'Content-Type':'application/json'},
-   body:JSON.stringify(payload),
-  });
- const slot=new Date(Date.now()+7*86400000);slot.setUTCMinutes(0,0,0);
- const proposalBody={start_at:slot.toISOString(),end_at:new Date(slot.getTime()+3600000).toISOString(),
-  timezone:'Asia/Almaty',local_start_at:new Date(slot.getTime()+18000000).toISOString().slice(0,19),
-  utc_offset_seconds:18000};
- assert.notEqual((await guestMutation('',2,proposalBody,randomUUID(),accessCookie)).status,201);
- const proposalKey=randomUUID();
- const proposedResponse=await guestMutation('',2,proposalBody,proposalKey);
- assert.equal(proposedResponse.status,201,'guest proposes through scoped BFF');
- const proposed=await proposedResponse.json();
- assert.equal(proposed.initiator,'customer');assert.equal(proposed.request_version,3);
- const proposalReplay=await guestMutation('',2,proposalBody,proposalKey);
- assert.equal(proposalReplay.status,201);
- assert.deepEqual(await proposalReplay.json(),{...proposed,replayed:true});
- const ownConfirm=await guestMutation('/'+proposed.id+'/confirm',3);
- if(ownConfirm.status!==409){
-  const {openGuestScheduleSession}=await import('../src/lib/guest-schedule-session-core.mjs');
-  const proof=openGuestScheduleSession(guestWebKey,'schedule',scheduleCookie.split('=')[1]);
-  assert.ok(proof);
-  const direct=await fetch(new URL('/v1/requests/'+createdRequest+'/schedule-proposals/'+proposed.id+'/confirm','https://localhost:8445'),{
-   method:'POST',redirect:'manual',signal:AbortSignal.timeout(5000),
-   headers:{'Content-Type':'application/json','Guest-Capability':proof.value,'If-Match':'"3"','Idempotency-Key':randomUUID()},body:'{}',
-  });
-  console.error('CI schedule boundary diagnostic (no secrets)',{bffStatus:ownConfirm.status,backendStatus:direct.status});
-  if(direct.body)await direct.body.cancel().catch(()=>{});
- }
- assert.equal(ownConfirm.status,409,'guest cannot confirm own proposal');
- const decline=await sellerMutation('/'+proposed.id+'/decline',3);
- assert.equal(decline.status,200);assert.equal((await decline.json()).request_version,4);
- const sellerProposal=await sellerMutation('',4,proposalBody);
- assert.equal(sellerProposal.status,201);
- const offered=await sellerProposal.json();assert.equal(offered.initiator,'seller');assert.equal(offered.request_version,5);
- const guestView=await schedulePost(scheduleUrl+'/active',{},scheduleCookies);
- assert.equal(guestView.status,200);
- const offeredView=await guestView.json();
- assert.equal(offeredView.proposal.id,offered.id);assert.equal(offeredView.proposal.can_resolve,true);
- assert.equal((await guestMutation('/'+offered.id+'/confirm',4)).status,409,'stale guest version denied');
- const confirmKey=randomUUID();
- const confirmedResponse=await guestMutation('/'+offered.id+'/confirm',5,{},confirmKey);
- assert.equal(confirmedResponse.status,200);
- const confirmed=await confirmedResponse.json();assert.equal(confirmed.status,'confirmed');assert.equal(confirmed.request_version,6);
- const confirmReplay=await guestMutation('/'+offered.id+'/confirm',5,{},confirmKey);
- assert.equal(confirmReplay.status,200);assert.deepEqual(await confirmReplay.json(),{...confirmed,replayed:true});
- const afterSchedule=await schedulePost(scheduleUrl+'/active',{},scheduleCookies);
- assert.equal(afterSchedule.status,200);assert.equal((await afterSchedule.json()).proposal,null);
- assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[createdRequest])).rows[0]?.version,6);
- const effects=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic LIKE 'service_request.schedule_%' GROUP BY topic ORDER BY topic",[createdRequest]);
- assert.deepEqual(effects.rows,[{topic:'service_request.schedule_confirmed',n:1},{topic:'service_request.schedule_declined',n:1},{topic:'service_request.schedule_proposed',n:2}]);
- console.log('Live CI guest proposal, seller decline, seller proposal, guest confirm and exact replay PASS');
-
  // Both OTP purposes share contact cooldown. Age only this disposable
  // fixture's already verified challenge, never relax production quota.
  const aged=await db.query(`UPDATE guest_challenges SET created_at=now()-interval '10 minutes'
