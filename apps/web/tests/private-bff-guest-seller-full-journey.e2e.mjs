@@ -509,6 +509,58 @@ try{
   const uiCompletionEvents=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.completed' GROUP BY topic",[browserRequestId]);
   assert.deepEqual(uiCompletionEvents.rows,[{topic:'service_request.completed',n:1}]);
   console.log('Live CI Chrome guest completes service through actual UI PASS');
+  // Independent negative journey: seed only a verified CREATE_REQUEST proof,
+  // then create via the real BFF and decide through the actual seller inbox.
+  const declineContact=randomUUID(),declineProof=randomUUID(),declineToken=randomBytes(32).toString('base64url');
+  const declineAddress='ci-decline-'+randomBytes(8).toString('hex')+'@example.org';
+  const declineIv=randomBytes(12),declineCipher=createCipheriv('aes-256-gcm',encryptionKey,declineIv);
+  const declineEncrypted=Buffer.concat([declineCipher.update(declineAddress,'utf8'),declineCipher.final()]);
+  const declineDigest=createHmac('sha256',guestBackendKey).update('guest-contact:v1\0').update('email\0'+declineAddress).digest('hex');
+  await db.query("INSERT INTO guest_contacts(id,channel,encrypted_value,digest,verified_at,expires_at) VALUES($1,'email',$2,$3,now(),now()+interval '1 day')",
+   [declineContact,['v1',declineIv.toString('base64url'),declineCipher.getAuthTag().toString('base64url'),declineEncrypted.toString('base64url')].join('.'),declineDigest]);
+  await db.query("INSERT INTO guest_capabilities(id,guest_contact_id,scope,token_hash,expires_at) VALUES($1,$2,'CREATE_REQUEST',$3,now()+interval '15 minutes')",
+   [declineProof,declineContact,createHmac('sha256',guestBackendKey).update('guest-capability:v1\0').update('CREATE_REQUEST\0').update(declineToken).digest('hex')]);
+  const declineSealed=sealGuestSession(guestWebKey,declineToken,600);
+  const declineCreated=await fetch(new URL('/api/guest-requests',base),{method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+   headers:{'Sec-Fetch-Site':'same-origin',Origin:'https://services.example.test','Content-Type':'application/json',Cookie:'__Host-services_guest_create='+declineSealed.cookie},
+   body:JSON.stringify({...body,csrf_token:declineSealed.csrf,idempotency_key:randomUUID()})});
+  assert.equal(declineCreated.status,201);
+  const declinedId=(await declineCreated.json()).id;
+  const declineAccess=declineCreated.headers.getSetCookie().find(x=>x.startsWith('__Host-services_guest_request='))?.split(';')[0];
+  assert.ok(declineAccess);
+  const declineTarget=await send('Target.createTarget',{url:sellerIngress+'/kk/account/requests'});
+  const declinePages=await fetch('http://127.0.0.1:'+port+'/json/list',{signal:AbortSignal.timeout(8000)}).then(x=>x.json());
+  const declineUrl=declinePages.find(x=>x.id===declineTarget.targetId)?.webSocketDebuggerUrl;
+  assert.ok(declineUrl);
+  const declineSocket=new WebSocket(declineUrl);
+  await new Promise((resolve,reject)=>{declineSocket.addEventListener('open',resolve,{once:true});declineSocket.addEventListener('error',reject,{once:true});});
+  let declineSeq=0;
+  const declineEvaluate=expression=>new Promise((resolve,reject)=>{
+   const id=++declineSeq;
+   const timer=setTimeout(()=>{declineSocket.removeEventListener('message',receive);reject(new Error('seller decline CDP deadline'));},8000);
+   function receive(event){const m=JSON.parse(event.data);if(m.id!==id)return;clearTimeout(timer);declineSocket.removeEventListener('message',receive);
+    if(m.error||m.result?.exceptionDetails)reject(new Error('seller decline CDP evaluation failed'));else resolve(m.result.result.value);}
+   declineSocket.addEventListener('message',receive);
+   declineSocket.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,awaitPromise:true,returnByValue:true}}));
+  });
+  try{
+   const declineButton=`Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='Бас тарту'&&b.getAttribute('aria-label')?.endsWith('№ '+${JSON.stringify(declinedId.slice(0,8))}))`;
+   let declineReady=false;
+   for(let i=0;i<100;i++){try{declineReady=await declineEvaluate('!!('+declineButton+')&&!('+declineButton+').disabled');}catch{}if(declineReady)break;await new Promise(resolve=>setTimeout(resolve,100));}
+   assert.equal(declineReady,true,'seller decline control for exact pending guest request');
+   assert.equal(await declineEvaluate('(()=>{const b='+declineButton+';if(!b||b.disabled)return false;b.click();return true;})()'),true);
+   let declineCommitted=false;
+   for(let i=0;i<100;i++){const row=(await db.query('SELECT status,version FROM service_requests WHERE id=$1',[declinedId])).rows[0];if(row?.status==='DECLINED'&&row.version===2){declineCommitted=true;break;}await new Promise(resolve=>setTimeout(resolve,100));}
+   assert.equal(declineCommitted,true,'actual seller UI commits decline');
+   const declineStatus=await guestStatus(declinedId,declineAccess);
+   assert.equal(declineStatus.status,200);
+   const declineState=await declineStatus.json();
+   assert.equal(declineState.state,'declined');assert.equal(declineState.version,2);
+   const declineEvents=await db.query('SELECT topic,safe_payload FROM domain_outbox_events WHERE subject_id=$1 ORDER BY topic',[declinedId]);
+   assert.deepEqual(declineEvents.rows,[{topic:'service_request.created',safe_payload:{}},{topic:'service_request.declined',safe_payload:{}}]);
+   console.log('Live CI Chrome seller declines independent guest request through actual inbox UI PASS');
+  }finally{declineSocket.close();await send('Target.closeTarget',{targetId:declineTarget.targetId});}
+
 
 
   await send('Network.deleteCookies',{name:'__Host-services_guest_schedule',url:ingress});
