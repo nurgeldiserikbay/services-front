@@ -509,25 +509,35 @@ try{
   const uiCompletionEvents=await db.query("SELECT topic,count(*)::int AS n FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.completed' GROUP BY topic",[browserRequestId]);
   assert.deepEqual(uiCompletionEvents.rows,[{topic:'service_request.completed',n:1}]);
   console.log('Live CI Chrome guest completes service through actual UI PASS');
-  // Independent negative journey: seed only a verified CREATE_REQUEST proof,
-  // then create via the real BFF and decide through the actual seller inbox.
-  const declineContact=randomUUID(),declineProof=randomUUID(),declineToken=randomBytes(32).toString('base64url');
+  // Independent negative journey: create a second request in the actual
+  // guest wizard using a fresh contact and delivered OTP.
+  await send('Page.navigate',{url:ingress+'/kk/services/'+ids.offer});
+  await waitForUi('location.pathname==='+JSON.stringify('/kk/services/'+ids.offer)+'&&!!document.querySelector("#guest-contact")','fresh guest wizard for decline');
   const declineAddress='ci-decline-'+randomBytes(8).toString('hex')+'@example.org';
-  const declineIv=randomBytes(12),declineCipher=createCipheriv('aes-256-gcm',encryptionKey,declineIv);
-  const declineEncrypted=Buffer.concat([declineCipher.update(declineAddress,'utf8'),declineCipher.final()]);
-  const declineDigest=createHmac('sha256',guestBackendKey).update('guest-contact:v1\0').update('email\0'+declineAddress).digest('hex');
-  await db.query("INSERT INTO guest_contacts(id,channel,encrypted_value,digest,verified_at,expires_at) VALUES($1,'email',$2,$3,now(),now()+interval '1 day')",
-   [declineContact,['v1',declineIv.toString('base64url'),declineCipher.getAuthTag().toString('base64url'),declineEncrypted.toString('base64url')].join('.'),declineDigest]);
-  await db.query("INSERT INTO guest_capabilities(id,guest_contact_id,scope,token_hash,expires_at) VALUES($1,$2,'CREATE_REQUEST',$3,now()+interval '15 minutes')",
-   [declineProof,declineContact,createHmac('sha256',guestBackendKey).update('guest-capability:v1\0').update('CREATE_REQUEST\0').update(declineToken).digest('hex')]);
-  const declineSealed=sealGuestSession(guestWebKey,declineToken,600);
-  const declineCreated=await fetch(new URL('/api/guest-requests',base),{method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
-   headers:{'Sec-Fetch-Site':'same-origin',Origin:'https://services.example.test','Content-Type':'application/json',Cookie:'__Host-services_guest_create='+declineSealed.cookie},
-   body:JSON.stringify({...body,csrf_token:declineSealed.csrf,idempotency_key:randomUUID()})});
-  assert.equal(declineCreated.status,201);
-  const declinedId=(await declineCreated.json()).id;
-  const declineAccess=declineCreated.headers.getSetCookie().find(x=>x.startsWith('__Host-services_guest_request='))?.split(';')[0];
-  assert.ok(declineAccess);
+  await waitForUi(`(()=>{if(document.querySelector('#guest-contact')?.type==='email')return true;const label=Array.from(document.querySelectorAll('label')).find(x=>x.textContent.trim()==='Email');const radio=label?.querySelector('input[type=radio]');if(radio)radio.click();return false;})()`,'decline wizard email selected');
+  await fill('#guest-contact',declineAddress);
+  await fill('#guest-note','PRIVATE CHROME DECLINE NOTE');
+  assert.equal(await evaluate(`(()=>{const el=document.querySelector('#guest-contact').closest('form').querySelector('input[type=checkbox]');if(!el)return false;if(!el.checked)el.click();return el.checked;})()`),true);
+  await clickButton('Жалғастыру');
+  await waitForUi('!!document.querySelector("#guest-otp-code")','decline wizard OTP step');
+  const declineOtp=JSON.parse(await readFile(codeFile,'utf8'));
+  assert.equal(declineOtp.purpose,'CREATE_REQUEST');
+  assert.equal(declineOtp.destination===declineAddress,true);
+  await fill('#guest-otp-code',declineOtp.code);
+  await clickButton('Кодты тексеру');
+  await waitForUi('Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="Өтінімді жіберу"&&!x.disabled)','decline wizard verified');
+  await clickButton('Өтінімді жіберу');
+  await waitForUi('!!document.querySelector(\'section[aria-label="Өтінім қабылданды"] strong\')','decline receipt created');
+  const declinedId=await evaluate('document.querySelector(\'section[aria-label="Өтінім қабылданды"] strong\').textContent.trim()');
+  assert.match(declinedId,/^[a-f0-9-]{36}$/);
+  assert.notEqual(declinedId,browserRequestId);assert.notEqual(declinedId,createdRequest);
+  assert.deepEqual((await db.query('SELECT status,version FROM service_requests WHERE id=$1',[declinedId])).rows[0],{status:'PENDING',version:1});
+  const declineCookies=await send('Network.getCookies',{urls:[ingress]});
+  const declineScoped=declineCookies.cookies.find(x=>x.name==='__Host-services_guest_request');
+  assert.ok(declineScoped?.httpOnly&&declineScoped.secure);
+  const declineAccess=declineScoped.name+'='+declineScoped.value;
+  await clickButton('Күйін жаңарту');
+  await waitForUi('document.body.textContent.includes("Жаңарту нұсқасы: 1")','decline receipt pending version');
   const declineTarget=await send('Target.createTarget',{url:sellerIngress+'/kk/account/requests'});
   const declinePages=await fetch('http://127.0.0.1:'+port+'/json/list',{signal:AbortSignal.timeout(8000)}).then(x=>x.json());
   const declineUrl=declinePages.find(x=>x.id===declineTarget.targetId)?.webSocketDebuggerUrl;
@@ -560,6 +570,12 @@ try{
    assert.deepEqual(declineEvents.rows,[{topic:'service_request.created',safe_payload:{}},{topic:'service_request.declined',safe_payload:{}}]);
    console.log('Live CI Chrome seller declines independent guest request through actual inbox UI PASS');
   }finally{declineSocket.close();await send('Target.closeTarget',{targetId:declineTarget.targetId});}
+  await clickButton('Күйін жаңарту');
+  await waitForUi('Array.from(document.querySelectorAll("section[aria-label]")).some(x=>x.getAttribute("aria-label")==="Өтінімнің қазіргі күйі"&&x.querySelector("[role=status]")?.textContent.trim()==="Орындаушы қабылдамады")','declined state rendered in actual guest receipt');
+  assert.ok(await evaluate('document.body.textContent.includes("Жаңарту нұсқасы: 2")'));
+  assert.equal(await evaluate('!!document.querySelector(\'section[aria-label="Қызмет уақытын өзгерту"],section[aria-label="Қызметтің аяқталғанын растау"]\')'),false,'declined receipt exposes no schedule or completion controls');
+  console.log('Live CI Chrome guest declined receipt and terminal controls PASS');
+
 
 
 
