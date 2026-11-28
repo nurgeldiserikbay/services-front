@@ -511,8 +511,12 @@ try{
   console.log('Live CI Chrome guest completes service through actual UI PASS');
   // Independent negative journey: create a second request in the actual
   // guest wizard using a fresh contact and delivered OTP.
+  // Force a new document: same-URL navigation can retain the completed wizard.
+  await send('Page.navigate',{url:'about:blank'});
+  await waitForUi('location.href==="about:blank"','previous receipt document unloaded');
+  await send('Network.deleteCookies',{name:'__Host-services_guest_create',url:ingress});
   await send('Page.navigate',{url:ingress+'/kk/services/'+ids.offer});
-  await waitForUi('location.pathname==='+JSON.stringify('/kk/services/'+ids.offer)+'&&!!document.querySelector("#guest-contact")','fresh guest wizard for decline');
+  await waitForUi('location.pathname==='+JSON.stringify('/kk/services/'+ids.offer)+'&&document.readyState==="complete"&&document.querySelector("#guest-contact")?.type==="tel"','fresh guest wizard for decline');
   const declineAddress='ci-decline-'+randomBytes(8).toString('hex')+'@example.org';
   await waitForUi(`(()=>{if(document.querySelector('#guest-contact')?.type==='email')return true;const label=Array.from(document.querySelectorAll('label')).find(x=>x.textContent.trim()==='Email');const radio=label?.querySelector('input[type=radio]');if(radio)radio.click();return false;})()`,'decline wizard email selected');
   await fill('#guest-contact',declineAddress);
